@@ -1,108 +1,109 @@
 import { Form, Mood } from "../engine";
 
-// Original pixel-blob creature drawn in SVG. Art changes with mood and form.
-// No third-party or copied characters.
-
-const FORM_COLORS: Record<Form, { body: string; belly: string; dark: string }> = {
-  egg: { body: "#f4e4bc", belly: "#fff7e0", dark: "#c9a86a" },
-  dragon: { body: "#e8513a", belly: "#ffb59e", dark: "#9e2d1c" },
-  golem: { body: "#8c9aa6", belly: "#c7d2da", dark: "#53606b" },
+const FORM_COLORS: Record<Form, { body: string; belly: string; dark: string; glow: string }> = {
+  egg: { body: "#f6e6bd", belly: "#fff8e6", dark: "#c9a559", glow: "#ffe9a8" },
+  dragon: { body: "#ec5338", belly: "#ffc0ac", dark: "#9e2a18", glow: "#ff7a4a" },
+  golem: { body: "#8b98a5", belly: "#ccd6de", dark: "#4e5a65", glow: "#a7d08c" },
 };
 
-export function Creature({ mood, form }: { mood: Mood; form: Form }) {
+export function Creature({ mood, form, reacting }: { mood: Mood; form: Form; reacting: boolean }) {
   const c = FORM_COLORS[form];
   const rampage = mood === "rampage";
   const dead = mood === "dead";
-  const bodyColor = dead ? "#6b7079" : rampage ? "#e8333a" : c.body;
-  const bellyColor = dead ? "#8a8f98" : c.belly;
+  const body = dead ? "#6b7079" : rampage ? "#e8333a" : c.body;
+  const belly = dead ? "#8a8f98" : c.belly;
+  const outline = dead ? "#3a3d44" : rampage ? "#7a1414" : c.dark;
 
   return (
-    <div className={`creature-wrap mood-${mood}`}>
-      {mood === "happy" && (
-        <>
-          <span className="spark spark-1">✦</span>
-          <span className="spark spark-2">✦</span>
-          <span className="spark spark-3">✦</span>
-        </>
-      )}
-      {mood === "starving" && <span className="sweat">💧</span>}
-      {rampage && (
-        <>
-          <span className="fire fire-1">🔥</span>
-          <span className="fire fire-2">🔥</span>
-          <span className="fire fire-3">🔥</span>
-        </>
-      )}
-
-      <svg className="creature" viewBox="0 0 64 64" shapeRendering="crispEdges" width="280" height="280">
-        {/* shadow */}
-        <ellipse cx="32" cy="58" rx="18" ry="3.5" fill="rgba(0,0,0,0.35)" />
+    <div className={`creature-wrap mood-${mood} ${reacting ? "react" : ""}`}>
+      <div className="creature-aura" style={{ background: `radial-gradient(circle, ${c.glow}55, transparent 70%)` }} />
+      <svg className="creature" viewBox="0 0 80 80" shapeRendering="geometricPrecision" width="320" height="320">
+        <ellipse cx="40" cy="72" rx="22" ry="4" fill="rgba(0,0,0,0.4)" className="shadow" />
 
         {/* feet */}
-        <rect x="20" y="50" width="8" height="6" fill={c.dark} />
-        <rect x="36" y="50" width="8" height="6" fill={c.dark} />
+        <g className="feet">
+          <rect x="26" y="60" width="10" height="9" rx="3" fill={outline} />
+          <rect x="44" y="60" width="10" height="9" rx="3" fill={outline} />
+        </g>
 
-        {/* body */}
         <g className="body-group">
-          <rect x="14" y="16" width="36" height="38" rx="14" fill={bodyColor} />
-          <rect x="20" y="30" width="24" height="22" rx="10" fill={bellyColor} />
+          {/* arms */}
+          <g className="arms">
+            <rect className="arm arm-l" x="12" y="38" width="9" height="16" rx="4" fill={body} stroke={outline} strokeWidth="1.5" />
+            <rect className="arm arm-r" x="59" y="38" width="9" height="16" rx="4" fill={body} stroke={outline} strokeWidth="1.5" />
+          </g>
 
+          {/* body */}
+          <rect x="16" y="18" width="48" height="46" rx="20" fill={body} stroke={outline} strokeWidth="2.5" />
+          <ellipse cx="40" cy="44" rx="16" ry="15" fill={belly} />
+
+          {/* form accessories */}
           {form === "dragon" && !dead && (
             <>
-              {/* wings */}
-              <path className="wing wing-l" d="M14 24 L2 18 L8 32 Z" fill={c.dark} />
-              <path className="wing wing-r" d="M50 24 L62 18 L56 32 Z" fill={c.dark} />
-              {/* horns */}
-              <rect x="18" y="10" width="4" height="8" fill={c.dark} />
-              <rect x="42" y="10" width="4" height="8" fill={c.dark} />
+              <path className="wing wing-l" d="M18 28 L2 20 L10 40 Z" fill={c.dark} stroke={outline} strokeWidth="1.5" />
+              <path className="wing wing-r" d="M62 28 L78 20 L70 40 Z" fill={c.dark} stroke={outline} strokeWidth="1.5" />
+              <polygon points="26,18 30,8 34,18" fill={c.dark} />
+              <polygon points="46,18 50,8 54,18" fill={c.dark} />
             </>
           )}
           {form === "golem" && !dead && (
             <>
-              {/* rocky shoulders */}
-              <rect x="10" y="22" width="8" height="10" rx="2" fill={c.dark} />
-              <rect x="46" y="22" width="8" height="10" rx="2" fill={c.dark} />
-              <rect x="28" y="12" width="8" height="4" fill="#6fae5a" />
+              <rect x="10" y="26" width="9" height="12" rx="3" fill={c.dark} />
+              <rect x="61" y="26" width="9" height="12" rx="3" fill={c.dark} />
+              <circle cx="40" cy="14" r="4" fill="#79bd60" className="orb" />
             </>
           )}
           {form === "egg" && !dead && (
-            <rect x="29" y="12" width="6" height="6" rx="3" fill={c.dark} />
+            <g className="antenna">
+              <line x1="40" y1="18" x2="40" y2="9" stroke={outline} strokeWidth="2" />
+              <circle cx="40" cy="7" r="3.5" fill={c.glow} className="orb" />
+            </g>
+          )}
+
+          {/* cheeks */}
+          {!dead && !rampage && (
+            <>
+              <circle cx="24" cy="44" r="3" fill="#ff9db0" opacity="0.6" />
+              <circle cx="56" cy="44" r="3" fill="#ff9db0" opacity="0.6" />
+            </>
           )}
 
           {/* eyes */}
           {dead ? (
-            <g stroke="#2a2d34" strokeWidth="2.4">
-              <line x1="22" y1="30" x2="28" y2="36" />
-              <line x1="28" y1="30" x2="22" y2="36" />
-              <line x1="36" y1="30" x2="42" y2="36" />
-              <line x1="42" y1="30" x2="36" y2="36" />
+            <g stroke="#2a2d34" strokeWidth="3" strokeLinecap="round">
+              <line x1="27" y1="36" x2="34" y2="43" />
+              <line x1="34" y1="36" x2="27" y2="43" />
+              <line x1="46" y1="36" x2="53" y2="43" />
+              <line x1="53" y1="36" x2="46" y2="43" />
             </g>
           ) : rampage ? (
             <g>
-              {/* angry slanted eyes */}
-              <polygon points="20,28 30,32 20,34" fill="#2a0000" />
-              <polygon points="44,28 34,32 44,34" fill="#2a0000" />
+              <polygon points="24,34 36,39 24,42" fill="#2a0000" />
+              <polygon points="56,34 44,39 56,42" fill="#2a0000" />
+              <circle cx="30" cy="38" r="1.6" fill="#ff3b3b" className="rage-eye" />
+              <circle cx="50" cy="38" r="1.6" fill="#ff3b3b" className="rage-eye" />
             </g>
           ) : (
-            <g>
-              <circle cx="25" cy="32" r={mood === "starving" ? 5.5 : 4} fill="#fff" />
-              <circle cx="39" cy="32" r={mood === "starving" ? 5.5 : 4} fill="#fff" />
-              <circle cx={mood === "hungry" ? 26 : 25} cy="33" r="2.1" fill="#1c1e24" />
-              <circle cx={mood === "hungry" ? 40 : 39} cy="33" r="2.1" fill="#1c1e24" />
+            <g className="eyes">
+              <circle cx="31" cy="39" r={mood === "starving" ? 7 : 5.5} fill="#fff" stroke={outline} strokeWidth="1" />
+              <circle cx="49" cy="39" r={mood === "starving" ? 7 : 5.5} fill="#fff" stroke={outline} strokeWidth="1" />
+              <circle className="pupil" cx={mood === "hungry" ? 33 : 31} cy="40" r="2.6" fill="#15171c" />
+              <circle className="pupil" cx={mood === "hungry" ? 51 : 49} cy="40" r="2.6" fill="#15171c" />
+              <circle cx="32" cy="38" r="1" fill="#fff" />
+              <circle cx="50" cy="38" r="1" fill="#fff" />
             </g>
           )}
 
           {/* mouth */}
           {!dead &&
             (mood === "happy" ? (
-              <path d="M27 42 Q32 47 37 42" stroke="#1c1e24" strokeWidth="2" fill="none" />
+              <path d="M33 50 Q40 57 47 50" stroke="#15171c" strokeWidth="2.5" fill="none" strokeLinecap="round" />
             ) : mood === "hungry" ? (
-              <rect x="29" y="43" width="6" height="2" fill="#1c1e24" />
+              <rect x="36" y="51" width="8" height="2.5" rx="1" fill="#15171c" />
             ) : mood === "starving" ? (
-              <ellipse cx="32" cy="44" rx="3" ry="2.4" fill="#1c1e24" />
+              <ellipse cx="40" cy="52" rx="4" ry="3.2" fill="#15171c" />
             ) : (
-              /* rampage: jagged open mouth */
-              <polygon points="26,42 29,47 32,42 35,47 38,42 38,46 26,46" fill="#2a0000" />
+              <polygon points="32,50 36,56 40,50 44,56 48,50 48,55 32,55" fill="#2a0000" />
             ))}
         </g>
       </svg>

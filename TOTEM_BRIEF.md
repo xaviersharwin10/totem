@@ -84,8 +84,8 @@ The counts come from `GET https://nearhackathon.com/api/projects?page=N&track=ID
 | Track id | What the track asks for (organizers' words) | How TOTEM delivers |
 |---|---|---|
 | `memecoins` | "Memecoins where the meme does something: supply that reacts to the community, treasuries with rules, onchain rituals and challenges. Judged on the mechanic, not the chart." The sample prompt also wants the mechanic in the contract, no admin key that can change the parameters, and fake-account (sybil) resistance | Feeding is a daily ritual, feeding burns supply, the treasury has hard rules, and every parameter is fixed at launch with no admin key. Fake accounts gain nothing, because points come only from tokens actually spent |
-| `nfts` | "NFTs as accounts: assets that own money, earn royalties, hold inventory, carry credentials, memberships or access rights. Ownership with behavior." Hints: dynamic NFTs, NEP-171 | The Totem is a **living NFT that owns the treasury (the Hoard)**. Its state, art and level change over time. Caretaker Badges are credential NFTs |
-| `social` | "Shared budgets, programmable rewards, collective ownership and reputation-based access on top of Sputnik DAO and Trezu. Don't rebuild the multisig — build what communities do with it." | The Totem is **owned by the tribe's Sputnik DAO**, which votes on its name, evolution and rebirth. Blessings are programmable rewards for caretaking. Badges are reputation that can gate access |
+| `nfts` | "NFTs as accounts: assets that own money, earn royalties, hold inventory, carry credentials, memberships or access rights. Ownership with behavior." Hints: dynamic NFTs, NEP-171 | The Totem is a **living NFT that owns the treasury (the Reserve)**. Its state, art and level change over time. When it dies it becomes a **gravestone in an onchain lineage**, and the next egg inherits traits. Caretaker and Founder Badges are credential NFTs |
+| `social` | "Shared budgets, programmable rewards, collective ownership and reputation-based access on top of Sputnik DAO and Trezu. Don't rebuild the multisig — build what communities do with it." | The Totem is **owned by the tribe's Sputnik DAO**, where **Keepers** (big stakers and proven caretakers) vote on its name, evolution and rebirth. Blessings are programmable rewards for caretaking. Stakers who freeload get slashed, which makes collective responsibility enforceable. Badges are reputation that gates access |
 
 **We do not enter `games`.** That track is judged on a fast gameplay loop and wants NPCs and NEP-245 items. TOTEM's loop is measured in hours, so we'd score poorly there.
 
@@ -97,12 +97,18 @@ The counts come from `GET https://nearhackathon.com/api/projects?page=N&track=ID
 - **It is always getting hungrier.** Its hunger bar drains around the clock.
 - **The only food is $TOTEM coins.** Feeding it means giving it $TOTEM.
   - Half of every meal is **burned**, so supply shrinks the more the Totem is loved.
-  - The other half goes into the **Hoard**, the tribe treasury the Totem owns.
-- **If the bar hits zero, the Totem goes into Rampage.** It **eats the Hoard**, burning 10% every hour until someone feeds it. After 3 days of Rampage it **dies**: it becomes a gravestone NFT and whatever is left of the Hoard burns.
+  - The other half goes into the **Hoard**, the tribe treasury. Its Totem-owned part is the **Reserve**, and stakers can add their own stakes on top (5.12).
+- **If the bar hits zero, the Totem goes into Rampage.** Every 6 hours it takes a **bite**:
+  - It burns 15% of the Hoard.
+  - It **slashes the stake of every staker who hasn't fed it recently.**
+  - It **drops one level.**
+  - **At Level 0 it dies.** A big, well-raised Totem survives several bites, while a newborn dies at the first one.
 - **A well-fed Totem grows.** It levels up, evolves, mints badges for its caretakers and, from Level 3, pays weekly **Blessings** from the Hoard to the people who fed it.
-- **The tribe's Sputnik DAO owns the Totem.** The DAO can name it, choose its evolution and hatch a new egg after a death. It **cannot** touch the Hoard or change any rule.
+- **Holders can stake $TOTEM into the Totem's belly.** Stakers earn more from Blessings and become the tribe's voting Keepers. Their stake is at risk if the Totem starves while they weren't feeding it, so **freeloaders take the hit and recent feeders are shielded.**
+- **Death is a story beat, not a game over.** A dead Totem becomes a **gravestone NFT** in a growing **lineage**. The next egg inherits cosmetic traits from the previous generation's top feeders: "Grumbo III, child of Grumbo II, who starved on day 23."
+- **The tribe's Sputnik DAO owns the Totem.** The DAO can name it, choose its evolution and hatch the next generation. It **cannot** touch the Hoard or change any rule.
 
-The core tension is the tragedy of the commons (everyone hopes someone else pays for the shared thing): *"Someone needs to feed it… but will it be me?"* Caretakers earn rewards, freeloaders earn nothing, and total neglect hurts everyone.
+The core tension is the tragedy of the commons (everyone hopes someone else pays for the shared thing): *"Someone needs to feed it… but will it be me?"* Caretakers earn rewards, freeloaders earn nothing (and staked freeloaders lose), and total neglect hurts everyone.
 
 ---
 
@@ -113,10 +119,16 @@ The core tension is the tragedy of the commons (everyone hopes someone else pays
 - **Day 2, 3 a.m.** It's at 25%, which is Starving. The bot posts: "⚠️ TOTEM IS STARVING (25%). In 6h it starts eating the Hoard."
 - **Day 2, 4 a.m.** Arjun does a **rescue feed** and gets **2× points**.
 - **Days 3–5.** It stays Happy and reaches **Level 3**, which unlocks weekly Blessings.
-- **Day 6.** The weekend: nobody pays attention, the bar hits 0% and **Rampage** begins. 10% of the Hoard burns every hour.
-- **Day 6, later.** Three people feed it back and the Rampage stops. The tribe has learned its lesson.
-- **Day 9.** It reaches **Level 4**, and the DAO votes: **Dragon** (eats much more, blesses much more) or **Golem** (eats less, blesses less).
-- **If it is ever abandoned for 3 days at 0%,** it dies. It becomes a gravestone NFT reading "Lived 23 days, reached Level 4," and the DAO can vote to hatch a new egg.
+- **Day 6.** The weekend: nobody pays attention, the bar hits 0% and **Rampage** begins. Six hours later comes the first **bite**:
+  - 15% of the Hoard burns.
+  - The Totem drops to **Level 2**.
+  - Kiran, a big staker who hadn't fed it all week, loses 15% of his stake. Priya fed it yesterday, so her stake is shielded.
+- **Day 6, later.** Kiran and two others rush to feed it, and the Rampage stops. The tribe has learned its lesson.
+- **Day 9.** It's back to **Level 4**, and the tribe's Keepers vote in the DAO: **Dragon** (eats much more, blesses much more) or **Golem** (eats less, blesses less).
+- **If it's abandoned,** each bite drops another level, and at **Level 0 it dies.**
+  - It becomes a gravestone NFT: "Grumbo I, Generation 1, lived 23 days, reached Level 4, starved."
+  - Stakers withdraw what's left of their stake.
+  - The DAO hatches **Grumbo II**, whose colours and markings are inherited from Grumbo I's top three feeders.
 
 ---
 
@@ -139,16 +151,17 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
 | 😊 Happy | ≥ 70% | Earns XP |
 | 😐 Hungry | 30% to < 70% | Nothing |
 | 😰 Starving | > 0% to < 30% | Feeds earn the 2× rescue bonus. The bot warns everyone |
-| 🔥 Rampage | 0% | It bites the Hoard, and the death clock runs |
-| 💀 Dead | 3 Totem days in Rampage | Final for this Totem |
+| 🔥 Rampage | 0% | It bites every 6 hours (5.8) |
+| 💀 Dead | A bite takes it to Level 0 | Final for this generation. It becomes a gravestone and the next egg can hatch (5.13) |
 
 ### 5.3 Feeding
 - `feed(amount)` takes `amount` $TOTEM from the caller.
 - **Meal size** is the number of tokens needed to go from 0% to 100%: `meal_size(level, form) = BASE_MEAL × 1.5^(level-1) × form_appetite`.
 - Fullness gained is `amount / meal_size × 10,000`, capped at 10,000. **Any excess is not taken.** The contract only debits what fits.
-- The accepted amount is split **50% burned** (total supply goes down) and **50% added to the Hoard**.
-- **Caretaker Points:** 1 point per whole token accepted, and **×2 if fullness was below 30% at the moment of feeding** (rescue bonus).
-- Feeding during Rampage ends the Rampage immediately and resets the death clock.
+- The accepted amount is split **50% burned** (total supply goes down) and **50% added to the Reserve** (the Totem-owned part of the Hoard).
+- **Caretaker Points:** 1 point per whole token accepted, **×2 if fullness was below 30% at the moment of feeding** (rescue bonus), and **×1.5 if the feeder currently has at least `min_stake` staked** (staker bonus). The two multipliers stack.
+- A feed of at least `shield_min_feed` also **shields the feeder's stake** from bites for `shield_window` (5.12).
+- Feeding during Rampage ends the Rampage immediately. Bites already taken (levels lost, stake slashed) are not undone.
 - Feeding a dead Totem is rejected.
 
 ### 5.4 XP and levels
@@ -159,6 +172,8 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
   - **L3:** Blessings start (see 5.6).
   - **L4:** Evolution choice (see 5.5).
   - **L5 and up:** new art, and the Blessing rate rises by +1 percentage point per level, capped at +5.
+- **Levels can go down.** Each Rampage bite removes one level, and XP is set to the floor of the new level (progress toward the next level is lost). Perks follow the current level: below L3, no new Blessing period closes with a payout, though already-reserved Blessings stay claimable. The evolved form is kept if the Totem drops below L4.
+- A hatched egg starts at **Level 1**, so a newborn dies at its first bite. Raising it is what makes it resilient.
 
 ### 5.5 Evolution (at Level 4)
 - The **owner of the Totem NFT** (the tribe's Sputnik DAO) calls `choose_evolution("dragon" | "golem")` within **1 Totem day** of reaching L4. If it doesn't, the form defaults to **Golem**.
@@ -171,7 +186,7 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
 
 ### 5.6 Blessings (Level 3 and up)
 - Time is split into **Blessing periods of 7 Totem days**, starting from the moment the Totem reached L3.
-- When a period ends (the next `settle` after its end), the contract reserves **rate × Hoard** for that period and records the period's total points.
+- When a period ends (the next `settle` after its end), the contract reserves **rate × Reserve** (the Totem-owned part of the Hoard; stakes are never paid out as Blessings) for that period and records the period's total points.
 - Each account claims its share with `claim_blessing(period_id)`: `reserved × your_points_in_period / total_points_in_period`. Claims are **pull-based**, so the contract never loops over users.
 - Points used for Blessings are the points earned **within that period**. Lifetime points are tracked separately for badges.
 - **Unclaimed Blessings return to the Hoard 2 periods later.**
@@ -180,21 +195,28 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
 ### 5.7 Caretaker Badges (credential NFTs, soulbound)
 - **Bronze / Silver / Gold** at 100 / 1,000 / 10,000 lifetime points, claimable with `claim_badge()` once the Totem has reached L2.
 - **Hero Badge:** automatically minted to the account whose feed ended a Rampage.
+- **Founder Badge:** minted at `hatch()` to the previous generation's top 3 feeders (5.13).
 - Badges are **non-transferable**: `nft_transfer` on a badge panics. They are reputation, usable for gated access (see 9.3).
 
-### 5.8 Rampage and death
-- While fullness is 0, every **1/24 Totem day** (one "bite") burns **10% of the Hoard**. That's compounding: after n bites the Hoard is `Hoard × 0.9^n`, computed in `settle`.
-- **Poke tip:** `poke()` is a public method that just runs `settle`. If it applies at least one bite, the caller receives **1% of the bitten amount** instead of that 1% being burned. This gives anyone an incentive to keep the state current. All other methods also settle, with no tip.
-- After **3 Totem days in continuous Rampage** the Totem **dies**:
-  - The remaining Hoard is burned.
-  - The Totem token is converted to a **gravestone** NFT with frozen metadata: name, birth, death, max level, form, total fed and the top 3 caretakers.
+### 5.8 Rampage, bites and death
+- While fullness is 0, the Totem takes a **bite** every `bite_interval` (**1/4 Totem day**, so 6 hours in production), counted from the moment fullness reached 0. Each bite applies these steps in order:
+  1. **Burns `bite_burn` (15%) of the Reserve** (the Totem-owned part of the Hoard; see 5.12).
+  2. **Slashes `stake_slash` (15%) of every *unshielded* stake.** The slashed tokens go **into the Reserve**, so freeloading stakers refill the treasury they let shrink.
+  3. **Drops the Totem one level** and sets XP to the new level's floor.
+  4. **If the level is now 0, the Totem dies** (see below).
+- `settle` applies all bites that fell due since the last settle, in time order, interleaved with stake-shield expiries (5.12). The number of bites per generation is bounded by the maximum level reached, so this is bounded gas.
+- **Poke tip:** `poke()` is a public method that just runs `settle`. If it applies at least one bite, the caller receives **`poke_tip` (1%) of the Reserve burned by those bites** instead of that 1% being burned. This gives anyone an incentive to keep the state current. All other methods also settle, with no tip.
+- **Death** (a bite takes the level to 0):
+  - The remaining Reserve is burned.
+  - **Stakes are released.** Every staker can withdraw their remaining (post-slash) stake immediately, with no unbonding delay.
+  - The Totem token is converted to a **gravestone** NFT (see 5.13).
   - Unclaimed Blessing reservations remain claimable.
-- After a death, the owner of the gravestone (the DAO) can call `hatch()` to mint a new egg: Level 1, 100% full, empty Hoard, new Totem token id.
+- After a death, the owner of the gravestone (the DAO) can call `hatch()` to mint the next generation's egg (5.13).
 
 ### 5.9 What no one can do
 - There is **no admin key and no owner override.** All parameters are fixed at `new()` and exposed through `get_config()`.
-- No one can withdraw the Hoard except through Blessings and the poke tip.
-- The DAO's powers are limited to: `rename`, `choose_evolution`, `hatch`, and transferring the Totem NFT (the Hoard moves with it, because the Hoard is attributed to the token).
+- No one can withdraw the Reserve except through Blessings and the poke tip. Stakers can withdraw only their own stake, after unbonding (or immediately after a death).
+- The DAO's powers are limited to: `rename`, `choose_evolution`, `hatch`, and transferring the Totem NFT (the Reserve moves with it, because it's attributed to the token; stakes stay owned by their stakers).
 
 ### 5.10 Getting $TOTEM
 - **Fixed supply** of 1,000,000,000 $TOTEM is minted at `new()` to a `genesis_account` set at init.
@@ -202,7 +224,53 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
 - **Mainnet path:** described in the README as a future fair launch, for example via meme.cooking. **Do not deploy to mainnet for this hackathon.**
 
 ### 5.11 Why fake accounts don't help
-Points, badges and Blessings are proportional to tokens spent, and half of those are burned. Splitting 100 tokens across 100 accounts earns exactly what one account would earn with 100 tokens. The README must say this plainly.
+Points, badges and Blessings are proportional to tokens spent, and half of those are burned. Splitting 100 tokens across 100 accounts earns exactly what one account would earn with 100 tokens. The staker bonus and shield need a minimum stake and a minimum feed per account, so splitting across accounts only adds requirements. The README must say this plainly.
+
+### 5.12 Staking into the belly
+The **Hoard** shown in the UI is two parts:
+
+| Part | Owned by | Filled by | Lost by |
+|---|---|---|---|
+| **Reserve** | The Totem NFT (and through it, the tribe's DAO) | 50% of every feed, plus slashed stake | Bites (burn), Blessings (paid out), the poke tip, death (burn) |
+| **Stakes** | Each staker individually | `stake()` | Slashes during bites, unless the staker is shielded |
+
+- **Why stake:**
+  1. **The staker bonus:** feed points ×1.5 while staked ≥ `min_stake`, so a bigger share of Blessings.
+  2. **Keeper status:** stakers with ≥ `keeper_stake` can be added to the DAO's **Keepers** role and vote on name, evolution and hatching (9.3).
+  3. **Bragging rights:** a bigger visible "belly."
+- **The risk:** when the Totem bites, every *unshielded* stake loses `stake_slash`. Being a staker means having skin in the game. You can't hold a stake and ignore the Totem.
+- **Shield:** a feed of at least `shield_min_feed` (10 $TOTEM) shields **all of that feeder's stake** from every bite during the next `shield_window` (1 Totem day). Each new qualifying feed extends the shield to `now + shield_window`.
+- **Unstaking:** `unstake(amount)` starts an `unbond_delay` (1.5 Totem days, longer than one full hunger cycle). The unbonding amount **can still be slashed** if unshielded, so nobody can dodge a bite by exiting at the last moment. After the delay, `withdraw()` returns it. After a death, all stakes (including unbonding) are withdrawable at once.
+- **Staking is optional.** Feeding alone still earns points, badges and Blessings.
+
+**Accounting (bounded gas, no loops over stakers).** This is the trickiest part of the contract:
+- A global **unshielded index** `U` starts at 1.0 each generation and is multiplied by `(1 - stake_slash)` at every bite.
+- Each bite is recorded in a per-generation list `bites: Vec<{at, u_after}>`. Its length is at most the max level reached.
+- **Aggregates:**
+  - `unshielded_scaled` is the sum of `stake / U` over unshielded stakes.
+  - `shield_expiry_buckets: TreeMap<expiry_bucket, amount>` holds shielded stake keyed by expiry time, rounded up to `bucket_len` (1/24 day).
+- `settle` processes events in time order:
+  - When a bucket's expiry passes, its amount moves into `unshielded_scaled` (divided by the current `U`).
+  - When a bite falls due, the slash equals `unshielded_scaled × U × stake_slash`. That amount moves to the Reserve, then `U` is updated.
+- **Per staker:** store `principal`, `u_checkpoint` and `shield_until`.
+  - **Current value:** `principal × U_now / U_at(max(checkpoint_time, shield_until))`, where `U_at(t)` is read from the `bites` list (the index after the last bite at or before `t`).
+  - **Checkpointing:** a staker is checkpointed (principal rewritten to the current value) on every stake, unstake, withdraw or feed. Their bucket entry is moved when the shield is extended.
+
+**Fallback (in the cut order, section 16):** if the shield accounting isn't fully tested by end of Nov 12, ship the simpler version and list per-staker shields as future work. In the simpler version, bites slash *all* stakes pro rata with a single index and no shields.
+
+### 5.13 Generations and lineage
+- Every Totem has a `generation` (1, 2, 3…) and a **lineage name**, for example "Grumbo II". The DAO sets the base name with `rename`, and the numeral is the generation.
+- **Gravestone NFT (on death):** the living Totem token is converted in place to a gravestone with frozen metadata:
+  - Name, generation, born, died, lifespan, max level, form and cause of death ("starved at Level 0").
+  - Total fed, total burned and Blessings paid.
+  - The **top 3 feeders** of that generation and the **traits** it carried.
+- **Inherited traits (cosmetic only):** at `hatch()`, the new egg's traits are derived deterministically from `sha256(top-3 feeder account ids of the previous generation ‖ generation number)`:
+  - `palette` (8 options), `pattern` (6), `marking` (6) and `crest` (4).
+  - Generation 1 derives them from the genesis account and the DAO account.
+  - The web app renders the sprite from these traits.
+- **Founders:** the new egg's metadata lists the previous generation's top 3 feeders as its **Founders**, and they each receive a soulbound **Founder Badge** for that generation.
+- **No gameplay inheritance.** Traits and founders never change meal size, drain, Blessings or anything economic. If death gave advantages to the next generation, players would have a reason to let the Totem die.
+- `get_lineage()` returns the full family tree: every gravestone plus the living Totem, with parent links.
 
 ---
 
@@ -219,10 +287,19 @@ These are **starting values**. Tune them with the 60-day simulation (12.3) befor
 | `happy_threshold` / `starving_threshold` | 70% / 30% | |
 | `rescue_multiplier` | 2× | |
 | `level_thresholds` | 1, 3, 6, 10, then +5 (Happy days) | |
-| `bite_interval` | 1/24 day | |
-| `bite_size` | 10% of the Hoard | |
-| `poke_tip` | 1% of each bite | |
-| `death_after` | 3 days of continuous Rampage | |
+| `bite_interval` | 1/4 day (6h in prod, 30s in demo) | |
+| `bite_burn` | 15% of the Reserve per bite | |
+| `stake_slash` | 15% of each unshielded stake per bite, into the Reserve | |
+| `level_loss_per_bite` | 1 | Death at Level 0. A newborn (L1) dies at its first bite |
+| `poke_tip` | 1% of the Reserve burned by the bites applied | |
+| `min_stake` | 100 $TOTEM | For the ×1.5 staker point bonus |
+| `staker_points_multiplier` | 1.5× | Stacks with the rescue 2× |
+| `keeper_stake` | 1,000 $TOTEM | Eligibility for the DAO Keepers role |
+| `shield_min_feed` | 10 $TOTEM | |
+| `shield_window` | 1 day | |
+| `unbond_delay` | 1.5 days | Longer than one full hunger cycle |
+| `bucket_len` | 1/24 day | Granularity of shield expiries |
+| `traits` | palette 8, pattern 6, marking 6, crest 4 | Cosmetic only |
 | `blessing_period` | 7 days | |
 | `blessing_rate` | 5% (egg), 8% (Dragon), 3% (Golem), +1 pt per level from L5, max +5 | |
 | `unclaimed_return_after` | 2 periods | |
@@ -291,10 +368,21 @@ pub struct Contract {
     form: Form,                           // Egg | Dragon | Golem
     l4_reached_at: Option<u64>,
     rampage_started_at: Option<u64>,
-    bites_applied: u64,
+    bites: Vector<Bite>,                  // this generation: {at, u_after}; len <= max level
     alive: bool,
-    hoard: Balance,                       // $TOTEM held by the contract for this totem
+    traits: Traits,                       // palette, pattern, marking, crest (cosmetic)
+    founders: Vec<AccountId>,             // previous generation's top 3
+    reserve: Balance,                     // Totem-owned part of the Hoard
     total_burned: Balance,
+    // staking (5.12)
+    stakes: LookupMap<AccountId, Stake>,  // {principal, u_checkpoint, shield_until, unbonding, unbond_at}
+    u_index: u128,                        // fixed-point unshielded index, resets per generation
+    unshielded_scaled: u128,
+    shield_expiry_buckets: TreeMap<u64, Balance>,
+    total_staked: Balance,
+    // lineage (5.13)
+    gravestones: Vector<TokenId>,
+    gen_top_feeders: Vec<(AccountId, u128)>, // top-3 cache for the current generation
     // points & rewards
     lifetime_points: LookupMap<AccountId, u128>,
     period_points: LookupMap<(u64, AccountId), u128>,
@@ -311,13 +399,16 @@ pub struct Contract {
 | Method | Who | Does |
 |---|---|---|
 | `new(cfg, genesis_account, dao_account, demo_mode)` | deployer, once | Mints supply and the faucet pool, mints the Totem NFT to `dao_account` and fixes all config |
-| `feed(amount: U128)` | any holder | Settles, takes what fits, burns 50%, adds 50% to the Hoard, awards points (with rescue bonus), ends any Rampage, emits `feed` |
+| `feed(amount: U128)` | any holder | Settles, takes what fits, burns 50%, adds 50% to the Reserve, awards points (rescue and staker bonuses), extends the caller's stake shield if ≥ `shield_min_feed`, ends any Rampage, emits `feed` |
+| `stake(amount: U128)` | any holder | Settles, checkpoints the caller, moves tokens into their stake |
+| `unstake(amount: U128)` | stakers | Settles, starts `unbond_delay`. The amount stays slashable until withdrawn |
+| `withdraw()` | stakers | Settles, pays out matured unbonding (or the whole stake if the Totem is dead) |
 | `poke()` | anyone | Settles, and pays the poke tip if bites were applied |
 | `claim_blessing(period_id: u64)` | any account with points in that period | Transfers its share from the reserved amount |
 | `claim_badge()` | any account | Mints the highest Bronze/Silver/Gold tier earned and not yet claimed (requires level ≥ 2 reached) |
 | `rename(name: String)` | **Totem NFT owner only** (the DAO) | Sets the name (≤ 32 chars) |
 | `choose_evolution(form: String)` | **Totem NFT owner only** | Only between L4 and the evolution deadline |
-| `hatch()` | **Gravestone owner only**, Totem dead | Mints a new egg Totem to the caller |
+| `hatch()` | **Gravestone owner only**, Totem dead | Mints the next generation's egg to the caller, with inherited traits and Founder Badges (5.13) |
 | `faucet()` | anyone, **demo_mode only** | Registers storage if needed and sends `faucet_amount` once per day |
 | NEP-141 / NEP-145 / NEP-171 standard methods | — | `nft_transfer` on badges panics (soulbound). The Totem NFT is transferable, and the Hoard follows `totem_id` |
 
@@ -325,29 +416,38 @@ pub struct Contract {
 
 | Method | Returns |
 |---|---|
-| `get_totem()` | Projected live state at `now`: name, generation, fullness %, mood, level, XP, next level, form, Hoard, time until Starving / Rampage / death, alive, owner |
+| `get_totem()` | Projected live state at `now`: name, generation, fullness %, mood, level, XP, next level, form, traits, Reserve, total staked, time until Starving / Rampage / next bite, bites left before death (= current level), alive, owner |
+| `get_stake(account_id)` | Current (post-slash) stake value, shielded until, unbonding amount and maturity |
+| `get_lineage()` | Every gravestone and the living Totem, with generation, parent, founders, traits and life record |
 | `get_config()` | All parameters (proves there's no admin key and nothing hidden) |
 | `get_caretaker(account_id)` | Lifetime points, current-period points, claimable Blessings, badge tier |
 | `get_leaderboard(period_id?, limit)` | Top caretakers. Maintain a small top-N cache on write to avoid unbounded iteration |
 | `get_periods(from, limit)` | Blessing periods and their status |
-| `get_graveyard()` | Gravestone NFTs with their frozen life records |
+| `get_graveyard()` | Gravestone NFTs with their frozen life records (a flat list; `get_lineage()` gives the tree) |
 | `get_stats()` | Total supply, total burned, total fed, total blessed |
 
 ### 8.4 Events (NEP-297 JSON logs, `standard: "totem"`)
-`feed`, `rescue`, `level_up`, `evolve`, `bite`, `rampage_start`, `rampage_end`, `death`, `hatch`, `blessing_reserved`, `blessing_claimed`, `badge_minted`, `rename`. Also emit the standard `ft_burn` / `nft_mint` events. The bot and the UI history page are built from these.
+`feed`, `rescue`, `level_up`, `level_down`, `evolve`, `bite` (with Reserve burned and total stake slashed), `rampage_start`, `rampage_end`, `death`, `hatch` (with traits and founders), `stake`, `unstake`, `withdraw`, `blessing_reserved`, `blessing_claimed`, `badge_minted`, `rename`. Also emit the standard `ft_burn` / `nft_mint` events. The bot and the UI history page are built from these.
 
 ### 8.5 Edge cases the tests must cover
 1. A feed exactly at the moment fullness hits 0. Rampage-start ordering within `settle`.
-2. A long idle gap (for example 10 days). `settle` must apply the drain, then the bites, then death in the correct order, in bounded gas. Compute bites with an exponent, not a loop.
+2. A long idle gap (for example 10 days). `settle` must apply the drain, then each bite in order (burn, slash, level down), then death at Level 0, in bounded gas.
 3. An overfeed: only the fitting amount is debited.
-4. A rescue feed during Rampage: Hero Badge, 2× points, death clock reset.
+4. A rescue feed during Rampage: Hero Badge, 2× points, the Rampage ends, and levels already lost stay lost.
+4a. **Staking and shields:**
+   - A shielded staker loses nothing in a bite, and an unshielded one loses exactly `stake_slash`.
+   - A shield expiring *between* two bites: the staker is slashed by the second bite only.
+   - Many stakers with different shield expiries across a long gap: the sum of individual stake values always equals the aggregate.
+4b. **Unbonding:** an unbonding stake is still slashed if unshielded, `withdraw` before maturity panics, and after a death everything is withdrawable at once.
+4c. **Level loss:** a bite at L1 kills a newborn, a bite at L5 leaves L4, XP is reset to the level floor, and Blessings stop below L3 while already-reserved ones stay claimable.
+4d. **Generations:** traits are deterministic from the top 3 feeders plus the generation, Founder Badges go to exactly the previous top 3, the new egg has no economic carry-over, and `get_lineage` links parent to child.
 5. A Blessing period with zero points.
-6. A sale or transfer of the Totem NFT mid-period. The Hoard follows the token, and pending Blessings are unaffected.
+6. A sale or transfer of the Totem NFT mid-period. The Reserve follows the token, stakes stay with their owners, and pending Blessings are unaffected.
 7. A badge transfer attempt panics.
 8. Non-owner calls to `rename` / `choose_evolution` / `hatch` panic.
 9. The evolution deadline passes, so the form defaults to Golem.
-10. Death: the Hoard burns, a gravestone is created, `hatch` works, and old unclaimed Blessings are still claimable.
-11. Rounding: no dust is created or lost. Burned + Hoard + paid out always equals the total fed.
+10. Death: the Reserve burns, stakes are released, a gravestone is created with the full life record, `hatch` works (owner only), and old unclaimed Blessings are still claimable.
+11. Rounding: no dust is created or lost. At every point, burned + Reserve + Blessings paid or reserved + poke tips equals total fed + total slashed, and the sum of stakes equals total staked minus total slashed minus total withdrawn.
 12. Storage deposits (NEP-145) for new accounts receiving tokens, Blessings or badges.
 
 ---
@@ -366,8 +466,12 @@ pub struct Contract {
 
 Provide a script, `scripts/dao-propose.ts`, that creates each proposal and votes on it, so judges can reproduce the flow without the Sputnik UI.
 
-### 9.3 Reputation-based access (stretch, strengthens the social track)
-Caretaker Badge holders (Silver and up) can be added to a "Caretakers" role in the DAO via `AddMemberToRole` proposals created by the bot or a script. This gives caretakers a vote on evolution, so caretaking literally becomes governance power. Trezu can be mentioned as an alternative treasury UI, but it isn't needed.
+### 9.3 Keepers: stake- and reputation-based access (strengthens the social track)
+- The DAO policy has a **Keepers** role with vote rights on FunctionCall proposals to the Totem contract.
+- **Who can join:** accounts with ≥ `keeper_stake` staked **or** a Silver-or-better Caretaker Badge. `scripts/keepers-sync.ts` reads `get_stake` and the badges and creates `AddMemberToRole` / `RemoveMemberFromRole` proposals.
+- **Core vs stretch:** for the hackathon, the core is the role plus the sync script run manually in the demo. Automating it from the bot is a stretch.
+- This makes staking and caretaking literally into governance power: the people with skin in the game choose the Totem's evolution and hatch the next generation.
+- Trezu can be mentioned as an alternative treasury UI, but it isn't needed.
 
 ---
 
@@ -378,17 +482,19 @@ Caretaker Badge holders (Silver and up) can be added to a "Caretakers" role in t
 **Pages and sections:**
 1. **Home: the Totem.**
    - The animated pixel creature, with art that varies by mood (Happy, Hungry, Starving, Rampage) and form (Egg, Dragon, Golem, Gravestone).
-   - A big live hunger bar with countdowns ("Starving in 3h 12m", "Eats the Hoard in…", "Dies in…").
-   - Level, XP bar, Hoard balance and total burned.
+   - A big live hunger bar with countdowns ("Starving in 3h 12m", "First bite in…", "Next bite in…"), and **"Bites until death: N"** (equal to the current level) shown as hearts.
+   - Level, XP bar, Hoard (Reserve + total staked) and total burned.
    - **Feed buttons** (10, 50, or "fill it up", which computes the exact amount needed).
    - A **Poke** button, shown during Rampage, displaying the tip you'd earn.
-2. **Caretakers:** the leaderboard (this period and lifetime), your points, claimable Blessings with claim buttons, and badge status with a claim button.
-3. **History:** a feed of events (feeds, rescues, bites, level-ups, evolutions, Blessings, deaths), each linking to the testnet explorer.
-4. **Graveyard:** past Totems and their life records.
-5. **Rules:** live output of `get_config()`, rendered in plain language. It shows anyone that the rules are fixed.
-6. **Faucet** (demo only): "Get 1,000 test $TOTEM."
+   - The sprite is rendered from the Totem's **traits** and mood/form.
+2. **Belly (staking):** stake, unstake, withdraw. Shows your current stake value, a **shield status** ("🛡 Shielded for 14h" or "⚠️ Unshielded: feed 10 to protect your stake") and unbonding countdown.
+3. **Caretakers:** the leaderboard (this period and lifetime), your points, claimable Blessings with claim buttons, and badge status with a claim button.
+4. **History:** a feed of events (feeds, rescues, bites with amounts burned and slashed, level changes, evolutions, Blessings, deaths, hatches), each linking to the testnet explorer.
+5. **Lineage:** the family tree. Each generation is a card with its gravestone (or the living Totem), traits, founders, lifespan, max level and cause of death.
+6. **Rules:** live output of `get_config()`, rendered in plain language. It shows anyone that the rules are fixed.
+7. **Faucet** (demo only): "Get 1,000 test $TOTEM."
 
-**Art:** original pixel art made for this project: simple SVG or sprite sheets, two to three frames per mood, with a different palette per form. No copied or third-party characters.
+**Art:** original pixel art made for this project: simple layered SVG, two to three frames per mood, with a body per form (Egg, Dragon, Golem, Gravestone). The **traits** (palette, pattern, marking, crest) are layers or colour swaps, so every generation looks different. No copied or third-party characters.
 
 **Low friction:** first-time users get a one-click faucet that also handles the storage deposit. All state is visible without connecting a wallet.
 
@@ -400,11 +506,13 @@ Caretaker Badge holders (Silver and up) can be added to a "Caretakers" role in t
 
 **It posts on state changes:**
 - `⚠️ TOTEM IS STARVING (25%) — Level 3 Golem. Starts eating the Hoard (8,400 $TOTEM) in 5h 12m. [🍖 Feed] [📊 Status]`
-- `🔥 RAMPAGE! The Totem ate 840 $TOTEM from the Hoard. It dies in 2d 23h unless someone feeds it.`
+- `🔥 BITE! Grumbo ate 1,260 $TOTEM from the Reserve and slashed 3,400 from 6 unshielded stakers. Down to Level 2: 2 bites until death. Next bite in 6h.`
+- `🛡 Stakers: feed at least 10 $TOTEM to shield your stake from the next bite.`
 - `🦸 arjun.testnet saved the Totem! +2× points, Hero Badge minted.`
-- `⬆️ Level 4! The tribe must choose: 🐉 Dragon or 🗿 Golem. Vote in the DAO.`
+- `⬆️ Level 4! The Keepers must choose: 🐉 Dragon or 🗿 Golem. Vote in the DAO.`
 - `✨ Blessing #2: 1,250 $TOTEM ready for 14 caretakers. [Claim]`
-- `💀 The Totem has died after 23 days. Rest in peace, Grumbo. The DAO may hatch a new egg.`
+- `💀 Grumbo I has died after 23 days (max Level 4). Rest in peace. Stakers can withdraw now. The Keepers may hatch Grumbo II.`
+- `🥚 Grumbo II has hatched! Founders: priya.testnet, arjun.testnet, kiran.testnet. Teal, striped, with a moon crest.`
 
 **Commands:** `/status`, `/top`, `/rules`.
 
@@ -422,18 +530,22 @@ Unit tests plus integration tests covering every edge case in 8.5. Use the sandb
 1. Create 5 sub-accounts of a dev account and claim the faucet for each.
 2. Feed from account 1 and print the burn/Hoard split.
 3. Keep it Happy with scripted feeds until L3, about 6 minutes. Print the level-ups.
-4. Stop feeding, so it goes Starving, then Rampage. Account 4 calls `poke` and gets the tip. Print the bites.
-5. Account 2 rescue-feeds: print the 2× points and the Hero Badge.
-6. Let a Blessing period close, then claim Blessings. Print the per-account payouts.
-7. Through the DAO script: rename, and `choose_evolution` at L4.
-8. Optional `--death` flag: abandon the Totem, then watch it die and hatch a new one.
+4. Accounts 3 and 5 **stake** 500 each. Account 3 feeds 10 (shielded); account 5 doesn't.
+5. Stop feeding, so it goes Starving, then Rampage. Account 4 calls `poke` and gets the tip. Print the bite: Reserve burned, **account 5 slashed 15%, account 3 untouched**, level −1.
+6. Account 2 rescue-feeds: print the 2× points and the Hero Badge.
+7. Let a Blessing period close, then claim Blessings. Print the per-account payouts, showing the staker bonus.
+8. Through the DAO scripts: sync Keepers, rename, and `choose_evolution` at L4.
+9. `--death` flag (on by default in the full run): abandon the Totem and watch the bites take it to Level 0. Print the gravestone, stakers withdrawing, `hatch` of Generation 2 with inherited traits and Founder Badges, and `get_lineage`.
 
-It must print a clear log, with every step labelled and linked to its explorer transaction. Target run time is about 15 minutes with the 120-second day. Also provide `--fast` for a shorter path that skips the evolution steps.
+It must print a clear log, with every step labelled and linked to its explorer transaction. Target run time is about 15 minutes with the 120-second day (bites every 30 seconds). Also provide `--fast` for a shorter path that skips evolution and goes straight from staking to death and rebirth.
 
 ### 12.3 Balance simulation (do this first, on Day 1)
-`sim/simulate.py` is an offline agent-based model of 60 days. Simulated players: loyal caretakers, opportunists who feed only on rescue, freeloaders, and "weekend gaps." It outputs charts of fullness, Hoard, total supply, level and Blessings over time, under 3–4 scenarios (healthy, apathetic, whale-carried, abandoned).
+`sim/simulate.py` is an offline agent-based model of 60 days. Simulated players: loyal caretakers, opportunists who feed only on rescue, freeloaders, **stakers who feed** and **stakers who don't**, and "weekend gaps." It outputs charts of fullness, level, Reserve, total stake, total supply, Blessings and generations (deaths and rebirths) over time, under 3–4 scenarios (healthy, apathetic, whale-carried, abandoned).
 
-**Goal:** the Totem should survive with modest effort, die under real neglect, and Blessings should return a meaningful share to active caretakers. Commit the charts to `sim/out/` and reference them in the README. That's evidence the mechanic was designed, not guessed.
+**Goals:**
+- The Totem should survive with modest effort and die under real neglect. A grown Totem should survive a weekend gap with some level loss.
+- Blessings should return a meaningful share to active caretakers.
+- **Staking and feeding should beat staking alone, which should lose money over time.** Commit the charts to `sim/out/` and reference them in the README. That's evidence the mechanic was designed, not guessed.
 
 ---
 
@@ -523,22 +635,30 @@ totem/
 
 | Day (UTC) | Goal | Done when |
 |---|---|---|
-| **Nov 10** | Simulation, final parameters, contract skeleton | Charts committed, parameters approved, `settle` + `feed` tested |
-| **Nov 11** | The full contract and tests. Testnet deploy. DAO created | All tests in 8.5 pass, and the contract and DAO are live on testnet |
-| **Nov 12** | `demo.ts` working, the web app's core (Totem, Feed, Faucet, History) | A judge can feed from the browser |
-| **Nov 13** | The rest of the web app, the bot, the README, hosting | The "Try it in 5 minutes" steps work end to end |
-| **Nov 14** | Video, X post, repo public, submission **by ~18:00 UTC** (leave buffer) | Submission returns 201 |
+| **Nov 11** | Simulation, final parameters. Contract core: `settle`, feed, bites with level loss, death, generations | Charts committed, parameters approved, core tests pass |
+| **Nov 12** | Staking and shields, Blessings, badges. Testnet deploy. DAO created | All tests in 8.5 pass (or the staking fallback is taken; see below), and the contract and DAO are live on testnet |
+| **Nov 13** | `demo.ts` working, the web app (Totem, Feed, Belly, Lineage, History, Faucet), hosting | A judge can feed, stake and watch a bite from the browser |
+| **Nov 14, morning** | The bot, README polish, video | The "Try it in 5 minutes" steps work end to end |
+| **Nov 14, by ~18:00 UTC** | X post, repo public, submission (leave buffer) | Submission returns 201 |
 
-If something slips, cut scope in this order: the bot (then show the alerts in the web app instead), then evolution, then badges. **Never cut** feeding, Rampage, death, Blessings or the tests.
+If something slips, cut scope in this order:
+1. The bot (show the alerts in the web app instead).
+2. **Per-staker shields** (fall back to pro-rata slashing of all stakes; see 5.12).
+3. Evolution.
+4. Badges (keep the Founder list in the metadata).
+5. Keepers sync (keep the DAO with a fixed council).
+
+**Never cut:** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.
 
 ---
 
 ## 17. Stretch goals (only after the core is done)
 
 1. **Feed from any chain via NEAR Intents:** someone holding USDC on Ethereum or Solana can feed the Totem through a 1Click swap. Intents has **no testnet**, so implement it with `dry: true` quotes, plus at most one tiny mainnet demo **with explicit human approval.** This adds a "chain abstraction" angle and broader appeal.
-2. **Caretaker role in the DAO** for badge holders (9.3).
+2. **Automatic Keepers sync** from the bot (9.3).
 3. **Telegram Mini App** for in-chat feeding.
 4. **Multiple tribes:** a factory that lets any community hatch its own Totem, each in a sub-account (`<tribe>.totem.testnet`). This strengthens the nfts track's sub-account hint.
+5. **Doom Clock display:** "Hours survived this generation" against the all-time record. Display only, with no betting.
 
 ---
 
@@ -552,11 +672,22 @@ If something slips, cut scope in this order: the bot (then show the alerts in th
 
 **Our original combination:**
 - A collectively owned NFT that is itself the treasury.
-- Neglect that destroys the shared treasury.
+- Neglect that destroys the shared treasury and **costs the Totem its levels, and eventually its life.**
+- **Staking with skin in the game:** stakers who don't feed get slashed, while recent feeders are shielded.
 - Burn-on-feed supply mechanics.
 - Pull-based Blessings for caretakers.
-- Sputnik DAO governance of the creature.
+- **Generational lineage:** gravestone NFTs form a family tree, and each egg inherits cosmetic traits from its predecessor's top feeders.
+- Sputnik DAO governance of the creature by the Keepers.
 - No admin key.
+
+### Design decisions log (ideas considered and not adopted)
+
+| Idea | Decision | Why |
+|---|---|---|
+| Per-token **hunger debt** with a global accumulator, surplus credit and debt-weighted slashing (suggested by another model) | **Partly adopted**: we took "a bite drops a level, death at Level 0", the unbonding delay and "freeloaders take the hit" (as shields) | The full debt and surplus system needs three interacting accumulators, which is too risky in the time left. It also turns a shared creature into individual bookkeeping, weakening the "shared commons" pitch. Listed in the README as future work: debt-weighted bites |
+| **Survival betting market** (bet on whether it lives 24h) | Not adopted | It rewards people for wanting it to starve, needs no agent (the contract knows if it's alive), and would be a second product. The Doom Clock (stretch 5) keeps the tension without betting |
+| **AI personality** posting begging messages on X | Not adopted | It adds no mechanism (judged on the mechanic), similar projects exist, and auto-posting to X needs human approval under the hackathon rules. The Telegram bot is the Totem's voice |
+| Inheritance with **gameplay advantages** | Not adopted (cosmetic only) | Economic inheritance would reward letting the Totem die |
 
 Name these projects openly in the README.
 
@@ -567,6 +698,8 @@ Name these projects openly in the README.
 **Risks:**
 - **Balance:** the Totem either never dies (boring) or always dies (frustrating). Mitigation: the simulation first (12.3).
 - **Lazy settlement correctness** over long gaps. Mitigation: closed-form maths and the edge-case tests (8.5).
+- **Shield accounting (5.12)** is the hardest code. Mitigation: build it after the core, test the invariant "sum of stakes = aggregate" heavily, and use the pro-rata fallback if it isn't solid by end of Nov 12.
+- **A newborn dies at its first bite.** This is intended (it creates urgency right after a hatch) but must be explained clearly in the UI and README, and checked in the simulation so new generations don't die constantly.
 - **Competitor overlap:** check the entries "Petri" (privacy, security, games, nfts, memecoins) and "$YAP | Proof of yap" (memecoins, social) on X, and the memecoin partner **BRRRAIN** (https://brrrain.fun/docs/), for similarity. Adjust the pitch if needed.
 - **Time:** about 4 days. Stick to the cut order in section 16.
 
@@ -584,19 +717,20 @@ Name these projects openly in the README.
 
 **Video (about 90 seconds, show one complete moment, no architecture slides):**
 1. The egg hatches.
-2. The tribe feeds it, and the bar fills and the Hoard grows.
+2. The tribe feeds it and stakes into its belly, and the bar fills and the Hoard grows.
 3. A time-lapse: "STARVING" alerts.
-4. Rampage, with the Hoard burning on screen.
+4. The first bite: the Hoard burns, the lazy staker gets slashed while the feeder's 🛡 holds, and a heart is lost.
 5. A last-second rescue and the Hero Badge.
-6. A level-up and the DAO vote (Dragon or Golem).
+6. A level-up and the Keepers' vote (Dragon or Golem).
 7. A Blessing payout.
-8. The graveyard.
-9. End card: "Keep it alive. Together."
+8. Abandonment: the bites take it to Level 0, and it becomes a gravestone.
+9. Generation 2 hatches with new colours inherited from the top feeders, shown in the lineage tree.
+10. End card: "Keep it alive. Together."
 
 **X post draft (the human edits and posts it):**
 > Most memecoins do nothing. Ours dies if you ignore it.
 >
-> TOTEM is one creature a whole community shares. Feed it $TOTEM and it grows and pays its caretakers. Starve it and it eats the treasury.
+> TOTEM is one creature a whole community shares. Feed it $TOTEM and it grows and pays its caretakers. Starve it and it eats the treasury, bites the stakers who ignored it, and eventually dies, leaving a gravestone and an egg that inherits its feeders' colours.
 >
 > On NEAR: the creature is an NFT that owns the treasury, the tribe's Sputnik DAO owns the creature, and no admin key can change the rules.
 >

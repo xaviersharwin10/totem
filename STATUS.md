@@ -1,0 +1,50 @@
+# TOTEM: Build status (as of 2026-11-11)
+
+Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTEM_BRIEF.md) (the spec) and before picking up work. Keep it current: tick items off and add new ones as you go.
+
+## Done
+
+| Area | What exists | Where |
+|---|---|---|
+| Contract core | NEP-141 $TOTEM + NEP-145 storage, feed (50% burn / 50% Reserve), lazy `settle`, moods, levels, evolution, Blessings, badge tiers (records + events), demo faucet | [`contract/src/`](contract/src/) |
+| New bite rules | Bite every ¼ Totem-day: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level; death at Level 0; poke tip = 1% of the burn | [`game.rs`](contract/src/game.rs) |
+| Staking with shields | `stake` / `unstake` (1.5-day unbonding, still slashable) / `withdraw`; feed ≥ 10 shields for 1 day; ×1.5 staker points; bounded-gas aggregate with shield buckets | [`staking.rs`](contract/src/staking.rs) |
+| Lineage | Gravestone life record on death, traits from `sha256(top-3 feeders ‖ generation)`, Founders, `get_lineage` / `get_graveyard` | [`lineage.rs`](contract/src/lineage.rs) |
+| Views | `get_totem` projects unsettled bites; `get_stake`, `get_config`, `get_stats`, `get_caretaker`, `get_period`, `get_blessing_share` | [`views.rs`](contract/src/views.rs) |
+| Contract tests | 17 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split | [`tests.rs`](contract/src/tests.rs) |
+| Web app | 3D farm (React Three Fiber) with an original chubby panda; feed / pet / ball / trees; totem pole = levels, treasure chest = Hoard, graveyard = lineage; day/night; glass HUD | [`web/src/`](web/src/) |
+| Docs | README (judge-facing), RULES.md (all parameters), brief updated to the 3D farm | root |
+
+**Run it:**
+```bash
+cd contract && cargo +stable test     # 17 passed (needs Rust >= 1.95: rustup update stable)
+cd web && npm install && npm run dev  # http://localhost:5173
+```
+
+**Know before you build on it:**
+- The web app runs a **client-side mirror** of the rules ([`web/src/engine.ts`](web/src/engine.ts)). It has the new bite rules but no staking, and is **not connected** to any contract or wallet yet.
+- Badges, the Totem NFT and gravestones are **records and events only**; NEP-171 is not wired.
+- Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
+- Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
+
+## Remaining (in priority order)
+
+The brief's cut order still applies if time runs out (section 16): cut the bot first, then Keepers sync. **Never cut** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.
+
+- [ ] **1. Simulation:** update [`sim/simulate.py`](sim/simulate.py) and the charts in `sim/out/` to the new rules (bites drop levels, staking with shields, generations). Show that staking alone loses money and staking + feeding wins.
+- [ ] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
+- [ ] **3. Remaining contract tests (brief 8.5):** Blessings stop below L3, zero-point period, Totem NFT transfer mid-period, evolution deadline → Golem, non-owner `rename` / `choose_evolution` panic, storage deposits, claiming old Blessings after a death.
+- [ ] **4. Integration tests:** `near-workspaces` sandbox tests with block fast-forward (brief 12.1).
+- [ ] **5. Testnet deploy:** install `cargo-near`, build the wasm, `scripts/deploy.ts` (deploy + `new` with `demo_mode = true`, 120 s day). Look up RPC URLs and versions in the docs, don't guess.
+- [ ] **6. Sputnik DAO:** create the tribe DAO with the testnet factory (look up the factory account in the sputnik-dao-contract docs); `scripts/create-dao.ts` and `scripts/dao-propose.ts` (rename, choose_evolution, hatch).
+- [ ] **7. Keepers:** DAO role + `scripts/keepers-sync.ts` (≥ 1,000 staked or Silver badge).
+- [ ] **8. Demo script:** `scripts/demo.ts`, one full life on testnet with a labelled log and explorer links, plus `--fast` (brief 12.2).
+- [ ] **9. Web ↔ contract:** NEAR Wallet Selector (testnet), read `get_totem` / `get_stake` / `get_lineage`, sign `feed`, `poke`, `faucet`; keep the 3D farm as the front end and replace `engine.ts` calls.
+- [ ] **10. Web staking UI:** stake, unstake, withdraw, shield status ("🛡 Shielded for 14h" / "⚠️ feed 10 to protect your stake"), unbonding countdown.
+- [ ] **11. Other web screens:** claim Blessings and badges, lineage tree from `get_lineage`, rules from `get_config`, history with explorer links, faucet button.
+- [ ] **12. Hosting:** Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
+- [ ] **13. Telegram bot:** grammY alerts (brief section 11). First to cut.
+- [ ] **14. README polish:** testnet contract + DAO addresses, working "try it in 5 minutes" steps against the hosted app, libraries used, limitations, prior art; add `.env.example`.
+- [ ] **15. Demo video + X post:** recorded and posted by the team (brief section 20).
+- [ ] **16. Team decisions:** team lead name and team size, the mainnet payout account (the team creates it), making the repo public, whether anyone submits a second project.
+- [ ] **17. Submission:** before **2026-11-14 23:59 UTC** (aim ~18:00). Print the full payload, get a human yes, never fill `website`. Fix mistakes via request-changes, never by resubmitting.

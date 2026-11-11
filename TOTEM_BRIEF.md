@@ -5,6 +5,8 @@
 
 This file is the single starting point for the project. It is written for teammates **and** for an AI coding agent. If you are an agent, read it in full, then read [`HACKATHON.md`](HACKATHON.md) in full, before writing any code. Section 14 has your operating rules.
 
+**What is built and what is left:** see [`STATUS.md`](STATUS.md). Read it before picking up work, and keep it current.
+
 ---
 
 ## Contents

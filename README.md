@@ -25,7 +25,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 - **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
 - **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
-- **Sputnik DAO ownership** (in progress) governs rename / evolution / rebirth only — it cannot touch the Hoard or change a rule.
+- **Sputnik DAO ownership:** the tribe's DAO owns the Totem NFT, so rename / evolution / hatching happen only through DAO proposals (`FunctionCall` to the contract). The DAO cannot touch the Hoard or change a rule. On testnet, Generation 2 was hatched by a DAO vote.
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
 
 ## The rules (all fixed at launch)
@@ -142,7 +142,8 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | NEP-171 NFTs: dynamic Totem → gravestone, soulbound Bronze/Silver/Gold, Hero, Founder badges | done, tested |
 | near-workspaces integration tests (§8.5 edge cases) | in progress |
 | Testnet deploy (demo mode, 2-minute day) | done: [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
-| Sputnik DAO + demo script | pending |
+| Sputnik DAO owns the Totem; rename / evolve / hatch via proposals | done: hatch of Generation 2 executed by a DAO vote ([tx](https://testnet.nearblocks.io/txns/BWnntErjehHtN6yF9x5cZJkQ8H8a94v43YnMGQxnX2YC)) |
+| Demo script, Keepers role | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
 | Web app: wallet + testnet contract, staking UI | pending |
 | Telegram bot | pending |
@@ -152,14 +153,22 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | What | Account |
 |---|---|
 | TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
-| Genesis holder and current Totem NFT owner (until the Sputnik DAO exists) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
-| Tribe DAO | pending |
+| Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
+| Genesis holder and DAO council member (1-of-1 for the demo) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
 
 Read the live state (no wallet needed):
 
 ```bash
 near contract call-function as-read-only totem-grumbo.testnet get_totem json-args '{}' network-config testnet now
 near contract call-function as-read-only totem-grumbo.testnet get_config json-args '{}' network-config testnet now
+```
+
+Govern it through the DAO (creates a proposal and votes it through; the demo council is 1-of-1):
+
+```bash
+scripts/dao-propose.sh rename Mochi
+scripts/dao-propose.sh evolve dragon   # only between Level 4 and the deadline
+scripts/dao-propose.sh hatch           # after a death
 ```
 
 Redeploy or deploy your own copy: `cp .env.example .env`, set the accounts, run [`scripts/deploy.sh`](scripts/deploy.sh). On the 2-minute demo clock an unfed newborn starves in about 2.5 minutes; the Totem owner can then `hatch`.

@@ -9,9 +9,9 @@ contract's rules (contract/src, TOTEM_BRIEF.md sections 5-6, RULES.md):
   - At 0% the Totem bites every 1/4 day: burns 15% of the Reserve, slashes 15%
     of every UNSHIELDED stake into the Reserve, and drops one level. A bite at
     Level 1 kills it. Feeding ends the Rampage; lost levels stay lost.
-  - Staking: a feed of >= 10 $TOTEM shields the feeder's stake for 1 day.
+  - Staking: a feed of >= 5 $TOTEM shields the feeder's stake for 2 days.
     Stakers with >= 100 staked earn x1.5 points.
-  - Blessings: from L3, every 7 days the contract reserves rate x Reserve and
+  - Blessings: from L3, every 3.5 days the contract reserves rate x Reserve and
     splits it by points earned in that period (only while the level is >= 3).
   - Generations: after a death the DAO hatches a new Level-1 egg (no economic
     carry-over); stakes from the dead generation are released.
@@ -60,9 +60,9 @@ class Config:
     stake_slash: float = 0.15
     min_stake: float = 100.0
     staker_multiplier: float = 1.5
-    shield_min_feed: float = 10.0
-    shield_window: float = 1.0
-    blessing_period: float = 7.0
+    shield_min_feed: float = 5.0
+    shield_window: float = 2.0
+    blessing_period: float = 3.5
     blessing_rate_egg: float = 0.05
     blessing_rate_dragon: float = 0.08
     blessing_rate_golem: float = 0.03
@@ -138,7 +138,7 @@ class Player:
         if a == "whale":
             return need if fullness < 0.60 else 0.0
         if a == "staker_feeder":
-            # the minimum the shield rule asks for: a 10-token snack before the
+            # the minimum the shield rule asks for: a 5-token snack before the
             # shield runs out (it barely moves the belly of a grown Totem)
             if self.shield_until < t + 0.3:
                 return min(need, CFG.shield_min_feed)

@@ -105,7 +105,7 @@ The counts come from `GET https://nearhackathon.com/api/projects?page=N&track=ID
   - It **slashes the stake of every staker who hasn't fed it recently.**
   - It **drops one level.**
   - **At Level 0 it dies.** A big, well-raised Totem survives several bites, while a newborn dies at the first one.
-- **A well-fed Totem grows.** It levels up, evolves, mints badges for its caretakers and, from Level 3, pays weekly **Blessings** from the Hoard to the people who fed it.
+- **A well-fed Totem grows.** It levels up, evolves, mints badges for its caretakers and, from Level 3, pays twice-weekly **Blessings** from the Hoard to the people who fed it.
 - **Holders can stake $TOTEM into the Totem's belly.** Stakers earn more from Blessings and become the tribe's voting Keepers. Their stake is at risk if the Totem starves while they weren't feeding it, so **freeloaders take the hit and recent feeders are shielded.**
 - **Death is a story beat, not a game over.** A dead Totem becomes a **gravestone NFT** in a growing **lineage**. The next egg inherits cosmetic traits from the previous generation's top feeders: "Grumbo III, child of Grumbo II, who starved on day 23."
 - **The tribe's Sputnik DAO owns the Totem.** The DAO can name it, choose its evolution and hatch the next generation. It **cannot** touch the Hoard or change any rule.
@@ -120,7 +120,7 @@ The core tension is the tragedy of the commons (everyone hopes someone else pays
 - **Day 1, evening.** It's at 70%. Priya feeds it and earns Caretaker Points.
 - **Day 2, 3 a.m.** It's at 25%, which is Starving. The bot posts: "⚠️ TOTEM IS STARVING (25%). In 6h it starts eating the Hoard."
 - **Day 2, 4 a.m.** Arjun does a **rescue feed** and gets **2× points**.
-- **Days 3–5.** It stays Happy and reaches **Level 3**, which unlocks weekly Blessings.
+- **Days 3–5.** It stays Happy and reaches **Level 3**, which unlocks Blessings (paid every 3.5 days).
 - **Day 6.** The weekend: nobody pays attention, the bar hits 0% and **Rampage** begins. Six hours later comes the first **bite**:
   - 15% of the Hoard burns.
   - The Totem drops to **Level 2**.
@@ -187,7 +187,7 @@ Every rule below is enforced **in the contract**. No backend is needed for corre
 | 🗿 Golem | ×0.8 | 3% |
 
 ### 5.6 Blessings (Level 3 and up)
-- Time is split into **Blessing periods of 7 Totem days**, starting from the moment the Totem reached L3.
+- Time is split into **Blessing periods of 3.5 Totem days** (tuned down from 7 by the simulation), starting from the moment the Totem reached L3.
 - When a period ends (the next `settle` after its end), the contract reserves **rate × Reserve** (the Totem-owned part of the Hoard; stakes are never paid out as Blessings) for that period and records the period's total points.
 - Each account claims its share with `claim_blessing(period_id)`: `reserved × your_points_in_period / total_points_in_period`. Claims are **pull-based**, so the contract never loops over users.
 - Points used for Blessings are the points earned **within that period**. Lifetime points are tracked separately for badges.
@@ -241,7 +241,7 @@ The **Hoard** shown in the UI is two parts:
   2. **Keeper status:** stakers with ≥ `keeper_stake` can be added to the DAO's **Keepers** role and vote on name, evolution and hatching (9.3).
   3. **Bragging rights:** a bigger visible "belly."
 - **The risk:** when the Totem bites, every *unshielded* stake loses `stake_slash`. Being a staker means having skin in the game. You can't hold a stake and ignore the Totem.
-- **Shield:** a feed of at least `shield_min_feed` (10 $TOTEM) shields **all of that feeder's stake** from every bite during the next `shield_window` (1 Totem day). Each new qualifying feed extends the shield to `now + shield_window`.
+- **Shield:** a feed of at least `shield_min_feed` (5 $TOTEM) shields **all of that feeder's stake** from every bite during the next `shield_window` (2 Totem days). Each new qualifying feed extends the shield to `now + shield_window`.
 - **Unstaking:** `unstake(amount)` starts an `unbond_delay` (1.5 Totem days, longer than one full hunger cycle). The unbonding amount **can still be slashed** if unshielded, so nobody can dodge a bite by exiting at the last moment. After the delay, `withdraw()` returns it. After a death, all stakes (including unbonding) are withdrawable at once.
 - **Staking is optional.** Feeding alone still earns points, badges and Blessings.
 
@@ -297,12 +297,12 @@ These are **starting values**. Tune them with the 60-day simulation (12.3) befor
 | `min_stake` | 100 $TOTEM | For the ×1.5 staker point bonus |
 | `staker_points_multiplier` | 1.5× | Stacks with the rescue 2× |
 | `keeper_stake` | 1,000 $TOTEM | Eligibility for the DAO Keepers role |
-| `shield_min_feed` | 10 $TOTEM | |
-| `shield_window` | 1 day | |
+| `shield_min_feed` | 5 $TOTEM | Tuned from 10 by the simulation |
+| `shield_window` | 2 days | Tuned from 1 day: a 500-token staker who feeds now beats one who doesn't |
 | `unbond_delay` | 1.5 days | Longer than one full hunger cycle |
 | `bucket_len` | 1/24 day | Granularity of shield expiries |
 | `traits` | palette 8, pattern 6, marking 6, crest 4 | Cosmetic only |
-| `blessing_period` | 7 days | |
+| `blessing_period` | 3.5 days | Tuned from 7: caretakers get ~12% of spend back instead of ~8% |
 | `blessing_rate` | 5% (egg), 8% (Dragon), 3% (Golem), +1 pt per level from L5, max +5 | |
 | `unclaimed_return_after` | 2 periods | |
 | `evolution_deadline` | 1 day after L4, else Golem | |
@@ -490,7 +490,7 @@ Provide a script, `scripts/dao-propose.ts`, that creates each proposal and votes
    - **Feed buttons** (10, 50, or "fill it up", which computes the exact amount needed).
    - A **Poke** button, shown during Rampage, displaying the tip you'd earn.
    - The panda's colours come from the Totem's **traits**; its pose and face from mood/form.
-2. **Belly (staking):** stake, unstake, withdraw. Shows your current stake value, a **shield status** ("🛡 Shielded for 14h" or "⚠️ Unshielded: feed 10 to protect your stake") and unbonding countdown.
+2. **Belly (staking):** stake, unstake, withdraw. Shows your current stake value, a **shield status** ("🛡 Shielded for 14h" or "⚠️ Unshielded: feed 5 to protect your stake") and unbonding countdown.
 3. **Caretakers:** the leaderboard (this period and lifetime), your points, claimable Blessings with claim buttons, and badge status with a claim button.
 4. **History:** a feed of events (feeds, rescues, bites with amounts burned and slashed, level changes, evolutions, Blessings, deaths, hatches), each linking to the testnet explorer.
 5. **Lineage:** the family tree. Each generation is a card with its gravestone (or the living Totem), traits, founders, lifespan, max level and cause of death.
@@ -510,7 +510,7 @@ Provide a script, `scripts/dao-propose.ts`, that creates each proposal and votes
 **It posts on state changes:**
 - `⚠️ TOTEM IS STARVING (25%) — Level 3 Golem. Starts eating the Hoard (8,400 $TOTEM) in 5h 12m. [🍖 Feed] [📊 Status]`
 - `🔥 BITE! Grumbo ate 1,260 $TOTEM from the Reserve and slashed 3,400 from 6 unshielded stakers. Down to Level 2: 2 bites until death. Next bite in 6h.`
-- `🛡 Stakers: feed at least 10 $TOTEM to shield your stake from the next bite.`
+- `🛡 Stakers: feed at least 5 $TOTEM to shield your stake from the next bite.`
 - `🦸 arjun.testnet saved the Totem! +2× points, Hero Badge minted.`
 - `⬆️ Level 4! The Keepers must choose: 🐉 Dragon or 🗿 Golem. Vote in the DAO.`
 - `✨ Blessing #2: 1,250 $TOTEM ready for 14 caretakers. [Claim]`

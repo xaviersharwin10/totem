@@ -39,10 +39,10 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 | Rampage bite | every ¼ Totem-day at 0%: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level |
 | Death | when a bite takes it to Level 0 (a newborn L1 dies at its first bite) |
 | Poke tip | 1% of the Reserve burned by the bites a `poke()` settles |
-| Staking | ×1.5 points while ≥ 100 staked; a feed ≥ 10 shields your stake for 1 day; 1.5-day unbonding, still slashable |
+| Staking | ×1.5 points while ≥ 100 staked; a feed ≥ 5 shields your stake for 2 days; 1.5-day unbonding, still slashable |
 | Lineage | gravestone life record on death; next egg's cosmetic traits from the top 3 feeders, who become its Founders |
 | Levels | L2/L3/L4/L5 at 1/3/6/10 Happy-days, then +5 each |
-| Blessings | 7-day periods from L3; `rate × Reserve` split pro-rata by points |
+| Blessings | 3.5-day periods from L3; `rate × Reserve` split pro-rata by points |
 | Badges | Bronze/Silver/Gold at 100/1,000/10,000 lifetime points (soulbound) |
 | Supply | 1,000,000,000 $TOTEM, 18 decimals, minted once at init |
 
@@ -114,17 +114,17 @@ The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 
 ### What the simulation shows
 
-[`sim/simulate.py`](sim/simulate.py) is an agent-based model of 60 Totem-days using the contract's rules (bites drop levels, staking with shields, Blessings per period, generations). Players: loyal caretakers, rescue-only opportunists, a whale, freeloaders, stakers who keep their shield up with 10-token snacks, and stakers who never feed. One chart per scenario in [`sim/out/`](sim/out/):
+[`sim/simulate.py`](sim/simulate.py) is an agent-based model of 60 Totem-days using the contract's rules (bites drop levels, staking with shields, Blessings per period, generations). Players: loyal caretakers, rescue-only opportunists, a whale, freeloaders, stakers who keep their shield up with 5-token snacks, and stakers who never feed. One chart per scenario in [`sim/out/`](sim/out/):
 
 | Scenario | Result |
 |---|---|
 | `healthy` | Survives 60 days, no bites, reaches L14 |
-| `weekend-gaps` | The tribe forgets it at weekends: a grown Totem takes 4 bites (L10 → L6) and survives. Stakers who fed keep most of their stake; stakers who didn't lose ~half |
-| `apathetic` | Barely kept alive; 4 bites, lazy stakers lose ~half their stake |
+| `weekend-gaps` | The tribe forgets it at weekends: 7 bites over 60 days (its worst weekend takes it L7 → L3) and it survives. Stakers who fed keep ~450 of 500; stakers who didn't end at ~160 |
+| `apathetic` | Barely kept alive; 6 bites, lazy stakers lose ~60% of their stake |
 | `whale-carried` | One whale keeps it alive; lazy stakers still get slashed |
 | `abandoned-reborn` | Fed 10 days, abandoned: it bites its way down from L4 and dies; the tribe returns, Generation 2 hatches and grows to L9 |
 
-12 of 14 checks pass. The two warnings are honest tuning questions: loyal caretakers get ~4–9% of their spend back as Blessings (below a 10% target), and at a 500 stake the daily 10-token shield snack costs more than the slashes it saves (bigger stakes come out ahead).
+All 14 checks pass. Two parameters were tuned from this model: Blessing periods went from 7 to 3.5 days (caretakers now get ~12% of their spend back in the healthy scenario instead of ~8%), and the shield went from "feed 10, protected 1 day" to "feed 5, protected 2 days" (so a 500-token staker who feeds now ends ahead of one who doesn't).
 
 ## Status (honest)
 

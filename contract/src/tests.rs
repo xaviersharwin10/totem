@@ -284,9 +284,11 @@ fn feeding_ends_rampage_but_lost_levels_stay_lost() {
 // staking and shields
 // ---------------------------------------------------------------------- //
 
-/// L3 Totem with bob and carol staking 500 each, bob shielded by a feed at
-/// `last + 0.4d`. Returns (contract, genesis, bob, carol, rampage start).
-fn staked_l3() -> (Contract, AccountId, AccountId, AccountId, u64) {
+/// L3 Totem with bob and carol staking 500 each. Bob is shielded by a feed
+/// at `last + 0.4d` (covers both bites), or with `early` at `last - 0.6d`
+/// (the 2-day shield then ends between the first and second bite).
+/// Returns (contract, genesis, bob, carol, rampage start).
+fn staked_l3_with(early: bool) -> (Contract, AccountId, AccountId, AccountId, u64) {
     let (mut c, genesis, _dao) = setup();
     let bob = accounts(2);
     let carol = accounts(3);
@@ -296,13 +298,26 @@ fn staked_l3() -> (Contract, AccountId, AccountId, AccountId, u64) {
     c.stake(U128(500 * ONE));
     set_ctx(&carol, 0);
     c.stake(U128(500 * ONE));
-    let last = keep_happy(&mut c, &genesis, DAY / 4, 3 * DAY);
+    let last = if early {
+        keep_happy(&mut c, &genesis, DAY / 4, DAY * 9 / 4);
+        set_ctx(&bob, DAY * 12 / 5);
+        c.feed(U128(5 * ONE));
+        keep_happy(&mut c, &genesis, DAY * 5 / 2, 3 * DAY)
+    } else {
+        let last = keep_happy(&mut c, &genesis, DAY / 4, 3 * DAY);
+        set_ctx(&bob, last + DAY * 2 / 5);
+        c.feed(U128(5 * ONE));
+        last
+    };
     assert_eq!(c.level, 3);
-    let f = last + DAY * 2 / 5;
-    set_ctx(&bob, f);
-    c.feed(U128(10 * ONE));
-    let z = f + c.get_totem().seconds_until_rampage.unwrap().0 * 1_000_000_000;
+    let now = c.last_settled_at;
+    let z = now + c.get_totem().seconds_until_rampage.unwrap().0 * 1_000_000_000;
+    let _ = last;
     (c, genesis, bob, carol, z)
+}
+
+fn staked_l3() -> (Contract, AccountId, AccountId, AccountId, u64) {
+    staked_l3_with(false)
 }
 
 #[test]
@@ -329,7 +344,7 @@ fn shielded_staker_keeps_everything_unshielded_loses_slash() {
 
 #[test]
 fn shield_expiring_between_bites_is_slashed_by_the_second_only() {
-    let (mut c, genesis, bob, carol, _z) = staked_l3();
+    let (mut c, genesis, bob, carol, _z) = staked_l3_with(true);
     let b1 = next_bite_at(&c, c.last_settled_at);
     set_ctx(&genesis, b1);
     c.poke();

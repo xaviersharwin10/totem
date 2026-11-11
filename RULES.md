@@ -31,7 +31,7 @@ readable on-chain via `get_config()`. There is no admin key and no owner overrid
 | Points | 1 per whole token accepted |
 | Rescue multiplier | ×2 when fullness < 30% at the moment of feeding |
 | Staker multiplier | ×1.5 while you have ≥ 100 $TOTEM staked (stacks with rescue) |
-| Shield | a feed of ≥ 10 $TOTEM shields your stake from bites for 1 Totem-day |
+| Shield | a feed of ≥ 5 $TOTEM shields your stake from bites for 2 Totem-days |
 | Overfeed | only the amount that fits is debited |
 
 ## Moods
@@ -80,7 +80,7 @@ So a Totem survives as many bites as its level: a newborn (L1) dies at its first
 |---|---|
 | Staker bonus | feed points ×1.5 while staked ≥ 100 $TOTEM |
 | Keeper eligibility | ≥ 1,000 $TOTEM staked (for the DAO Keepers role) |
-| Shield | a feed of ≥ 10 $TOTEM protects **all** your stake from bites for 1 Totem-day (rounded up to the hour) |
+| Shield | a feed of ≥ 5 $TOTEM protects **all** your stake from bites for 2 Totem-days (rounded up to the hour) |
 | Unbonding | `unstake` → 1.5 Totem-days → `withdraw`. Unbonding stake **can still be slashed** |
 | After a death | every stake is released and withdrawable at once |
 
@@ -107,7 +107,7 @@ The Totem NFT owner (the DAO) chooses within 1 Totem-day of reaching L4; otherwi
 
 | Parameter | Value |
 |---|---|
-| Period length | 7 Totem-days (from the moment L3 is reached) |
+| Period length | 3.5 Totem-days (from the moment L3 is reached) |
 | Reserved per period | `rate × Reserve`, pro-rata by points earned that period (only while L3+) |
 | Claim | pull-based (`claim_blessing(period_id)`) |
 | Unclaimed | returns to the Reserve 2 periods later |

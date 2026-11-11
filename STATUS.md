@@ -8,7 +8,7 @@ Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTE
 |---|---|---|
 | Contract core | NEP-141 $TOTEM + NEP-145 storage, feed (50% burn / 50% Reserve), lazy `settle`, moods, levels, evolution, Blessings, badge tiers (records + events), demo faucet | [`contract/src/`](contract/src/) |
 | New bite rules | Bite every ¼ Totem-day: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level; death at Level 0; poke tip = 1% of the burn | [`game.rs`](contract/src/game.rs) |
-| Staking with shields | `stake` / `unstake` (1.5-day unbonding, still slashable) / `withdraw`; feed ≥ 10 shields for 1 day; ×1.5 staker points; bounded-gas aggregate with shield buckets | [`staking.rs`](contract/src/staking.rs) |
+| Staking with shields | `stake` / `unstake` (1.5-day unbonding, still slashable) / `withdraw`; feed ≥ 5 shields for 2 days; ×1.5 staker points; bounded-gas aggregate with shield buckets | [`staking.rs`](contract/src/staking.rs) |
 | Lineage | Gravestone life record on death, traits from `sha256(top-3 feeders ‖ generation)`, Founders, `get_lineage` / `get_graveyard` | [`lineage.rs`](contract/src/lineage.rs) |
 | Views | `get_totem` projects unsettled bites; `get_stake`, `get_config`, `get_stats`, `get_caretaker`, `get_period`, `get_blessing_share` | [`views.rs`](contract/src/views.rs) |
 | Contract tests | 17 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split | [`tests.rs`](contract/src/tests.rs) |
@@ -27,19 +27,20 @@ cd web && npm install && npm run dev  # http://localhost:5173
 - Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
 - Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
 
-## Parameter questions (from the simulation, need a team decision)
+## Parameter decisions (from the simulation, 2026-11-11)
 
-Parameters are fixed at `new()` and the brief says a human approves them before the final deploy (section 14, checkpoint 1). Current findings:
+The simulation flagged two weak spots; both are now fixed in `Config::defaults` (contract), the sim, RULES.md, README and the brief. All 14 sim checks pass.
 
-1. **Blessings feel small:** loyal caretakers get back ~4–9% of what they feed as Blessings (target was ≥ 10%). Options: raise the Blessing rates (egg 5% → 8%?), or shorten the period to 3–4 days so payouts come sooner.
-2. **The shield snack isn't worth it for small stakers:** at 500 staked, a daily 10-token snack costs more than the 15% slashes it prevents. Options: keep it (small stakers just feed the Totem properly), lower `shield_min_feed` to 5, or make the shield last 2 days.
-3. Everything else behaves as designed: healthy survives, grown Totems survive a weekend gap with level loss, neglect kills, generations hatch, lazy stakers lose money when it bites.
+1. **Blessing period 7 → 3.5 Totem-days.** Same rates, paid twice as often: loyal caretakers get ~12% of their spend back (was ~8%), and the demo shows a Blessing every 7 minutes instead of 14.
+2. **Shield: feed ≥ 5 (was 10), lasts 2 days (was 1).** At 10/day a 500-token staker paid more in snacks than the slashes it saved; now feeding stakers end ahead of lazy ones.
+
+Parameters are immutable after `new()`, so re-run `sim/simulate.py` before any further change and before the final deploy.
 
 ## Remaining (in priority order)
 
 The brief's cut order still applies if time runs out (section 16): cut the bot first, then Keepers sync. **Never cut** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.
 
-- [x] **1. Simulation:** [`sim/simulate.py`](sim/simulate.py) and `sim/out/` now use the new rules (5 scenarios, 12/14 checks pass). Two open tuning questions for the team, see "Parameter questions" below.
+- [x] **1. Simulation:** [`sim/simulate.py`](sim/simulate.py) and `sim/out/` now use the new rules (5 scenarios, 14/14 checks pass). Two parameters were tuned from it, see "Parameter decisions" below.
 - [ ] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
 - [ ] **3. Remaining contract tests (brief 8.5):** Blessings stop below L3, zero-point period, Totem NFT transfer mid-period, evolution deadline → Golem, non-owner `rename` / `choose_evolution` panic, storage deposits, claiming old Blessings after a death.
 - [ ] **4. Integration tests:** `near-workspaces` sandbox tests with block fast-forward (brief 12.1).
@@ -48,7 +49,7 @@ The brief's cut order still applies if time runs out (section 16): cut the bot f
 - [ ] **7. Keepers:** DAO role + `scripts/keepers-sync.ts` (≥ 1,000 staked or Silver badge).
 - [ ] **8. Demo script:** `scripts/demo.ts`, one full life on testnet with a labelled log and explorer links, plus `--fast` (brief 12.2).
 - [ ] **9. Web ↔ contract:** NEAR Wallet Selector (testnet), read `get_totem` / `get_stake` / `get_lineage`, sign `feed`, `poke`, `faucet`; keep the 3D farm as the front end and replace `engine.ts` calls.
-- [ ] **10. Web staking UI:** stake, unstake, withdraw, shield status ("🛡 Shielded for 14h" / "⚠️ feed 10 to protect your stake"), unbonding countdown.
+- [ ] **10. Web staking UI:** stake, unstake, withdraw, shield status ("🛡 Shielded for 14h" / "⚠️ feed 5 to protect your stake"), unbonding countdown.
 - [ ] **11. Other web screens:** claim Blessings and badges, lineage tree from `get_lineage`, rules from `get_config`, history with explorer links, faucet button.
 - [ ] **12. Hosting:** Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
 - [ ] **13. Telegram bot:** grammY alerts (brief section 11). First to cut.

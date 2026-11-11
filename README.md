@@ -76,9 +76,10 @@ cargo +stable test                      # expect: 17 passed (needs Rust >= 1.95)
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
 
-# Simulation: 60-day balance model, four scenarios, charts to sim/out/
+# Simulation: 60-day balance model, five scenarios, charts to sim/out/
 cd ../sim
-.venv/bin/python simulate.py            # or: python3 -m venv .venv && pip install numpy matplotlib
+python3 -m venv .venv && .venv/bin/pip install matplotlib
+.venv/bin/python simulate.py            # prints a summary + validation checks
 
 # Web app: the 3D farm (opens at http://localhost:5173)
 cd ../web
@@ -111,7 +112,19 @@ The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 - `death_leaves_a_gravestone_and_hatch_inherits_traits` — owner-only hatch, traits from the top 3 feeders, Founders, no economic carry-over, `get_lineage` parent links.
 - `sybil_split_earns_identical_total` — splitting a spend across wallets earns nothing extra.
 
-The simulation prints a summary table and writes one chart per scenario; the **abandoned** chart shows the Hoard climbing while fed, then being eaten to zero after neglect — the core drama, in one picture.
+### What the simulation shows
+
+[`sim/simulate.py`](sim/simulate.py) is an agent-based model of 60 Totem-days using the contract's rules (bites drop levels, staking with shields, Blessings per period, generations). Players: loyal caretakers, rescue-only opportunists, a whale, freeloaders, stakers who keep their shield up with 10-token snacks, and stakers who never feed. One chart per scenario in [`sim/out/`](sim/out/):
+
+| Scenario | Result |
+|---|---|
+| `healthy` | Survives 60 days, no bites, reaches L14 |
+| `weekend-gaps` | The tribe forgets it at weekends: a grown Totem takes 4 bites (L10 → L6) and survives. Stakers who fed keep most of their stake; stakers who didn't lose ~half |
+| `apathetic` | Barely kept alive; 4 bites, lazy stakers lose ~half their stake |
+| `whale-carried` | One whale keeps it alive; lazy stakers still get slashed |
+| `abandoned-reborn` | Fed 10 days, abandoned: it bites its way down from L4 and dies; the tribe returns, Generation 2 hatches and grows to L9 |
+
+12 of 14 checks pass. The two warnings are honest tuning questions: loyal caretakers get ~4–9% of their spend back as Blessings (below a 10% target), and at a 500 stake the daily 10-token shield snack costs more than the slashes it saves (bigger stakes come out ahead).
 
 ## Status (honest)
 

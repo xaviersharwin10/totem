@@ -27,11 +27,19 @@ cd web && npm install && npm run dev  # http://localhost:5173
 - Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
 - Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
 
+## Parameter questions (from the simulation, need a team decision)
+
+Parameters are fixed at `new()` and the brief says a human approves them before the final deploy (section 14, checkpoint 1). Current findings:
+
+1. **Blessings feel small:** loyal caretakers get back ~4–9% of what they feed as Blessings (target was ≥ 10%). Options: raise the Blessing rates (egg 5% → 8%?), or shorten the period to 3–4 days so payouts come sooner.
+2. **The shield snack isn't worth it for small stakers:** at 500 staked, a daily 10-token snack costs more than the 15% slashes it prevents. Options: keep it (small stakers just feed the Totem properly), lower `shield_min_feed` to 5, or make the shield last 2 days.
+3. Everything else behaves as designed: healthy survives, grown Totems survive a weekend gap with level loss, neglect kills, generations hatch, lazy stakers lose money when it bites.
+
 ## Remaining (in priority order)
 
 The brief's cut order still applies if time runs out (section 16): cut the bot first, then Keepers sync. **Never cut** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.
 
-- [ ] **1. Simulation:** update [`sim/simulate.py`](sim/simulate.py) and the charts in `sim/out/` to the new rules (bites drop levels, staking with shields, generations). Show that staking alone loses money and staking + feeding wins.
+- [x] **1. Simulation:** [`sim/simulate.py`](sim/simulate.py) and `sim/out/` now use the new rules (5 scenarios, 12/14 checks pass). Two open tuning questions for the team, see "Parameter questions" below.
 - [ ] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
 - [ ] **3. Remaining contract tests (brief 8.5):** Blessings stop below L3, zero-point period, Totem NFT transfer mid-period, evolution deadline → Golem, non-owner `rename` / `choose_evolution` panic, storage deposits, claiming old Blessings after a death.
 - [ ] **4. Integration tests:** `near-workspaces` sandbox tests with block fast-forward (brief 12.1).

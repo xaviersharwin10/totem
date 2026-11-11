@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { TotemEngine, fmt, fmtTime, TotemView, DAY_MS, GameEvent } from "./engine";
+import { fmt, fmtTime, TotemView, DAY_MS, GameEvent } from "./engine";
+import { useGame } from "./game";
+import { DAO_ID, EXPLORER } from "./chain/config";
 import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
@@ -18,6 +20,14 @@ const LOOKS: PandaLook[] = [
 
 type Amount = 10 | 50 | "fill";
 
+// Shown for the first moment while the live Totem loads from testnet.
+const LOADING: TotemView = {
+  name: "…", generation: 1, alive: true, fullnessBp: 10_000, mood: "happy", level: 1, maxLevel: 1, form: "egg",
+  xpHappyDays: 0, nextLevelHappyDays: 1, hoard: 0, totalBurned: 0, totalFed: 0, mealSize: 100, fillAmount: 0,
+  secondsUntilStarving: null, secondsUntilRampage: null, secondsUntilDeath: null, secondsUntilNextBite: null,
+  bitesUntilDeath: 1,
+};
+
 interface Toast {
   id: number;
   text: string;
@@ -25,12 +35,9 @@ interface Toast {
 }
 
 export default function App() {
-  const engineRef = useRef<TotemEngine>();
-  if (!engineRef.current) engineRef.current = new TotemEngine();
-  const engine = engineRef.current;
+  const game = useGame();
   const start = useRef(Date.now());
 
-  const [, setTick] = useState(0);
   const [tool, setTool] = useState<Tool>("pet");
   const [amount, setAmount] = useState<Amount>(50);
   const [muted, setMutedState] = useState(false);
@@ -38,7 +45,6 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [info, setInfo] = useState<null | "totem" | "hoard">(null);
-  const [graves, setGraves] = useState<{ name: string; maxLevel: number }[]>([]);
   const [hint, setHint] = useState(true);
   const [hurt, setHurt] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -46,23 +52,23 @@ export default function App() {
   const lastEventId = useRef(0);
   const prev = useRef({ mood: "happy", level: 1, alive: true, name: "" });
 
-  // engine tick
-  useEffect(() => {
-    const t = setInterval(() => {
-      engine.settle(Date.now());
-      setTick((n) => n + 1);
-    }, 200);
-    return () => clearInterval(t);
-  }, [engine]);
-
   const now = Date.now();
-  const view: TotemView = engine.project(now);
+  const loading = !game.view;
+  const view: TotemView = game.view ?? LOADING;
+  const graves = game.graves;
   const dayFrac = (((now - start.current) / DAY_MS + 0.08) % 1 + 1) % 1;
-  const look = LOOKS[(view.generation - 1) % LOOKS.length];
+  const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
+
+  // switching backends restarts the event stream
+  useEffect(() => {
+    lastEventId.current = Math.max(0, ...game.events.map((e) => e.id));
+    prev.current = { mood: view.mood, level: view.level, alive: view.alive, name: view.name };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.mode, loading]);
 
   // events -> toasts
   useEffect(() => {
-    const fresh = engine.events.filter((e) => e.id > lastEventId.current).reverse();
+    const fresh = game.events.filter((e) => e.id > lastEventId.current).reverse();
     if (!fresh.length) return;
     lastEventId.current = Math.max(...fresh.map((e) => e.id));
     fresh
@@ -88,10 +94,7 @@ export default function App() {
       sfx.rampage();
     }
     if (view.mood === "rampage" && p.mood !== "rampage") sfx.rampage();
-    if (!view.alive && p.alive) {
-      sfx.death();
-      setGraves((g) => [...g, { name: p.name || view.name, maxLevel: view.maxLevel }]);
-    }
+    if (!view.alive && p.alive) sfx.death();
     prev.current = { mood: view.mood, level: view.level, alive: view.alive, name: view.name };
   }, [view.mood, view.level, view.alive, view.name, view.maxLevel]);
 
@@ -106,11 +109,11 @@ export default function App() {
     };
   }, []);
 
-  const feedAt = (x: number, z: number) => {
-    if (!view.alive) return;
-    const want = amount === "fill" ? view.fillAmount : amount;
+  const feedAt = async (x: number, z: number) => {
+    if (!view.alive || game.busy) return;
+    if (game.mode === "live") addBurst("text", new THREE.Vector3(x, 1.2, z), "signing…", "#ffffff");
     try {
-      const r = engine.feed(want, Date.now());
+      const r = await game.feed(amount);
       const size = 0.8 + Math.min(1.4, Math.log10(r.accepted + 1) * 0.55);
       dropFood(x, z, "bamboo", size);
       sfx.feed(combo + 1);
@@ -123,10 +126,11 @@ export default function App() {
       setCombo((c) => c + 1);
       clearTimeout(comboTimer.current);
       comboTimer.current = setTimeout(() => setCombo(0), 1800);
-      setTick((n) => n + 1);
-    } catch {
+    } catch (e) {
       sfx.click();
-      addBurst("text", world.panda.pos.clone().setY(2.8), "I'm full! 😋", "#ffffff");
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/full/i.test(msg)) addBurst("text", world.panda.pos.clone().setY(2.8), "I'm full! 😋", "#ffffff");
+      else pushToast(msg.length > 140 ? msg.slice(0, 140) + "…" : msg, "info");
     }
   };
 
@@ -145,18 +149,31 @@ export default function App() {
     } else addBurst("spark", p.clone().setY(0.3), undefined, "#ffffff");
   };
 
-  const doPoke = () => {
-    engine.poke(Date.now());
-    sfx.coin();
-    addBurst("coin", new THREE.Vector3(2.6, 1.6, -7));
-    setTick((n) => n + 1);
+  const doPoke = async () => {
+    try {
+      await game.poke();
+      sfx.coin();
+      addBurst("coin", new THREE.Vector3(2.6, 1.6, -7));
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : String(e), "info");
+    }
   };
 
   const doHatch = () => {
-    engine.hatch(Date.now());
+    if (!game.hatch) return;
+    game.hatch();
     sfx.hatch();
     addBurst("text", world.panda.pos.clone().setY(2.5), "🥚 hatched!", "#ffd54a");
-    setTick((n) => n + 1);
+  };
+
+  const doFaucet = async () => {
+    try {
+      await game.faucet();
+      sfx.coin();
+      pushToast("🚰 +1,000 test $TOTEM. Now feed it!", "level_up");
+    } catch (e) {
+      pushToast(e instanceof Error ? e.message : String(e), "info");
+    }
   };
 
   const toggleMute = () => {
@@ -185,7 +202,7 @@ export default function App() {
   const pct = view.fullnessBp / 100;
   const barColor = view.fullnessBp >= 7000 ? "#5bd87a" : view.fullnessBp >= 3000 ? "#ffc94a" : "#ff5d6c";
   const rampage = view.mood === "rampage";
-  const leaderboard = engine.leaderboard();
+  const leaderboard = game.leaderboard;
 
   return (
     <div className={`app mood-${view.mood} ${hurt ? "hurt-" + (hurt % 2) : ""}`}>
@@ -213,6 +230,7 @@ export default function App() {
       </div>
 
       {rampage && <div className="rage-vignette" />}
+      {loading && <div className="loading-pill glass">Waking the Totem on testnet…</div>}
 
       {/* ---------- top-left: identity ---------- */}
       <div className="hud-tl glass">
@@ -253,6 +271,32 @@ export default function App() {
         <div className="stat-card glass">
           <div className="stat-lbl">🔥 Burned forever</div>
           <div className="stat-val ember"><Ticker value={view.totalBurned} /></div>
+        </div>
+        <div className="wallet glass">
+          <div className="mode-switch">
+            <button className={game.mode === "live" ? "on" : ""} onClick={() => game.setMode("live")}>
+              <span className={`dot ${game.liveStatus}`} /> Live testnet
+            </button>
+            <button className={game.mode === "practice" ? "on" : ""} onClick={() => game.setMode("practice")}>🧪 Practice</button>
+          </div>
+          {game.mode === "live" &&
+            (game.accountId ? (
+              <>
+                <div className="acct" title={game.accountId}>
+                  <span className="acct-id">{game.accountId}</span>
+                  <button className="link-btn" onClick={() => game.disconnect()}>sign out</button>
+                </div>
+                <div className="acct-bal">
+                  {game.balance === null ? "…" : `${fmt(game.balance)} $TOTEM`}
+                  <button className="mini-btn" onClick={doFaucet} disabled={game.busy}>🚰 Get test $TOTEM</button>
+                </div>
+              </>
+            ) : (
+              <button className="press-btn wallet-btn" onClick={() => game.connect().catch(() => undefined)}>Connect wallet</button>
+            ))}
+          {game.mode === "live" && (
+            <a className="explorer-link" href={game.explorer} target="_blank" rel="noreferrer">contract on explorer ↗</a>
+          )}
         </div>
         <div className="icon-row">
           <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
@@ -312,7 +356,7 @@ export default function App() {
           </DockItem>
         ))}
         <div className="dock-sep" />
-        <button className="press-btn" onClick={feedNearPanda} disabled={!view.alive}>
+        <button className="press-btn" onClick={feedNearPanda} disabled={!view.alive || game.busy}>
           FEED <span className="kbd">space</span>
         </button>
       </Dock>
@@ -349,7 +393,15 @@ export default function App() {
         <div className="death-card glass">
           <div className="dc-title">🪦 {graves[graves.length - 1]?.name ?? view.name}</div>
           <div className="dc-sub">starved at Level 0 · reached Level {view.maxLevel}. A gravestone joins the lineage.</div>
-          <button className="press-btn" onClick={doHatch}>🥚 Hatch the next generation</button>
+          {game.hatch ? (
+            <button className="press-btn" onClick={doHatch}>🥚 Hatch the next generation</button>
+          ) : (
+            <div className="dc-dao">
+              Only the tribe can hatch the next egg: a <b>DAO vote</b> on{" "}
+              <a href={`${EXPLORER}/address/${DAO_ID}`} target="_blank" rel="noreferrer">{DAO_ID}</a>.
+              <code>scripts/dao-propose.sh hatch</code>
+            </div>
+          )}
         </div>
       )}
 
@@ -384,19 +436,19 @@ export default function App() {
           <button className="icon-btn" onClick={() => setDrawer(false)}>✕</button>
         </div>
         {leaderboard.length === 0 ? (
-          <div className="empty">No feeders yet. Be the first.</div>
+          <div className="empty">{game.mode === "live" ? "No feeders this generation yet. Be the first." : "No feeders yet. Be the first."}</div>
         ) : (
           leaderboard.map((r, i) => (
             <div className="board-row" key={r.who}>
               <span className="rank">{["🥇", "🥈", "🥉"][i] ?? `#${i + 1}`}</span>
               <span className="who">{r.who}</span>
-              <span className="pts">{fmt(r.points)} pts</span>
+              <span className="pts">{fmt(r.points)} {r.unit}</span>
             </div>
           ))
         )}
         <div className="drawer-head second">📜 Activity</div>
         <div className="feed-list">
-          {engine.events.slice(0, 14).map((e: GameEvent) => (
+          {game.events.slice(0, 14).map((e: GameEvent) => (
             <div className={`feed-item k-${e.kind}`} key={e.id}>{e.text}</div>
           ))}
         </div>

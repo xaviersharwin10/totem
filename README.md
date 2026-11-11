@@ -95,7 +95,15 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
 - Also: ⚽ throw a ball it chases, shake trees for apples, tap the **treasure chest** (the Hoard) or the totem pole for an explanation, drag to orbit, 🎥 to follow the panda. One Totem-day = 2 minutes, with a matching day/night cycle.
 
-**Honest note:** the web app currently runs a client-side mirror of the contract rules (`web/src/engine.ts`, new bite rules included; staking not yet shown). It is not yet wired to the testnet contract or a wallet.
+**Live on testnet by default.** The farm reads the deployed contract (`get_totem`, `get_stats`, `get_lineage`) every 1.5 s, so the panda, totem pole, Hoard chest and graveyard show the real Totem on `totem-grumbo.testnet`.
+
+- **Do:** click **Connect wallet** (NEAR Connect: Meteor, Intear, Nightly, Ledger, NEAR CLI, or an Ethereum wallet). **See:** your account and $TOTEM balance in the wallet panel.
+- **Do:** click **🚰 Get test $TOTEM**. **See:** +1,000 $TOTEM (the demo-mode faucet).
+- **Do:** feed. **See:** a real `feed` transaction; the belly, Hoard and Burned numbers update from chain. Sign-in adds a limited key for this contract, so feeding / poking / faucet don't pop the wallet every time.
+- If the Totem is dead on-chain, only the tribe's DAO can hatch it (`scripts/dao-propose.sh hatch`); the app says so.
+- **🧪 Practice** mode (top-right switch) runs the same rules locally in the browser (`web/src/engine.ts`) with no wallet; the app also falls back to it if testnet RPC is unreachable.
+
+Wallet connection uses NEAR Connect (`@hot-labs/near-connect`) because the NEAR docs mark NEAR Wallet Selector as deprecated.
 
 ### What the tests prove
 
@@ -146,7 +154,8 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2) |
 | Demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
-| Web app: wallet + testnet contract, staking UI | pending |
+| Web app: live testnet state, NEAR Connect wallet, feed / poke / faucet transactions, practice-mode fallback | done (wallet signing needs a manual test) |
+| Web app: staking UI | pending |
 | Telegram bot | pending |
 
 ## On testnet

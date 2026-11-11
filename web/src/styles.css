@@ -83,6 +83,29 @@ button { font-family: inherit; }
 .icon-btn:active { transform: scale(0.92); }
 .icon-btn.on { background: #ffe9a8; }
 
+/* ---------- wallet / mode ---------- */
+.wallet { padding: 10px 12px; min-width: 230px; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.mode-switch { display: flex; background: rgba(43,34,48,0.08); border-radius: 12px; padding: 3px; gap: 3px; }
+.mode-switch button { flex: 1; border: none; background: transparent; border-radius: 9px; padding: 6px 8px; font-weight: 800; font-size: 12px; color: var(--ink-soft); cursor: pointer; display: flex; align-items: center; gap: 6px; justify-content: center; }
+.mode-switch button.on { background: #fff; color: var(--ink); box-shadow: 0 2px 6px rgba(43,34,48,0.12); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #c9c4bd; display: inline-block; }
+.dot.ok { background: #3fbf63; box-shadow: 0 0 0 3px rgba(63,191,99,0.25); animation: beat 1.6s ease-in-out infinite; }
+.dot.loading { background: #ffc94a; }
+.dot.offline { background: #ff4d5e; }
+.wallet-btn { height: 40px; font-size: 15px; transform: none; }
+.acct { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; }
+.acct-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.acct-bal { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--round); font-weight: 700; font-size: 15px; color: var(--gold); }
+.link-btn { border: none; background: none; color: var(--ink-soft); font-weight: 700; font-size: 11px; cursor: pointer; text-decoration: underline; }
+.mini-btn { border: none; border-radius: 10px; padding: 5px 9px; font-weight: 800; font-size: 11.5px; cursor: pointer; background: linear-gradient(180deg, #8fd8ff, #5cb8f0); color: #fff; box-shadow: 0 3px 0 #3d93c9; }
+.mini-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #3d93c9; }
+.mini-btn:disabled { opacity: 0.6; }
+.explorer-link { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-align: right; }
+.loading-pill { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; font-family: var(--round); font-weight: 700; z-index: 8; animation: float 2s ease-in-out infinite; }
+.dc-dao { font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+.dc-dao a { color: #9b7ad8; font-weight: 800; }
+.dc-dao code { display: block; margin-top: 8px; font-size: 12px; background: rgba(43,34,48,0.08); padding: 6px 8px; border-radius: 8px; }
+
 /* ---------- belly / hunger ---------- */
 .hud-hunger { position: absolute; left: 16px; bottom: 16px; width: 330px; padding: 12px 16px 12px; z-index: 5; }
 .hunger-head { display: flex; justify-content: space-between; font-family: var(--round); font-weight: 700; font-size: 16px; }

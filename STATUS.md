@@ -18,7 +18,7 @@ Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTE
 
 **Run it:**
 ```bash
-cd contract && cargo +stable test     # 26 passed (needs Rust >= 1.95: rustup update stable)
+cd contract && cargo test            # 26 passed (rust-toolchain.toml pins stable + wasm target)
 cd web && npm install && npm run dev  # http://localhost:5173
 ```
 
@@ -45,7 +45,7 @@ The brief's cut order still applies if time runs out (section 16): cut the bot f
 - [x] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
 - [ ] **3. Remaining contract tests (brief 8.5):** done: Blessings stop below L3, Totem NFT transfer, evolution deadline → Golem, non-owner governance, old Blessings claimable after death. Still open: a period with zero points, storage deposits for brand-new accounts receiving Blessings.
 - [ ] **4. Integration tests:** `near-workspaces` sandbox tests with block fast-forward (brief 12.1).
-- [ ] **5. Testnet deploy:** install `cargo-near`, build the wasm, `scripts/deploy.ts` (deploy + `new` with `demo_mode = true`, 120 s day). Look up RPC URLs and versions in the docs, don't guess.
+- [x] **5. Testnet deploy:** live at `totem-grumbo.testnet` (demo mode, 120 s day); genesis + Totem NFT owner `totem-grumbo-tribe.testnet` (keys in `~/.near-credentials` on Sharwin's machine). Deploy / redeploy with [`scripts/deploy.sh`](scripts/deploy.sh) (`--redeploy` keeps state). Smoke-tested: feed works on-chain. **Note:** redeploying with changed state layout needs a fresh account (no migration).
 - [ ] **6. Sputnik DAO:** create the tribe DAO with the testnet factory (look up the factory account in the sputnik-dao-contract docs); `scripts/create-dao.ts` and `scripts/dao-propose.ts` (rename, choose_evolution, hatch).
 - [ ] **7. Keepers:** DAO role + `scripts/keepers-sync.ts` (≥ 1,000 staked or Silver badge).
 - [ ] **8. Demo script:** `scripts/demo.ts`, one full life on testnet with a labelled log and explorer links, plus `--fast` (brief 12.2).

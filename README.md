@@ -66,12 +66,12 @@ Points, Badges and Blessings are all proportional to tokens actually spent, and 
 
 ## Reproduce locally
 
-Prerequisites: Rust (`rustup`, stable) with the `wasm32-unknown-unknown` target, `cargo-near`, Python 3.9+, Node 18+.
+Prerequisites: Rust via `rustup` (the contract's `rust-toolchain.toml` selects stable + the wasm target automatically), Python 3.9+, Node 18+. To deploy: `cargo install --locked cargo-near near-cli-rs` (needs `libudev-dev` on Linux, or add `--no-default-features`).
 
 ```bash
 # Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
 cd contract
-cargo +stable test                      # expect: 26 passed (needs Rust >= 1.95)
+cargo test                              # expect: 26 passed
 
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
@@ -141,12 +141,30 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Contract → wasm + ABI | done |
 | NEP-171 NFTs: dynamic Totem → gravestone, soulbound Bronze/Silver/Gold, Hero, Founder badges | done, tested |
 | near-workspaces integration tests (§8.5 edge cases) | in progress |
-| Testnet deploy + Sputnik DAO + demo script | pending |
+| Testnet deploy (demo mode, 2-minute day) | done: [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
+| Sputnik DAO + demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
 | Web app: wallet + testnet contract, staking UI | pending |
 | Telegram bot | pending |
 
-Testnet contract address and DAO address will be filled in here once deployed. Nothing is deployed to mainnet; the prize payout account is created by the team, not by any tool.
+## On testnet
+
+| What | Account |
+|---|---|
+| TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
+| Genesis holder and current Totem NFT owner (until the Sputnik DAO exists) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
+| Tribe DAO | pending |
+
+Read the live state (no wallet needed):
+
+```bash
+near contract call-function as-read-only totem-grumbo.testnet get_totem json-args '{}' network-config testnet now
+near contract call-function as-read-only totem-grumbo.testnet get_config json-args '{}' network-config testnet now
+```
+
+Redeploy or deploy your own copy: `cp .env.example .env`, set the accounts, run [`scripts/deploy.sh`](scripts/deploy.sh). On the 2-minute demo clock an unfed newborn starves in about 2.5 minutes; the Totem owner can then `hatch`.
+
+Nothing is deployed to mainnet; the prize payout account is created by the team, not by any tool.
 
 ## License
 

@@ -22,7 +22,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 
 ## How NEAR is used
 
-- **One Rust contract** holds the NEP-141 token, the game state, and (in progress) the NEP-171 NFTs. Feeding is an internal debit plus a real burn — no cross-contract calls.
+- **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
 - **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **Sputnik DAO ownership** (in progress) governs rename / evolution / rebirth only — it cannot touch the Hoard or change a rule.
@@ -56,7 +56,7 @@ Points, Badges and Blessings are all proportional to tokens actually spent, and 
 
 ```
 .
-├── contract/   Rust contract (near-sdk 5.30): token + game + (wip) NFTs
+├── contract/   Rust contract (near-sdk 5.30): token + game + staking + lineage + NFTs
 ├── sim/        Python agent-based balance model + committed charts
 ├── web/        Vite + React + three.js: the 3D farm where the Totem lives
 ├── bot/        Telegram alerts (wip)
@@ -71,7 +71,7 @@ Prerequisites: Rust (`rustup`, stable) with the `wasm32-unknown-unknown` target,
 ```bash
 # Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
 cd contract
-cargo +stable test                      # expect: 17 passed (needs Rust >= 1.95)
+cargo +stable test                      # expect: 26 passed (needs Rust >= 1.95)
 
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
@@ -111,6 +111,10 @@ The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 - `unbonding_stays_slashable_and_matures`, `unstake_withdraw_after_delay_while_alive`, `released_stake_from_a_dead_generation_is_paid_out_on_restake`.
 - `death_leaves_a_gravestone_and_hatch_inherits_traits` — owner-only hatch, traits from the top 3 feeders, Founders, no economic carry-over, `get_lineage` parent links.
 - `sybil_split_earns_identical_total` — splitting a spend across wallets earns nothing extra.
+- `the_totem_is_a_live_nft_owned_by_the_dao`, `death_turns_the_totem_into_a_gravestone_and_hatch_mints_the_next` — the Totem is a NEP-171 token owned by the DAO; at death the same token becomes a gravestone with the life record; hatch mints the next Totem and Founder Badges.
+- `badges_are_soulbound_nfts`, `rescuing_a_rampage_mints_a_hero_badge` — badges are real NFTs and `nft_transfer` on one panics.
+- `transferring_the_totem_moves_governance_with_it`, `non_owners_cannot_govern` — whoever owns the Totem NFT governs it; the Reserve follows the token.
+- `evolution_defaults_to_golem_after_the_deadline`, `blessings_pay_at_l3_and_stay_claimable_after_death`, `no_blessing_when_a_period_closes_below_l3`.
 
 ### What the simulation shows
 
@@ -135,7 +139,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Staking into the belly: shields, slashing, unbonding (bounded-gas accounting) | done, tested |
 | Lineage: gravestone records, inherited traits, founders, `get_lineage` | done, tested |
 | Contract → wasm + ABI | done |
-| NEP-171 NFT tokens (Totem / gravestone / soulbound badges) | in progress |
+| NEP-171 NFTs: dynamic Totem → gravestone, soulbound Bronze/Silver/Gold, Hero, Founder badges | done, tested |
 | near-workspaces integration tests (§8.5 edge cases) | in progress |
 | Testnet deploy + Sputnik DAO + demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |

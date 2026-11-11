@@ -140,7 +140,7 @@ impl Contract {
             generation: self.generation,
             name: self.name.clone(),
             lineage_name: lineage_name(&self.name, self.generation),
-            owner: self.owner_id.clone(),
+            owner: self.totem_owner(),
             alive: p.alive,
             fullness_bp: p.fullness,
             mood: mood.as_str().to_string(),

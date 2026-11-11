@@ -1,8 +1,8 @@
 //! TOTEM — a community creature on NEAR that dies if the tribe ignores it.
 //!
 //! One contract holds everything: the NEP-141 $TOTEM token, the game state,
-//! staking into the belly, the lineage of generations, and (wired in a later
-//! layer) the NEP-171 NFTs. Feeding is an internal debit plus a real burn, with
+//! staking into the belly, the lineage of generations, and the NEP-171 NFTs (the
+//! Totem / gravestones and soulbound badges). Feeding is an internal debit plus a real burn, with
 //! no cross-contract calls. Time is handled lazily: every mutating call runs
 //! `settle()` first to advance hunger, XP, Rampage bites (which burn the
 //! Reserve, slash unshielded stakes and drop a level) and death at Level 0.
@@ -18,11 +18,13 @@ use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
 use near_contract_standards::fungible_token::FungibleToken;
+use near_contract_standards::non_fungible_token::NonFungibleToken;
 
 mod config;
 mod events;
 mod game;
 mod lineage;
+mod nft;
 mod rewards;
 mod staking;
 mod views;
@@ -49,6 +51,9 @@ enum StorageKey {
     Bites,
     GenFed,
     Graves,
+    NftOwners,
+    NftMeta,
+    NftEnum,
 }
 
 #[near(contract_state)]
@@ -64,8 +69,6 @@ pub struct Contract {
     totem_id: String,
     generation: u32,
     name: String,
-    /// Owner of the Totem NFT — the tribe's Sputnik DAO. Governs rename/evolve/hatch.
-    owner_id: AccountId,
     born_at: u64,
     /// Fullness in basis points as of `last_settled_at`.
     fullness_bp: u32,
@@ -119,6 +122,10 @@ pub struct Contract {
     /// Gravestones: frozen life records of dead generations.
     graves: LookupMap<u32, LifeRecord>,
 
+    // --- NEP-171: the Totem / gravestones and soulbound badges ---
+    nft: NonFungibleToken,
+    hero_count: u64,
+
     // --- demo faucet ---
     faucet_last: LookupMap<AccountId, u64>,
 }
@@ -164,14 +171,20 @@ impl Contract {
             1,
             &cfg.trait_counts,
         );
-        let this = Self {
+        let nft = NonFungibleToken::new(
+            StorageKey::NftOwners,
+            current.clone(),
+            Some(StorageKey::NftMeta),
+            Some(StorageKey::NftEnum),
+            None::<StorageKey>,
+        );
+        let mut this = Self {
             token,
             metadata,
             cfg,
             totem_id: "totem-1".to_string(),
             generation: 1,
             name: name.unwrap_or_else(|| "Unnamed".to_string()),
-            owner_id: dao_account,
             born_at: now,
             fullness_bp: FULL_BP,
             last_settled_at: now,
@@ -206,8 +219,13 @@ impl Contract {
             gen_fed: LookupMap::new(StorageKey::GenFed),
             gen_stats: GenStats::default(),
             graves: LookupMap::new(StorageKey::Graves),
+            nft,
+            hero_count: 0,
             faucet_last: LookupMap::new(StorageKey::FaucetLast),
         };
+        // The Totem NFT of generation 1 belongs to the tribe's DAO.
+        let meta = this.totem_base_metadata();
+        this.nft_mint_internal("totem-1".to_string(), &dao_account, meta);
         this
     }
 
@@ -220,6 +238,13 @@ impl Contract {
         assert!(name.len() <= 32, "name too long (max 32)");
         self.settle();
         self.name = name.clone();
+        if self.alive {
+            let meta = self.totem_base_metadata();
+            let id = self.totem_id.clone();
+            if let Some(m) = self.nft.token_metadata_by_id.as_mut() {
+                m.insert(&id, &meta);
+            }
+        }
         events::rename(&name);
     }
 
@@ -246,13 +271,13 @@ impl Contract {
     fn assert_owner(&self) {
         assert_eq!(
             env::predecessor_account_id(),
-            self.owner_id,
+            self.totem_owner(),
             "only the Totem owner (DAO) may call this"
         );
     }
 
-    /// After a death, hatch the next generation's egg: Level 1, 100% full, empty
-    /// Reserve, new id. Its cosmetic traits are derived from the previous
+    /// After a death, the gravestone's owner hatches the next generation's egg:
+    /// a new Totem NFT minted to them, Level 1, 100% full, empty Reserve. Its cosmetic traits are derived from the previous
     /// generation's top 3 feeders, who become its Founders. Nothing economic
     /// carries over. Reserved Blessings from the dead generation stay claimable,
     /// and its stakers can still withdraw their released stakes.
@@ -261,20 +286,18 @@ impl Contract {
         self.settle();
         assert!(!self.alive, "the Totem is still alive");
         let now = env::block_timestamp();
+        let owner = self.totem_owner();
         let founders: Vec<AccountId> =
             self.top_feeders.iter().map(|(a, _)| a.clone()).collect();
 
         self.generation += 1;
         let seeds = if founders.is_empty() {
-            vec![self.owner_id.clone()]
+            vec![owner.clone()]
         } else {
             founders.clone()
         };
         self.traits = lineage::derive_traits(&seeds, self.generation, &self.cfg.trait_counts);
         self.founders = founders;
-        for f in &self.founders {
-            events::badge_minted(f, "founder");
-        }
 
         self.totem_id = format!("totem-{}", self.generation);
         self.born_at = now;
@@ -298,10 +321,24 @@ impl Contract {
         // Continue Blessing period numbering past the dead generation's ids.
         self.period_base = self.last_closed_period;
         self.blessing_epoch_start = None;
+
+        let meta = self.totem_base_metadata();
+        let id = self.totem_id.clone();
+        self.nft_mint_internal(id, &owner, meta);
+        let gen = self.generation;
+        for f in self.founders.clone() {
+            self.mint_badge(
+                &f,
+                "founder",
+                format!("founder-{gen}-{f}"),
+                format!("Founder of {}", lineage::lineage_name(&self.name, gen)),
+            );
+            events::badge_minted(&f, "founder");
+        }
         events::hatch(
             self.generation,
             &lineage::lineage_name(&self.name, self.generation),
-            &self.owner_id,
+            &owner,
             &self.traits,
             &self.founders,
         );

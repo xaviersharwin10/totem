@@ -228,6 +228,7 @@ impl Contract {
             self.max_level,
             rec.lifespan_sec.map(|s| s.0).unwrap_or(0),
         );
+        self.engrave_gravestone(&rec);
         self.graves.insert(self.generation, rec);
     }
 

@@ -36,9 +36,8 @@ impl Contract {
         events::blessing_claimed(&caller, period_id, share);
     }
 
-    /// Mint the highest Bronze/Silver/Gold badge you have earned and not claimed.
-    /// (NEP-171 token minting is wired in the NFT layer; this records the tier and
-    /// emits the event.)
+    /// Mint the highest Bronze/Silver/Gold badge you have earned and not claimed,
+    /// as a soulbound NEP-171 token `badge-{tier}-{account}`.
     pub fn claim_badge(&mut self) {
         self.settle();
         let caller = env::predecessor_account_id();
@@ -49,7 +48,11 @@ impl Contract {
         let have = self.badges_claimed.get(&caller).copied().unwrap_or(0);
         assert!(tier > have, "your highest badge is already claimed");
         self.badges_claimed.insert(caller.clone(), tier);
-        events::badge_minted(&caller, tier_name(tier));
+        let name = tier_name(tier);
+        let mut title = name.to_string();
+        title[..1].make_ascii_uppercase();
+        self.mint_badge(&caller, name, format!("badge-{name}-{caller}"), format!("{title} Caretaker"));
+        events::badge_minted(&caller, name);
     }
 
     // ------------------------------------------------------------------ //
@@ -146,6 +149,9 @@ impl Contract {
     }
 
     pub(crate) fn mint_hero(&mut self, who: &AccountId) {
+        self.hero_count += 1;
+        let id = format!("hero-{}-{}", self.generation, self.hero_count);
+        self.mint_badge(who, "hero", id, "Hero of the Rampage".to_string());
         events::badge_minted(who, "hero");
     }
 }

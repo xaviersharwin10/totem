@@ -11,19 +11,20 @@ Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTE
 | Staking with shields | `stake` / `unstake` (1.5-day unbonding, still slashable) / `withdraw`; feed ≥ 5 shields for 2 days; ×1.5 staker points; bounded-gas aggregate with shield buckets | [`staking.rs`](contract/src/staking.rs) |
 | Lineage | Gravestone life record on death, traits from `sha256(top-3 feeders ‖ generation)`, Founders, `get_lineage` / `get_graveyard` | [`lineage.rs`](contract/src/lineage.rs) |
 | Views | `get_totem` projects unsettled bites; `get_stake`, `get_config`, `get_stats`, `get_caretaker`, `get_period`, `get_blessing_share` | [`views.rs`](contract/src/views.rs) |
-| Contract tests | 17 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split | [`tests.rs`](contract/src/tests.rs) |
+| NFTs (NEP-171) | `totem-{gen}` minted to the DAO (dynamic metadata while alive, converted to a gravestone at death, transferable: governance follows the owner); soulbound `badge-{tier}-{acct}`, `hero-{gen}-{n}`, `founder-{gen}-{acct}`; contract pays the storage | [`nft.rs`](contract/src/nft.rs) |
+| Contract tests | 26 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split, NFTs (Totem, gravestone, soulbound badges, Hero, Founder, transfer), governance, evolution deadline, Blessings at/below L3 and after death | [`tests.rs`](contract/src/tests.rs) |
 | Web app | 3D farm (React Three Fiber) with an original chubby panda; feed / pet / ball / trees; totem pole = levels, treasure chest = Hoard, graveyard = lineage; day/night; glass HUD | [`web/src/`](web/src/) |
 | Docs | README (judge-facing), RULES.md (all parameters), brief updated to the 3D farm | root |
 
 **Run it:**
 ```bash
-cd contract && cargo +stable test     # 17 passed (needs Rust >= 1.95: rustup update stable)
+cd contract && cargo +stable test     # 26 passed (needs Rust >= 1.95: rustup update stable)
 cd web && npm install && npm run dev  # http://localhost:5173
 ```
 
 **Know before you build on it:**
 - The web app runs a **client-side mirror** of the rules ([`web/src/engine.ts`](web/src/engine.ts)). It has the new bite rules but no staking, and is **not connected** to any contract or wallet yet.
-- Badges, the Totem NFT and gravestones are **records and events only**; NEP-171 is not wired.
+- NFT storage is paid by the contract's own NEAR balance; fund the contract account generously on deploy.
 - Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
 - Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
 
@@ -41,8 +42,8 @@ Parameters are immutable after `new()`, so re-run `sim/simulate.py` before any f
 The brief's cut order still applies if time runs out (section 16): cut the bot first, then Keepers sync. **Never cut** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.
 
 - [x] **1. Simulation:** [`sim/simulate.py`](sim/simulate.py) and `sim/out/` now use the new rules (5 scenarios, 14/14 checks pass). Two parameters were tuned from it, see "Parameter decisions" below.
-- [ ] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
-- [ ] **3. Remaining contract tests (brief 8.5):** Blessings stop below L3, zero-point period, Totem NFT transfer mid-period, evolution deadline → Golem, non-owner `rename` / `choose_evolution` panic, storage deposits, claiming old Blessings after a death.
+- [x] **2. NFTs (NEP-171):** the Totem as a real NFT owned by the DAO that converts to a gravestone at death; soulbound Bronze / Silver / Gold, Hero and Founder badges (`nft_transfer` on a badge panics).
+- [ ] **3. Remaining contract tests (brief 8.5):** done: Blessings stop below L3, Totem NFT transfer, evolution deadline → Golem, non-owner governance, old Blessings claimable after death. Still open: a period with zero points, storage deposits for brand-new accounts receiving Blessings.
 - [ ] **4. Integration tests:** `near-workspaces` sandbox tests with block fast-forward (brief 12.1).
 - [ ] **5. Testnet deploy:** install `cargo-near`, build the wasm, `scripts/deploy.ts` (deploy + `new` with `demo_mode = true`, 120 s day). Look up RPC URLs and versions in the docs, don't guess.
 - [ ] **6. Sputnik DAO:** create the tribe DAO with the testnet factory (look up the factory account in the sputnik-dao-contract docs); `scripts/create-dao.ts` and `scripts/dao-propose.ts` (rename, choose_evolution, hatch).

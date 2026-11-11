@@ -205,6 +205,9 @@ button { font-family: inherit; }
 .death-card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -60%); padding: 22px 26px; text-align: center; z-index: 8; width: min(420px, 90vw); animation: pop 0.4s ease; }
 .dc-title { font-family: var(--round); font-weight: 700; font-size: 26px; }
 .dc-sub { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin: 6px 0 16px; }
+.dc-close { position: absolute; top: 8px; right: 10px; border: 0; background: rgba(43,34,48,0.08); width: 28px; height: 28px; border-radius: 50%; font-size: 13px; font-weight: 800; color: var(--ink-soft); cursor: pointer; }
+.dc-close:hover { background: rgba(43,34,48,0.16); }
+.death-pill { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); z-index: 8; border: 0; padding: 8px 14px; border-radius: 999px; font-weight: 800; font-size: 13px; color: var(--ink); cursor: pointer; }
 
 /* ---------- info ---------- */
 .info-pop { position: absolute; right: 16px; top: 220px; width: 300px; padding: 14px 16px; z-index: 8; cursor: pointer; animation: pop 0.25s ease; }

@@ -45,6 +45,8 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [info, setInfo] = useState<null | "totem" | "hoard">(null);
+  // generation whose death card the player hid (it shrinks to a pill; a new death shows it again)
+  const [deathHidden, setDeathHidden] = useState<number | null>(null);
   const [hint, setHint] = useState(true);
   const [hurt, setHurt] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -389,8 +391,14 @@ export default function App() {
       )}
 
       {/* ---------- death ---------- */}
-      {!view.alive && (
+      {!view.alive && deathHidden === view.generation && (
+        <button className="death-pill glass" onClick={() => setDeathHidden(null)}>
+          🪦 {graves[graves.length - 1]?.name ?? view.name} · tap for details
+        </button>
+      )}
+      {!view.alive && deathHidden !== view.generation && (
         <div className="death-card glass">
+          <button className="dc-close" aria-label="Hide" onClick={() => setDeathHidden(view.generation)}>✕</button>
           <div className="dc-title">🪦 {graves[graves.length - 1]?.name ?? view.name}</div>
           <div className="dc-sub">starved at Level 0 · reached Level {view.maxLevel}. A gravestone joins the lineage.</div>
           {game.hatch ? (

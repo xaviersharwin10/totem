@@ -37,6 +37,8 @@ The simulation flagged two weak spots; both are now fixed in `Config::defaults` 
 
 Parameters are immutable after `new()`, so re-run `sim/simulate.py` before any further change and before the final deploy.
 
+Manual test steps for everything below and above: [TESTING.md](TESTING.md).
+
 ## Remaining (in priority order)
 
 The brief's cut order still applies if time runs out (section 16): cut the bot first, then Keepers sync. **Never cut** feeding, bites with level loss, death, gravestone and lineage, Blessings, or the tests.

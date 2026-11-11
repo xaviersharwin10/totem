@@ -95,7 +95,9 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
 - Also: ⚽ throw a ball it chases, shake trees for apples, tap the **treasure chest** (the Hoard) or the totem pole for an explanation, drag to orbit, 🎥 to follow the panda. One Totem-day = 2 minutes, with a matching day/night cycle.
 
-**Live on testnet by default.** The farm reads the deployed contract (`get_totem`, `get_stats`, `get_lineage`) every 1.5 s, so the panda, totem pole, Hoard chest and graveyard show the real Totem on `totem-grumbo.testnet`.
+**Live on testnet by default.** The farm reads the deployed contract (`get_totem`, `get_stats`, `get_lineage`) every 3 s (through the dev server's `/rpc` proxy), so the panda, totem pole, Hoard chest and graveyard show the real Totem on `totem-grumbo.testnet`.
+
+Full manual test checklist (practice, live wallet flow, DAO, troubleshooting): **[TESTING.md](TESTING.md)**.
 
 - **Do:** click **Connect wallet** (NEAR Connect: Meteor, Intear, Nightly, Ledger, NEAR CLI, or an Ethereum wallet). **See:** your account and $TOTEM balance in the wallet panel.
 - **Do:** click **🚰 Get test $TOTEM**. **See:** +1,000 $TOTEM (the demo-mode faucet).

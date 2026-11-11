@@ -232,7 +232,12 @@ export function useGame(): Game {
       secondsUntilDeath: dec(base.secondsUntilDeath),
     };
     palette = live.t.traits.palette;
-    graves = live.lineage.filter((l) => !l.alive).map((l) => ({ name: l.lineage_name, maxLevel: l.max_level }));
+    // get_lineage builds the current generation's record from settled state, so a
+    // Totem that starved but hasn't been settled by a transaction yet still says
+    // alive there; get_totem projects the death, so trust it for the current one.
+    graves = live.lineage
+      .filter((l) => !l.alive || (l.generation === live.t.generation && !live.t.alive))
+      .map((l) => ({ name: l.lineage_name, maxLevel: l.max_level }));
     const cur = live.lineage.find((l) => l.generation === live.t.generation);
     leaderboard = (cur?.top_feeders ?? []).map(([who, amt]) => ({ who, points: toTokens(amt), unit: "fed" }));
     events = liveEvents.current;

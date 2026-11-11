@@ -1,5 +1,6 @@
 // The TOTEM game engine — a faithful browser mirror of the on-chain mechanics
-// (contract/src/game.rs). It lets the creature live, get fed, rampage and die
+// (contract/src/game.rs), including the new bite rules: every bite burns 15% of
+// the Reserve and drops a level; at Level 0 the Totem dies. It lets the creature live, get fed, rampage and die
 // entirely client-side, so the UI is playable with no deployed contract. When we
 // wire the real contract, `project()` is replaced by `get_totem()` and `feed()`
 // by a signed call — the view shape is intentionally the same.
@@ -26,6 +27,8 @@ export interface TotemView {
   secondsUntilStarving: number | null;
   secondsUntilRampage: number | null;
   secondsUntilDeath: number | null;
+  secondsUntilNextBite: number | null;
+  bitesUntilDeath: number;
 }
 
 export interface GameEvent {
@@ -34,6 +37,7 @@ export interface GameEvent {
     | "feed"
     | "rescue"
     | "bite"
+    | "level_down"
     | "rampage_start"
     | "rampage_end"
     | "level_up"
@@ -57,10 +61,16 @@ const STARVING_BP = 3_000;
 const RESCUE_MULT = 2;
 const LEVEL_THRESHOLDS = [1, 3, 6, 10]; // cumulative Happy-days
 const LEVEL_STEP = 5;
-const BITE_INTERVAL_MS = DAY_MS / 24;
-const BITE_SIZE = 0.1;
-const DEATH_AFTER_MS = 3 * DAY_MS;
+const BITE_INTERVAL_MS = DAY_MS / 4;
+const BITE_BURN = 0.15;
 const POKE_TIP = 0.01;
+
+function roman(n: number): string {
+  const t: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let s = "";
+  for (const [v, r] of t) while (n >= v) { s += r; n -= v; }
+  return s;
+}
 
 function formAppetite(form: Form): number {
   return form === "dragon" ? 1.5 : form === "golem" ? 0.8 : 1.0;
@@ -75,7 +85,7 @@ export function moodFor(fullnessBp: number, alive: boolean, inRampage: boolean):
 }
 
 export class TotemEngine {
-  name = "Grumbo";
+  name = "Grumbo I";
   generation = 1;
   you: string;
 
@@ -150,27 +160,7 @@ export class TotemEngine {
       this.happyMs += Math.min(dur, elapsed);
     }
 
-    const toZero = (f0 / FULL) * DAY_MS;
-    if (elapsed < toZero) {
-      this.fullnessBp = Math.max(0, Math.round(f0 - (elapsed / DAY_MS) * FULL));
-    } else {
-      const z = this.lastSettledAt + toZero;
-      this.fullnessBp = 0;
-      if (this.rampageStartedAt === null) {
-        this.rampageStartedAt = z;
-        this.bitesApplied = 0;
-        this.pushEvent("rampage_start", `🔥 RAMPAGE — ${this.name} is eating the Hoard`, z);
-      }
-      const rampageDur = now - this.rampageStartedAt;
-      const death = rampageDur >= DEATH_AFTER_MS;
-      const effective = death ? DEATH_AFTER_MS : rampageDur;
-      const totalBites = Math.floor(effective / BITE_INTERVAL_MS);
-      const newBites = Math.max(0, totalBites - this.bitesApplied);
-      if (newBites > 0) this.applyBites(newBites, now, poker);
-      this.bitesApplied = totalBites;
-      if (death) this.die(now);
-    }
-
+    // Level-ups earned while fed happen before any bite in this interval.
     if (this.alive) {
       const happyDays = Math.floor(this.happyMs / DAY_MS);
       const newLevel = this.levelFor(happyDays);
@@ -182,27 +172,50 @@ export class TotemEngine {
         this.pushEvent("level_up", `⬆️ ${this.name} reached Level ${this.level}`, now);
       }
     }
+
+    const toZero = (f0 / FULL) * DAY_MS;
+    if (elapsed < toZero) {
+      this.fullnessBp = Math.max(0, Math.round(f0 - (elapsed / DAY_MS) * FULL));
+    } else {
+      const z = this.lastSettledAt + toZero;
+      this.fullnessBp = 0;
+      if (this.rampageStartedAt === null) {
+        this.rampageStartedAt = z;
+        this.bitesApplied = 0;
+        this.pushEvent("rampage_start", `🔥 RAMPAGE: ${this.name} is starving`, z);
+      }
+      const r = this.rampageStartedAt;
+      const due = Math.floor((now - r) / BITE_INTERVAL_MS);
+      while (this.alive && this.bitesApplied < due) {
+        this.bitesApplied += 1;
+        this.bite(r + this.bitesApplied * BITE_INTERVAL_MS, poker);
+      }
+    }
     this.lastSettledAt = now;
   }
 
-  private applyBites(n: number, now: number, poker?: string) {
-    if (n <= 0 || this.hoard <= 0) return;
-    const start = this.hoard;
-    let hoard = this.hoard;
-    for (let i = 0; i < n && hoard > 0; i++) hoard *= 1 - BITE_SIZE;
-    const bitten = start - hoard;
-    let tip = 0;
-    if (poker) {
-      tip = bitten * POKE_TIP;
-      this.points.set(poker, this.points.get(poker) ?? 0); // ensure present
+  /** One bite: burn 15% of the Reserve (minus the poke tip), drop a level, die at 0. */
+  private bite(at: number, poker?: string) {
+    const burn = this.hoard * BITE_BURN;
+    const tip = poker ? burn * POKE_TIP : 0;
+    this.hoard -= burn;
+    this.totalBurned += burn - tip;
+    this.level -= 1;
+    this.happyMs = this.levelFloor(this.level) * DAY_MS;
+    this.pushEvent("bite", `🔥 BITE! ${fmt(burn)} $TOTEM burned from the Hoard`, at);
+    if (this.level > 0) {
+      this.pushEvent("level_down", `💔 ${this.name} dropped to Level ${this.level}`, at);
+    } else {
+      this.die(at);
     }
-    this.hoard = hoard;
-    this.totalBurned += bitten - tip;
-    this.pushEvent(
-      "bite",
-      `🔥 The Totem ate ${fmt(bitten)} $TOTEM from the Hoard`,
-      now
-    );
+  }
+
+  /** Cumulative Happy-days at which `level` begins. */
+  private levelFloor(level: number): number {
+    if (level <= 1) return 0;
+    if (level - 2 < LEVEL_THRESHOLDS.length) return LEVEL_THRESHOLDS[level - 2];
+    const extra = level - 1 - LEVEL_THRESHOLDS.length;
+    return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] + extra * LEVEL_STEP;
   }
 
   private die(now: number) {
@@ -214,7 +227,7 @@ export class TotemEngine {
     this.rampageStartedAt = null;
     this.pushEvent(
       "death",
-      `💀 ${this.name} has died after reaching Level ${this.maxLevel}. RIP.`,
+      `💀 ${this.name} starved at Level 0 (max Level ${this.maxLevel}). It becomes a gravestone.`,
       now
     );
   }
@@ -267,7 +280,7 @@ export class TotemEngine {
   hatch(now: number) {
     if (this.alive) return;
     this.generation += 1;
-    this.name = "Grumbo " + "I".repeat(this.generation);
+    this.name = "Grumbo " + roman(this.generation);
     this.lastSettledAt = now;
     this.fullnessBp = FULL;
     this.happyMs = 0;
@@ -297,18 +310,25 @@ export class TotemEngine {
     const mood = moodFor(fullnessBp, this.alive, rampageNow);
 
     const happyDays = Math.floor(this.happyMs / DAY_MS);
-    const level = Math.max(this.level, this.levelFor(happyDays));
+    const level = this.alive ? Math.max(this.level, this.levelFor(happyDays)) : 0;
     const ms = this.mealSize(level, this.form);
     const fill = (ms * (FULL - fullnessBp)) / FULL;
 
     const untilStarving =
       fullnessBp > STARVING_BP ? ((fullnessBp - STARVING_BP) / FULL) * DAY_MS / 1000 : null;
     const untilRampage = fullnessBp > 0 ? (fullnessBp / FULL) * DAY_MS / 1000 : null;
-    let untilDeath: number | null = null;
-    if (rampageNow && this.alive) {
-      const started = this.rampageStartedAt ?? now;
-      untilDeath = Math.max(0, (DEATH_AFTER_MS - (now - started)) / 1000);
+    let nextBiteMs: number | null = null;
+    if (this.alive) {
+      if (this.rampageStartedAt !== null) {
+        nextBiteMs = this.rampageStartedAt + (this.bitesApplied + 1) * BITE_INTERVAL_MS - now;
+      } else {
+        nextBiteMs = (fullnessBp / FULL) * DAY_MS + BITE_INTERVAL_MS;
+      }
+      nextBiteMs = Math.max(0, nextBiteMs);
     }
+    const untilNextBite = nextBiteMs === null ? null : nextBiteMs / 1000;
+    const untilDeath =
+      nextBiteMs === null ? null : (nextBiteMs + (level - 1) * BITE_INTERVAL_MS) / 1000;
 
     return {
       name: this.name,
@@ -329,6 +349,8 @@ export class TotemEngine {
       secondsUntilStarving: untilStarving,
       secondsUntilRampage: untilRampage,
       secondsUntilDeath: untilDeath,
+      secondsUntilNextBite: untilNextBite,
+      bitesUntilDeath: level,
     };
   }
 

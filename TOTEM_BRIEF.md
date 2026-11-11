@@ -93,7 +93,7 @@ The counts come from `GET https://nearhackathon.com/api/projects?page=N&track=ID
 
 ## 3. The idea in plain words
 
-- **There is exactly one Totem**, a pixel creature that lives on NEAR. It belongs to the whole community (the "tribe"), not to any one person.
+- **There is exactly one Totem**, a chubby panda that lives on a little farm (and on NEAR). It belongs to the whole community (the "tribe"), not to any one person.
 - **It is always getting hungrier.** Its hunger bar drains around the clock.
 - **The only food is $TOTEM coins.** Feeding it means giving it $TOTEM.
   - Half of every meal is **burned**, so supply shrinks the more the Totem is loved.
@@ -267,7 +267,7 @@ The **Hoard** shown in the UI is two parts:
 - **Inherited traits (cosmetic only):** at `hatch()`, the new egg's traits are derived deterministically from `sha256(top-3 feeder account ids of the previous generation ‖ generation number)`:
   - `palette` (8 options), `pattern` (6), `marking` (6) and `crest` (4).
   - Generation 1 derives them from the genesis account and the DAO account.
-  - The web app renders the sprite from these traits.
+  - The web app renders the panda's colours from these traits (patch colour, scarf colour).
 - **Founders:** the new egg's metadata lists the previous generation's top 3 feeders as its **Founders**, and they each receive a soulbound **Founder Badge** for that generation.
 - **No gameplay inheritance.** Traits and founders never change meal size, drain, Blessings or anything economic. If death gave advantages to the next generation, players would have a reason to let the Totem die.
 - `get_lineage()` returns the full family tree: every gravestone plus the living Totem, with parent links.
@@ -481,12 +481,13 @@ Provide a script, `scripts/dao-propose.ts`, that creates each proposal and votes
 
 **Pages and sections:**
 1. **Home: the Totem.**
-   - The animated pixel creature, with art that varies by mood (Happy, Hungry, Starving, Rampage) and form (Egg, Dragon, Golem, Gravestone).
+   - A 3D farm island where the Totem, a chubby panda, lives and plays: it wanders, chases a ball, eats the bamboo you drop, sulks when hungry, lies down when starving, stomps around red when it rampages, and lies still with a ghost when it dies. Its look varies by mood and form (Egg wears its shell as a cap, Dragon has horns and wings, Golem a moss crown).
+   - The game state lives in the world: a **totem pole** with one carved block per level (a bite knocks the top one off), a **treasure chest** whose coin pile is the Hoard, and a **graveyard** with one gravestone per past generation. Day and night follow the Totem-day.
    - A big live hunger bar with countdowns ("Starving in 3h 12m", "First bite in…", "Next bite in…"), and **"Bites until death: N"** (equal to the current level) shown as hearts.
    - Level, XP bar, Hoard (Reserve + total staked) and total burned.
    - **Feed buttons** (10, 50, or "fill it up", which computes the exact amount needed).
    - A **Poke** button, shown during Rampage, displaying the tip you'd earn.
-   - The sprite is rendered from the Totem's **traits** and mood/form.
+   - The panda's colours come from the Totem's **traits**; its pose and face from mood/form.
 2. **Belly (staking):** stake, unstake, withdraw. Shows your current stake value, a **shield status** ("🛡 Shielded for 14h" or "⚠️ Unshielded: feed 10 to protect your stake") and unbonding countdown.
 3. **Caretakers:** the leaderboard (this period and lifetime), your points, claimable Blessings with claim buttons, and badge status with a claim button.
 4. **History:** a feed of events (feeds, rescues, bites with amounts burned and slashed, level changes, evolutions, Blessings, deaths, hatches), each linking to the testnet explorer.
@@ -494,7 +495,7 @@ Provide a script, `scripts/dao-propose.ts`, that creates each proposal and votes
 6. **Rules:** live output of `get_config()`, rendered in plain language. It shows anyone that the rules are fixed.
 7. **Faucet** (demo only): "Get 1,000 test $TOTEM."
 
-**Art:** original pixel art made for this project: simple layered SVG, two to three frames per mood, with a body per form (Egg, Dragon, Golem, Gravestone). The **traits** (palette, pattern, marking, crest) are layers or colour swaps, so every generation looks different. No copied or third-party characters.
+**Art:** an original 3D panda and farm built in code with React Three Fiber (three.js) from simple primitives: no external models, textures or third-party characters. The **traits** pick the panda's patch and scarf colours, so every generation looks different. The HUD (dock, counters, toasts, rampage card) is a glassy overlay on top of the 3D scene.
 
 **Low friction:** first-time users get a one-click faucet that also handles the storage deposit. All state is visible without connecting a wallet.
 

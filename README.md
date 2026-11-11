@@ -8,7 +8,7 @@ A community creature on NEAR that dies if the tribe ignores it. Feed it $TOTEM a
 
 ## What it is
 
-TOTEM is one shared creature — a single NFT the whole community keeps alive by feeding it a memecoin. Every meal burns half the tokens (supply shrinks the more it is loved) and puts the other half into a treasury the creature itself owns. If the tribe stops feeding it, the creature goes on a rampage and eats that treasury; after three days of neglect it dies and becomes a gravestone.
+TOTEM is one shared creature — a single NFT the whole community keeps alive by feeding it a memecoin. Every meal burns half the tokens (supply shrinks the more it is loved) and puts the other half into a treasury the creature itself owns. Holders can stake into its belly. If the tribe stops feeding it, it goes on a rampage: every 6 hours it bites, burning 15% of the treasury, slashing 15% of every staker who hasn't fed it recently, and dropping a level. At Level 0 it dies and becomes a gravestone; the next egg inherits cosmetic traits from its top feeders.
 
 ## The problem it answers
 
@@ -23,7 +23,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 ## How NEAR is used
 
 - **One Rust contract** holds the NEP-141 token, the game state, and (in progress) the NEP-171 NFTs. Feeding is an internal debit plus a real burn — no cross-contract calls.
-- **The NFT owns the treasury.** The Hoard is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip.
+- **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **Sputnik DAO ownership** (in progress) governs rename / evolution / rebirth only — it cannot touch the Hoard or change a rule.
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
@@ -34,13 +34,15 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 |---|---|
 | Fullness drain | 100% → 0% over one Totem-day |
 | Meal size | `base_meal × 1.5^(level−1) × form_appetite` |
-| Burn share | 50% of every meal (the rest goes to the Hoard) |
-| Points | 1 per whole token fed, ×2 when rescuing (fullness < 30%) |
-| Rampage bite | 10% of the Hoard per Totem-hour at 0% fullness |
-| Poke tip | 1% of a bite, paid to whoever settles it |
-| Death | after 3 continuous Totem-days in rampage |
+| Burn share | 50% of every meal (the rest goes to the Reserve) |
+| Points | 1 per whole token fed, ×2 when rescuing (fullness < 30%), ×1.5 when staked |
+| Rampage bite | every ¼ Totem-day at 0%: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level |
+| Death | when a bite takes it to Level 0 (a newborn L1 dies at its first bite) |
+| Poke tip | 1% of the Reserve burned by the bites a `poke()` settles |
+| Staking | ×1.5 points while ≥ 100 staked; a feed ≥ 10 shields your stake for 1 day; 1.5-day unbonding, still slashable |
+| Lineage | gravestone life record on death; next egg's cosmetic traits from the top 3 feeders, who become its Founders |
 | Levels | L2/L3/L4/L5 at 1/3/6/10 Happy-days, then +5 each |
-| Blessings | 7-day periods from L3; `rate × Hoard` split pro-rata by points |
+| Blessings | 7-day periods from L3; `rate × Reserve` split pro-rata by points |
 | Badges | Bronze/Silver/Gold at 100/1,000/10,000 lifetime points (soulbound) |
 | Supply | 1,000,000,000 $TOTEM, 18 decimals, minted once at init |
 
@@ -56,7 +58,7 @@ Points, Badges and Blessings are all proportional to tokens actually spent, and 
 .
 ├── contract/   Rust contract (near-sdk 5.30): token + game + (wip) NFTs
 ├── sim/        Python agent-based balance model + committed charts
-├── web/        Vite + React UI (the living creature)
+├── web/        Vite + React + three.js: the 3D farm where the Totem lives
 ├── bot/        Telegram alerts (wip)
 ├── scripts/    deploy / DAO / demo (wip)
 └── RULES.md    final parameters
@@ -69,7 +71,7 @@ Prerequisites: Rust (`rustup`, stable) with the `wasm32-unknown-unknown` target,
 ```bash
 # Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
 cd contract
-cargo test                              # expect: 9 passed
+cargo +stable test                      # expect: 17 passed (needs Rust >= 1.95)
 
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
@@ -78,20 +80,35 @@ cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
 cd ../sim
 .venv/bin/python simulate.py            # or: python3 -m venv .venv && pip install numpy matplotlib
 
-# Web app (see web/README for details)
+# Web app: the 3D farm (opens at http://localhost:5173)
 cd ../web
 npm install && npm run dev
 ```
+
+## The web app
+
+The Totem is a chubby panda living on a small 3D farm island (React Three Fiber, no external models or art assets: everything is built from primitives in code).
+
+- **Do:** tap the panda. **See:** it jumps, spins and hearts float up.
+- **Do:** pick 🎋 in the dock, tap the grass (or press Space). **See:** bamboo falls, the panda runs over and eats it, the belly bar rises, and the Hoard and Burned counters go up.
+- **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
+- Also: ⚽ throw a ball it chases, shake trees for apples, tap the **treasure chest** (the Hoard) or the totem pole for an explanation, drag to orbit, 🎥 to follow the panda. One Totem-day = 2 minutes, with a matching day/night cycle.
+
+**Honest note:** the web app currently runs a client-side mirror of the contract rules (`web/src/engine.ts`, new bite rules included; staking not yet shown). It is not yet wired to the testnet contract or a wallet.
 
 ### What the tests prove
 
 The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 
-- `feed_burns_half_and_hoards_half` — a 40-token feed burns 20, hoards 20, awards 40 points, raises fullness.
-- `overfeed_only_debits_what_fits` — feeding 1000 into a half-full L1 debits only 50.
-- `rescue_feed_earns_double_points` — feeding below 30% pays 2×.
-- `rampage_bites_the_hoard` / `neglect_leads_to_death_and_burns_the_hoard` — neglect eats the Hoard, then kills the Totem and burns the remainder.
-- `feeding_ends_rampage` — a rescue feed stops the rampage.
+- `feed_burns_half_and_reserves_half`, `overfeed_only_debits_what_fits`, `rescue_feed_earns_double_points`, `staker_bonus_stacks_with_rescue` — feeding math and points.
+- `newborn_dies_at_its_first_bite` — an L1 egg dies at bite one; the poker gets 1% of the burn; a gravestone is recorded.
+- `a_grown_totem_loses_one_level_per_bite` — an L3 Totem survives two bites (L2, L1, XP reset to the floor, cheaper meals) and dies at the third; the view projects bites before anyone settles them.
+- `feeding_ends_rampage_but_lost_levels_stay_lost`.
+- `shielded_staker_keeps_everything_unshielded_loses_slash` — the feeder's stake is untouched, the freeloader loses exactly 15%, which refills the Reserve.
+- `shield_expiring_between_bites_is_slashed_by_the_second_only`.
+- `many_stakers_sum_never_exceeds_aggregate` — staggered shields across every bite to death: individual stakes never sum above the aggregate, dust stays ≤ 16 yocto, supply is conserved.
+- `unbonding_stays_slashable_and_matures`, `unstake_withdraw_after_delay_while_alive`, `released_stake_from_a_dead_generation_is_paid_out_on_restake`.
+- `death_leaves_a_gravestone_and_hatch_inherits_traits` — owner-only hatch, traits from the top 3 feeders, Founders, no economic carry-over, `get_lineage` parent links.
 - `sybil_split_earns_identical_total` — splitting a spend across wallets earns nothing extra.
 
 The simulation prints a summary table and writes one chart per scenario; the **abandoned** chart shows the Hoard climbing while fed, then being eaten to zero after neglect — the core drama, in one picture.
@@ -101,12 +118,15 @@ The simulation prints a summary table and writes one chart per scenario; the **a
 | Area | State |
 |---|---|
 | NEP-141 token, storage, feed/burn/hoard | done, tested |
-| Lazy settle, rampage, death, levels, blessings, badges | done, tested |
+| Lazy settle, bites with level loss, death at L0, levels, blessings, badges | done, tested |
+| Staking into the belly: shields, slashing, unbonding (bounded-gas accounting) | done, tested |
+| Lineage: gravestone records, inherited traits, founders, `get_lineage` | done, tested |
 | Contract → wasm + ABI | done |
 | NEP-171 NFT tokens (Totem / gravestone / soulbound badges) | in progress |
 | near-workspaces integration tests (§8.5 edge cases) | in progress |
 | Testnet deploy + Sputnik DAO + demo script | pending |
-| Web app | in progress |
+| Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
+| Web app: wallet + testnet contract, staking UI | pending |
 | Telegram bot | pending |
 
 Testnet contract address and DAO address will be filled in here once deployed. Nothing is deployed to mainnet; the prize payout account is created by the team, not by any tool.

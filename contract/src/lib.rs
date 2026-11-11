@@ -287,8 +287,7 @@ impl Contract {
         assert!(!self.alive, "the Totem is still alive");
         let now = env::block_timestamp();
         let owner = self.totem_owner();
-        let founders: Vec<AccountId> =
-            self.top_feeders.iter().map(|(a, _)| a.clone()).collect();
+        let founders: Vec<AccountId> = self.top_feeders.iter().map(|(a, _)| a.clone()).collect();
 
         self.generation += 1;
         let seeds = if founders.is_empty() {

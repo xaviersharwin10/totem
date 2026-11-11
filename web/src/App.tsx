@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { fmt, fmtTime, TotemView, DAY_MS, GameEvent } from "./engine";
+import { fmt, fmtTime, TotemView, DAY_MS, GameEvent, roman } from "./engine";
 import { useGame } from "./game";
-import { DAO_ID, EXPLORER } from "./chain/config";
 import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
@@ -10,6 +9,8 @@ import { sfx, setMuted } from "./sfx";
 import { MochiChat, useMochi } from "./MochiChat";
 import { RescueCard, SosSheet } from "./Sos";
 import { shortGuest } from "./chain/guest";
+import { useTribe } from "./chain/dao";
+import { HatchVote, TribePanel } from "./Tribe";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -42,6 +43,7 @@ export default function App() {
   const chat = useMochi(game);
   const [chatOpen, setChatOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
+  const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
   const closeRescue = () => {
@@ -75,6 +77,8 @@ export default function App() {
   const view: TotemView = game.view ?? LOADING;
   const graves = game.graves;
   const dayFrac = (((now - start.current) / DAY_MS + 0.08) % 1 + 1) % 1;
+  const tribe = useTribe(game.mode === "live" && (tribeOpen || (!loading && !view.alive)));
+  const nextName = `${view.name.replace(/\s+[IVXLCDM]+$/, "")} ${roman(view.generation + 1)}`;
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
 
   // switching backends restarts the event stream
@@ -327,6 +331,9 @@ export default function App() {
           )}
         </div>
         <div className="icon-row">
+          {game.mode === "live" && (
+            <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
+          )}
           <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
           <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
           <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
@@ -423,6 +430,21 @@ export default function App() {
         </div>
       )}
 
+      {tribeOpen && game.mode === "live" && (
+        <TribePanel
+          t={tribe}
+          accountId={game.accountId}
+          isGuest={game.isGuest}
+          nextName={nextName}
+          totemAlive={view.alive}
+          onClose={() => {
+            setTribeOpen(false);
+            if (location.search.includes("tribe")) history.replaceState(null, "", location.pathname);
+          }}
+          onConnect={() => game.connect().catch(() => undefined)}
+          onError={(m) => pushToast(friendly(m), "info")}
+        />
+      )}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (
         <RescueCard
@@ -455,11 +477,13 @@ export default function App() {
           {game.hatch ? (
             <button className="press-btn" onClick={doHatch}>🥚 Hatch the next generation</button>
           ) : (
-            <div className="dc-dao">
-              Only the tribe can hatch the next egg: a <b>DAO vote</b> on{" "}
-              <a href={`${EXPLORER}/address/${DAO_ID}`} target="_blank" rel="noreferrer">{DAO_ID}</a>.
-              <code>scripts/dao-propose.sh hatch</code>
-            </div>
+            <HatchVote
+              t={tribe}
+              nextName={nextName}
+              accountId={game.accountId}
+              onOpenTribe={() => setTribeOpen(true)}
+              onError={(m) => pushToast(friendly(m), "info")}
+            />
           )}
         </div>
       )}
@@ -599,6 +623,8 @@ function friendly(e: unknown): string {
     return "Your account has no testnet NEAR for gas. Sign out and tap “⚡ Play free, no wallet” (the game pays the gas), or get NEAR at near-faucet.io.";
   if (/AccessKeyDoesNotExist|does not exist/i.test(msg)) return "Wallet key not found on-chain. Sign out and connect again.";
   if (/reject|cancel|denied|closed/i.test(msg)) return "Cancelled in the wallet.";
+  if (/ERR_PERMISSION_DENIED/.test(msg)) return "Only Keepers can vote on that. Stake 1,000 $TOTEM (or earn Silver) and get nominated in 🏛 Tribe.";
+  if (/ERR_ALREADY_VOTED/.test(msg)) return "You already voted on this proposal.";
   if (/once per Totem-day/.test(msg)) return "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment.";
   return msg.length > 140 ? msg.slice(0, 140) + "…" : msg;
 }

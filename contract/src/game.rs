@@ -16,7 +16,10 @@ impl Contract {
     /// least `shield_min_feed`, and ends any Rampage.
     pub fn feed(&mut self, amount: U128) {
         self.settle();
-        assert!(self.alive, "the Totem is dead; the DAO must hatch a new egg");
+        assert!(
+            self.alive,
+            "the Totem is dead; the DAO must hatch a new egg"
+        );
         let caller = env::predecessor_account_id();
         let want = amount.0;
         assert!(want > 0, "amount must be positive");
@@ -36,7 +39,8 @@ impl Contract {
         let current = env::current_account_id();
         // Move the Reserve share into the contract's own ledger account (supply
         // unchanged), then burn the rest (supply down).
-        self.token.internal_transfer(&caller, &current, to_reserve, None);
+        self.token
+            .internal_transfer(&caller, &current, to_reserve, None);
         self.token.internal_withdraw(&caller, burn);
         self.reserve += to_reserve;
         self.total_burned += burn;
@@ -67,7 +71,12 @@ impl Contract {
         }
 
         let whole = accepted / ONE_TOKEN;
-        let mut pts = whole * if rescue { self.cfg.rescue_multiplier as u128 } else { 1 };
+        let mut pts = whole
+            * if rescue {
+                self.cfg.rescue_multiplier as u128
+            } else {
+                1
+            };
         if staker {
             pts = pts * self.cfg.staker_points_num as u128 / self.cfg.staker_points_den as u128;
         }
@@ -97,7 +106,8 @@ impl Contract {
         if !self.is_registered(&caller) {
             self.token.internal_register_account(&caller);
         }
-        self.token.internal_deposit(&caller, self.cfg.faucet_amount.0);
+        self.token
+            .internal_deposit(&caller, self.cfg.faucet_amount.0);
         self.faucet_last.insert(caller, now);
     }
 
@@ -190,13 +200,24 @@ impl Contract {
         self.gen_stats.burned.0 += burned;
         self.gen_stats.slashed.0 += slashed;
 
-        let mut list = self.bites.get(&self.generation).cloned().unwrap_or_default();
+        let mut list = self
+            .bites
+            .get(&self.generation)
+            .cloned()
+            .unwrap_or_default();
         list.push(t);
         self.bites.insert(self.generation, list);
 
         self.level -= 1;
         self.happy_ns = self.level_floor_days(self.level) as u64 * self.cfg.day_length_ns;
-        events::bite(burned, slashed, tip, poker.as_ref(), self.reserve, self.level);
+        events::bite(
+            burned,
+            slashed,
+            tip,
+            poker.as_ref(),
+            self.reserve,
+            self.level,
+        );
         if self.level > 0 {
             events::level_down(self.level);
         } else {
@@ -239,7 +260,11 @@ impl Contract {
             totem_id: self.totem_id.clone(),
             name: self.name.clone(),
             lineage_name: lineage::lineage_name(&self.name, self.generation),
-            parent: if self.generation > 1 { Some(self.generation - 1) } else { None },
+            parent: if self.generation > 1 {
+                Some(self.generation - 1)
+            } else {
+                None
+            },
             alive: died_at.is_none(),
             born_at: U64(self.born_at),
             died_at: died_at.map(U64),

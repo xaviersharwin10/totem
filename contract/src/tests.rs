@@ -34,7 +34,13 @@ fn setup() -> (Contract, AccountId, AccountId) {
     let genesis = accounts(0);
     let dao = accounts(1);
     set_ctx(&genesis, 0);
-    let c = Contract::new(genesis.clone(), dao.clone(), false, None, Some("Grumbo".into()));
+    let c = Contract::new(
+        genesis.clone(),
+        dao.clone(),
+        false,
+        None,
+        Some("Grumbo".into()),
+    );
     (c, genesis, dao)
 }
 
@@ -71,7 +77,9 @@ fn next_bite_at(c: &Contract, now: u64) -> u64 {
 }
 
 fn stake_of(c: &Contract, who: &AccountId) -> u128 {
-    c.get_stake(who.clone()).map(|s| s.staked.0 + s.unbonding.0).unwrap_or(0)
+    c.get_stake(who.clone())
+        .map(|s| s.staked.0 + s.unbonding.0)
+        .unwrap_or(0)
 }
 
 /// total_supply == sum of ledger balances, and the contract's own ledger
@@ -124,7 +132,10 @@ fn feed_burns_half_and_reserves_half() {
     assert_eq!(stats.reserve.0, 20 * ONE, "half of 40 to the Reserve");
     assert_eq!(stats.total_fed.0, 40 * ONE);
     assert_eq!(stats.total_supply.0, 1_000_000_000 * ONE - 20 * ONE);
-    assert_eq!(c.ft_balance_of(genesis.clone()).0, 1_000_000_000 * ONE - 40 * ONE);
+    assert_eq!(
+        c.ft_balance_of(genesis.clone()).0,
+        1_000_000_000 * ONE - 40 * ONE
+    );
     // 5000bp + (40/100)*10000 = 9000bp
     assert_eq!(c.get_totem().fullness_bp, 9000);
     assert_eq!(c.get_caretaker(genesis.clone()).lifetime_points.0, 40);
@@ -137,7 +148,10 @@ fn overfeed_only_debits_what_fits() {
     set_ctx(&genesis, DAY / 2); // 50% full, room for 50 tokens at L1
     c.feed(U128(1000 * ONE));
     assert_eq!(c.get_stats().total_fed.0, 50 * ONE);
-    assert_eq!(c.ft_balance_of(genesis.clone()).0, 1_000_000_000 * ONE - 50 * ONE);
+    assert_eq!(
+        c.ft_balance_of(genesis.clone()).0,
+        1_000_000_000 * ONE - 50 * ONE
+    );
     assert_eq!(c.get_totem().fullness_bp, FULL_BP);
     assert_eq!(c.get_caretaker(genesis).lifetime_points.0, 50);
 }
@@ -184,7 +198,11 @@ fn sybil_split_earns_identical_total() {
     let g = c.get_caretaker(genesis).lifetime_points.0;
     let b = c.get_caretaker(bob).lifetime_points.0;
     assert_eq!(g, b, "same spend -> same points regardless of wallet");
-    assert_eq!(g + b, 20, "total points == whole tokens spent, no split bonus");
+    assert_eq!(
+        g + b,
+        20,
+        "total points == whole tokens spent, no split bonus"
+    );
 }
 
 // ---------------------------------------------------------------------- //
@@ -214,14 +232,21 @@ fn newborn_dies_at_its_first_bite() {
     let t = c.get_totem();
     assert!(!t.alive, "an L1 Totem dies at its first bite");
     assert_eq!(t.mood, "dead");
-    assert_eq!(c.get_stats().reserve.0, 0, "the rest of the Reserve burns on death");
+    assert_eq!(
+        c.get_stats().reserve.0,
+        0,
+        "the rest of the Reserve burns on death"
+    );
     // Poke tip = 1% of the 15% bite on a 25-token Reserve.
     let tip = 25 * ONE * 1500 / 10_000 * 100 / 10_000;
     assert_eq!(c.ft_balance_of(alice.clone()).0 - before, tip);
 
     let graves = c.get_graveyard(None, None);
     assert_eq!(graves.len(), 1);
-    assert_eq!(graves[0].cause_of_death.as_deref(), Some("starved at Level 0"));
+    assert_eq!(
+        graves[0].cause_of_death.as_deref(),
+        Some("starved at Level 0")
+    );
     assert_eq!(graves[0].lineage_name, "Grumbo I");
     assert_eq!(graves[0].stats.fed.0, 50 * ONE);
     assert_supply_conserved(&c, &[genesis, alice]);
@@ -247,7 +272,11 @@ fn a_grown_totem_loses_one_level_per_bite() {
     assert_eq!(c.level, 2);
     assert_eq!(c.happy_ns, DAY, "XP is the L2 floor: 1 Happy day");
     assert_eq!(c.reserve, reserve0 * 8500 / 10_000);
-    assert_eq!(c.get_totem().meal_size.0, 150 * ONE, "meal size follows the lower level");
+    assert_eq!(
+        c.get_totem().meal_size.0,
+        150 * ONE,
+        "meal size follows the lower level"
+    );
 
     set_ctx(&genesis, z + DAY / 2);
     c.poke();
@@ -259,7 +288,11 @@ fn a_grown_totem_loses_one_level_per_bite() {
     c.poke();
     assert!(!c.alive);
     assert_eq!(c.max_level, 3);
-    assert_eq!(c.gen_bites(1).len(), 3, "bites per generation == levels held");
+    assert_eq!(
+        c.gen_bites(1).len(),
+        3,
+        "bites per generation == levels held"
+    );
     assert_supply_conserved(&c, &[genesis]);
 }
 
@@ -358,7 +391,11 @@ fn shield_expiring_between_bites_is_slashed_by_the_second_only() {
     c.poke();
     assert_eq!(c.level, 1);
     assert_eq!(stake_of(&c, &bob), 425 * ONE, "bob slashed by bite 2 only");
-    assert_eq!(stake_of(&c, &carol), 36_125 * ONE / 100, "carol slashed twice");
+    assert_eq!(
+        stake_of(&c, &carol),
+        36_125 * ONE / 100,
+        "carol slashed twice"
+    );
     assert_supply_conserved(&c, &[genesis, bob, carol]);
 }
 
@@ -386,7 +423,10 @@ fn many_stakers_sum_never_exceeds_aggregate() {
         set_ctx(&genesis, now);
         c.poke();
         let sum: u128 = stakers.iter().map(|s| stake_of(&c, s)).sum();
-        assert!(sum <= c.belly.total_staked, "individuals never exceed the aggregate");
+        assert!(
+            sum <= c.belly.total_staked,
+            "individuals never exceed the aggregate"
+        );
         assert!(c.belly.total_staked - sum <= 16, "rounding dust stays tiny");
         let mut all = stakers.clone();
         all.push(genesis.clone());
@@ -553,7 +593,10 @@ fn the_totem_is_a_live_nft_owned_by_the_dao() {
     assert_eq!(token_ids_of(&c, &dao), vec!["totem-1".to_string()]);
     let t = c.nft_token("totem-1".into()).unwrap();
     assert_eq!(t.owner_id, dao);
-    assert_eq!(t.metadata.as_ref().unwrap().title.as_deref(), Some("Grumbo I"));
+    assert_eq!(
+        t.metadata.as_ref().unwrap().title.as_deref(),
+        Some("Grumbo I")
+    );
     // Dynamic: the metadata reflects the live level.
     keep_happy(&mut c, &genesis, DAY / 4, DAY * 5 / 4);
     let x = extra_json(&c, "totem-1");
@@ -574,15 +617,33 @@ fn death_turns_the_totem_into_a_gravestone_and_hatch_mints_the_next() {
     assert!(!c.alive);
     let g = c.nft_token("totem-1".into()).unwrap();
     assert_eq!(g.owner_id, dao, "the gravestone stays with the DAO");
-    assert!(g.metadata.as_ref().unwrap().title.as_ref().unwrap().starts_with("🪦"));
+    assert!(g
+        .metadata
+        .as_ref()
+        .unwrap()
+        .title
+        .as_ref()
+        .unwrap()
+        .starts_with("🪦"));
     let x = extra_json(&c, "totem-1");
     assert_eq!(x["kind"], "gravestone");
     assert_eq!(x["life"]["cause_of_death"], "starved at Level 0");
 
     set_ctx(&dao, 5 * DAY);
     c.hatch();
-    assert_eq!(token_ids_of(&c, &dao), vec!["totem-1".to_string(), "totem-2".to_string()]);
-    assert_eq!(c.nft_token("totem-2".into()).unwrap().metadata.unwrap().title.as_deref(), Some("Grumbo II"));
+    assert_eq!(
+        token_ids_of(&c, &dao),
+        vec!["totem-1".to_string(), "totem-2".to_string()]
+    );
+    assert_eq!(
+        c.nft_token("totem-2".into())
+            .unwrap()
+            .metadata
+            .unwrap()
+            .title
+            .as_deref(),
+        Some("Grumbo II")
+    );
     // The top feeder of generation 1 received a Founder Badge.
     assert!(token_ids_of(&c, &f).contains(&format!("founder-2-{f}")));
 }
@@ -594,7 +655,11 @@ fn badges_are_soulbound_nfts() {
     set_ctx(&genesis, 2 * DAY);
     c.claim_badge();
     let ids = token_ids_of(&c, &genesis);
-    let badge = ids.iter().find(|i| i.starts_with("badge-")).expect("badge minted").clone();
+    let badge = ids
+        .iter()
+        .find(|i| i.starts_with("badge-"))
+        .expect("badge minted")
+        .clone();
     ctx(&genesis, 2 * DAY, NearToken::from_yoctonear(1));
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         c.nft_transfer(accounts(3), badge.clone(), None, None)
@@ -610,7 +675,9 @@ fn rescuing_a_rampage_mints_a_hero_badge() {
     fund(&mut c, &genesis, &hero, 500, last);
     set_ctx(&hero, last + DAY + DAY / 4 + HOUR); // after the first bite
     c.feed(U128(100 * ONE));
-    assert!(token_ids_of(&c, &hero).iter().any(|i| i.starts_with("hero-")));
+    assert!(token_ids_of(&c, &hero)
+        .iter()
+        .any(|i| i.starts_with("hero-")));
 }
 
 #[test]
@@ -623,7 +690,10 @@ fn transferring_the_totem_moves_governance_with_it() {
     ctx(&dao, DAY / 2, NearToken::from_yoctonear(1));
     c.nft_transfer(new_dao.clone(), "totem-1".into(), None, None);
     assert_eq!(c.get_totem().owner, new_dao);
-    assert_eq!(c.reserve, reserve, "the Reserve follows the token, untouched");
+    assert_eq!(
+        c.reserve, reserve,
+        "the Reserve follows the token, untouched"
+    );
 
     set_ctx(&dao, DAY / 2);
     let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.rename("Old".into())));
@@ -631,7 +701,15 @@ fn transferring_the_totem_moves_governance_with_it() {
     set_ctx(&new_dao, DAY / 2);
     c.rename("Mochi".into());
     assert_eq!(c.get_totem().lineage_name, "Mochi I");
-    assert_eq!(c.nft_token("totem-1".into()).unwrap().metadata.unwrap().title.as_deref(), Some("Mochi I"));
+    assert_eq!(
+        c.nft_token("totem-1".into())
+            .unwrap()
+            .metadata
+            .unwrap()
+            .title
+            .as_deref(),
+        Some("Mochi I")
+    );
 }
 
 #[test]
@@ -657,7 +735,9 @@ fn evolution_defaults_to_golem_after_the_deadline() {
     // The DAO missed the 1-day window.
     let late = keep_happy(&mut c, &genesis, last + DAY / 4, last + DAY * 5 / 4);
     set_ctx(&dao, late);
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.choose_evolution("dragon".into())));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        c.choose_evolution("dragon".into())
+    }));
     assert!(r.is_err(), "too late to choose");
     assert_eq!(c.get_totem().form, "golem");
 }
@@ -669,14 +749,21 @@ fn blessings_pay_at_l3_and_stay_claimable_after_death() {
     keep_happy(&mut c, &genesis, DAY / 4, 7 * DAY);
     let p = c.get_period(0);
     assert!(p.total_points.0 > 0);
-    assert!(p.reserved.0 > 0, "a period closed at L3+ reserves a Blessing");
+    assert!(
+        p.reserved.0 > 0,
+        "a period closed at L3+ reserves a Blessing"
+    );
     // Let it starve to death, then claim the old Blessing.
     set_ctx(&genesis, 20 * DAY);
     c.poke();
     assert!(!c.alive);
     let before = c.ft_balance_of(genesis.clone()).0;
     c.claim_blessing(0);
-    assert_eq!(c.ft_balance_of(genesis.clone()).0 - before, p.reserved.0, "sole caretaker gets it all");
+    assert_eq!(
+        c.ft_balance_of(genesis.clone()).0 - before,
+        p.reserved.0,
+        "sole caretaker gets it all"
+    );
     assert_supply_conserved(&c, &[genesis]);
 }
 
@@ -705,4 +792,93 @@ fn no_blessing_when_a_period_closes_below_l3() {
     let p = c.get_period(0);
     assert!(p.total_points.0 > 0, "people fed during the period");
     assert_eq!(p.reserved.0, 0, "but it closed at L2: no Blessing");
+}
+
+// ---------------------------------------------------------------------- //
+// views see a death before any transaction settles it
+// ---------------------------------------------------------------------- //
+
+#[test]
+fn unsettled_death_shows_in_lineage_and_nft_exactly_as_once_settled() {
+    // L3 Totem with two unshielded stakers, then nobody touches it for days.
+    let (c0, _genesis, _bob, _carol, z) = staked_l3();
+    let mut c = c0;
+    let later = z + 10 * DAY;
+    set_ctx(&accounts(5), later);
+    assert!(c.alive, "state is not settled yet");
+    assert!(!c.get_totem().alive, "get_totem projects the death");
+
+    // The lineage and the graveyard already show the gravestone...
+    let projected = c.get_lineage(None, None).pop().unwrap();
+    assert!(!projected.alive);
+    assert_eq!(
+        projected.cause_of_death.as_deref(),
+        Some("starved at Level 0")
+    );
+    assert!(projected.died_at.is_some());
+    assert_eq!(projected.max_level, 3);
+    assert!(projected.stats.burned.0 > 0 && projected.stats.slashed.0 > 0);
+    assert_eq!(c.get_graveyard(None, None).len(), 1);
+
+    // ...and so does the Totem NFT.
+    let x = extra_json(&c, "totem-1");
+    assert_eq!(x["kind"], "gravestone");
+    assert!(c
+        .nft_token("totem-1".into())
+        .unwrap()
+        .metadata
+        .unwrap()
+        .title
+        .unwrap()
+        .starts_with("🪦"));
+
+    // Settling (a poke from an unregistered account: no tip) engraves the very
+    // same record: the projection was exact, including burns and slashes.
+    c.poke();
+    assert!(!c.alive);
+    let settled = c.get_lineage(None, None).pop().unwrap();
+    assert_eq!(
+        near_sdk::serde_json::to_value(&projected).unwrap(),
+        near_sdk::serde_json::to_value(&settled).unwrap()
+    );
+}
+
+#[test]
+fn living_lineage_record_counts_pending_bites() {
+    let (mut c, _genesis, _bob, _carol, z) = staked_l3();
+    // two bites due, none settled
+    let t = z + c.cfg.bite_interval_ns * 2 + 1;
+    set_ctx(&accounts(5), t);
+    let rec = c.get_lineage(None, None).pop().unwrap();
+    assert!(rec.alive);
+    assert!(rec.stats.burned.0 > 0, "pending bites are counted");
+    c.poke();
+    let after = c.get_lineage(None, None).pop().unwrap();
+    assert_eq!(rec.stats.burned.0, after.stats.burned.0);
+    assert_eq!(rec.stats.slashed.0, after.stats.slashed.0);
+}
+
+#[test]
+fn keepers_of_a_dead_generation_keep_their_say_until_they_withdraw() {
+    let (mut c, genesis, _dao) = setup();
+    let k = accounts(2);
+    fund(&mut c, &genesis, &k, 2_000, 0);
+    set_ctx(&k, 0);
+    c.stake(U128(1_500 * ONE));
+    assert!(c.get_keeper(k.clone()).eligible);
+    assert!(c.get_keeper(k.clone()).by_stake);
+    assert!(!c.get_keeper(accounts(3)).eligible, "no stake, no badge");
+
+    // starves; the slashed stake is still >= 1,000, so the staker votes on the hatch
+    set_ctx(&k, 5 * DAY);
+    assert!(!c.get_totem().alive);
+    let kv = c.get_keeper(k.clone());
+    assert!(
+        kv.eligible && kv.by_stake,
+        "a dead generation's stakers guard its successor"
+    );
+
+    // withdrawing ends it
+    c.withdraw();
+    assert!(!c.get_keeper(k.clone()).eligible);
 }

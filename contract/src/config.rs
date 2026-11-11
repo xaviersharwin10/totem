@@ -91,7 +91,11 @@ pub struct Config {
 impl Config {
     /// Default production parameters (tuned via sim/simulate.py).
     pub fn defaults(demo_mode: bool) -> Self {
-        let day_secs = if demo_mode { DEMO_DAY_SECONDS } else { PROD_DAY_SECONDS };
+        let day_secs = if demo_mode {
+            DEMO_DAY_SECONDS
+        } else {
+            PROD_DAY_SECONDS
+        };
         let day_ns = day_secs * NANOS_PER_SEC;
         Config {
             demo_mode,

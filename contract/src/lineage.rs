@@ -74,15 +74,29 @@ pub fn derive_traits(seeds: &[AccountId], generation: u32, counts: &[u8]) -> Tra
 /// Ties keep the earlier feeder ahead.
 pub fn bump_top3(top: &mut Vec<(AccountId, u128)>, who: &AccountId, total: u128) {
     top.retain(|(a, _)| a != who);
-    let pos = top.iter().position(|(_, v)| *v < total).unwrap_or(top.len());
+    let pos = top
+        .iter()
+        .position(|(_, v)| *v < total)
+        .unwrap_or(top.len());
     top.insert(pos, (who.clone(), total));
     top.truncate(3);
 }
 
 pub fn roman(mut n: u32) -> String {
     const T: [(u32, &str); 13] = [
-        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
-        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
     ];
     let mut s = String::new();
     for &(v, r) in &T {

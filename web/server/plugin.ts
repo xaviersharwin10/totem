@@ -3,10 +3,11 @@
 //   /api/mochi  Mochi's AI voice (NEAR AI Cloud; the key never reaches the browser)
 //   /api/guest  zero-balance guest accounts (no wallet, no NEAR needed)
 //   /api/relay  NEP-366 meta-transaction relayer: the game pays the gas
+//   /api/propose  open a hatch vote / Keeper nomination for players without NEAR
 import type { Plugin } from "vite";
 import { rpcHandler } from "./rpc";
 import { mochiHandler } from "./mochi";
-import { guestHandler, relayHandler } from "./relay";
+import { guestHandler, proposeHandler, relayHandler } from "./relay";
 
 export function totemServer(): Plugin {
   return {
@@ -14,12 +15,14 @@ export function totemServer(): Plugin {
     configureServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
       s.middlewares.use("/api/relay", relayHandler);
+      s.middlewares.use("/api/propose", proposeHandler);
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/mochi", mochiHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
       s.middlewares.use("/api/relay", relayHandler);
+      s.middlewares.use("/api/propose", proposeHandler);
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/mochi", mochiHandler);
     },

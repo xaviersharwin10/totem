@@ -45,3 +45,15 @@ approve() {
   done
   view "$DAO_ID" get_proposal "{\"id\":$id}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("proposal", d["id"], d["status"], "-", d["description"])'
 }
+
+# Keepers whose keys are on this machine (the default voters since the tribe
+# constitution: the council can no longer vote on the Totem or on members).
+keeper_voters() {
+  view "$DAO_ID" get_policy '{}' | python3 -c '
+import json,sys,os
+p=json.load(sys.stdin)
+r=[x for x in p["roles"] if x["name"]=="keepers"]
+ks=r[0]["kind"]["Group"] if r and isinstance(r[0]["kind"],dict) else []
+home=os.path.expanduser("~/.near-credentials/"+sys.argv[1])
+print(" ".join(k for k in ks if os.path.exists(f"{home}/{k}.json")))' "$NETWORK"
+}

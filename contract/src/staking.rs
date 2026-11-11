@@ -60,7 +60,10 @@ impl Belly {
             return;
         }
         if shield_until > now {
-            match self.buckets.binary_search_by_key(&shield_until, |(e, _)| *e) {
+            match self
+                .buckets
+                .binary_search_by_key(&shield_until, |(e, _)| *e)
+            {
                 Ok(i) => self.buckets[i].1 += amount,
                 Err(i) => self.buckets.insert(i, (shield_until, amount)),
             }
@@ -75,7 +78,10 @@ impl Belly {
             return;
         }
         if shield_until > now {
-            if let Ok(i) = self.buckets.binary_search_by_key(&shield_until, |(e, _)| *e) {
+            if let Ok(i) = self
+                .buckets
+                .binary_search_by_key(&shield_until, |(e, _)| *e)
+            {
                 let b = &mut self.buckets[i].1;
                 *b = b.saturating_sub(amount);
                 if *b == 0 {
@@ -145,7 +151,8 @@ impl Contract {
         assert!(amount.0 > 0, "amount must be positive");
         let caller = env::predecessor_account_id();
         let current = env::current_account_id();
-        self.token.internal_transfer(&caller, &current, amount.0, None);
+        self.token
+            .internal_transfer(&caller, &current, amount.0, None);
         self.belly.total_staked += amount.0;
 
         let mut s = self.take_stake(&caller);
@@ -160,11 +167,17 @@ impl Contract {
     /// Unstaking again adds to the unbonding amount and restarts the delay.
     pub fn unstake(&mut self, amount: U128) {
         self.settle();
-        assert!(self.alive, "the Totem is dead: call withdraw() to take your whole stake");
+        assert!(
+            self.alive,
+            "the Totem is dead: call withdraw() to take your whole stake"
+        );
         let caller = env::predecessor_account_id();
         assert!(self.stakes.contains_key(&caller), "no stake");
         let mut s = self.take_stake(&caller);
-        assert!(amount.0 > 0 && amount.0 <= s.principal, "amount exceeds your stake");
+        assert!(
+            amount.0 > 0 && amount.0 <= s.principal,
+            "amount exceeds your stake"
+        );
         s.principal -= amount.0;
         s.unbonding += amount.0;
         s.unbond_at = env::block_timestamp() + self.cfg.unbond_delay_ns;
@@ -205,7 +218,10 @@ impl Contract {
     }
 
     pub(crate) fn gen_bites(&self, generation: u32) -> &[u64] {
-        self.bites.get(&generation).map(|v| v.as_slice()).unwrap_or(&[])
+        self.bites
+            .get(&generation)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Checkpoint `who` at now (state must be settled) and pull their value out
@@ -266,7 +282,8 @@ impl Contract {
     pub(crate) fn live_principal(&self, who: &AccountId) -> u128 {
         match self.stakes.get(who) {
             Some(s) if !self.is_released(s) => {
-                s.value_after(self.gen_bites(s.generation), self.cfg.stake_slash_bp).0
+                s.value_after(self.gen_bites(s.generation), self.cfg.stake_slash_bp)
+                    .0
             }
             _ => 0,
         }

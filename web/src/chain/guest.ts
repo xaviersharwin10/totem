@@ -60,12 +60,12 @@ export interface Call {
 }
 
 /** Sign the calls as one meta-transaction and have the relayer pay the gas. */
-export async function guestCall(g: Guest, calls: Call[]): Promise<{ hash: string }> {
+export async function guestCall(g: Guest, calls: Call[], receiverId: string = CONTRACT_ID): Promise<{ hash: string }> {
   const provider = new JsonRpcProvider({ url: RPC_URLS[0] });
   const kp = KeyPair.fromString(g.secretKey as KeyPairString);
   const acct = new Account(g.accountId, provider, new KeyPairSigner(kp));
   const { signedDelegate } = await acct.createSignedMetaTransaction({
-    receiverId: CONTRACT_ID,
+    receiverId,
     actions: calls.map((c) => actions.functionCall(c.method, c.args ?? {}, c.gas ?? 50_000_000_000_000n, 0n)),
     blockHeightTtl: 120,
   });

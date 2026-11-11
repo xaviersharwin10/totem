@@ -48,6 +48,21 @@ pub struct TotemView {
     pub seconds_until_death: Option<U64>,
 }
 
+/// Who may be a Keeper (vote on hatch / rename / evolve and on new Keepers in
+/// the tribe's DAO). One rule, read by the app, the scripts and the voters.
+#[near(serializers = [json])]
+pub struct KeeperView {
+    pub account_id: AccountId,
+    pub eligible: bool,
+    /// ≥ keeper_stake staked in the living generation, or in the generation that
+    /// just died and is waiting for its successor (until withdrawn).
+    pub by_stake: bool,
+    /// Earned the Silver or Gold Caretaker tier (lifetime points).
+    pub by_badge: bool,
+    pub staked: U128,
+    pub badge_earned: String,
+}
+
 #[near(serializers = [json])]
 pub struct StakeView {
     pub account_id: AccountId,
@@ -102,6 +117,13 @@ struct Projection {
     belly: Belly,
     /// Times of bites that are due but not yet settled.
     pending: Vec<u64>,
+    /// Burned / slashed by the pending bites (and the Reserve burned at a projected death).
+    burned: u128,
+    slashed: u128,
+    /// Highest level reached once pending XP is counted (before pending bites).
+    peak_level: u32,
+    /// Time of the final bite, if the projection says the Totem died.
+    died_at: Option<u64>,
     /// Start of the (projected) current Rampage.
     rampage_start: Option<u64>,
     bites_done: u64,
@@ -114,11 +136,19 @@ impl Contract {
         let now = env::block_timestamp();
         let p = self.project(now);
         let mood = self.mood_for(p.fullness, p.alive, p.in_rampage);
-        let next = if p.alive { Some(level_floor_days(&self.cfg, p.level + 1)) } else { None };
+        let next = if p.alive {
+            Some(level_floor_days(&self.cfg, p.level + 1))
+        } else {
+            None
+        };
 
         let ms = meal_size_for(&self.cfg, p.level.max(1), self.form);
         let room_bp = (FULL_BP - p.fullness) as u128;
-        let fill = if p.alive { ms * room_bp / FULL_BP as u128 } else { 0 };
+        let fill = if p.alive {
+            ms * room_bp / FULL_BP as u128
+        } else {
+            0
+        };
 
         let day = self.cfg.day_length_ns;
         let iv = self.cfg.bite_interval_ns;
@@ -188,7 +218,10 @@ impl Contract {
             seconds_shield_left: shielded.then(|| U64((s.shield_until - now) / NANOS_PER_SEC)),
             released,
             staker_bonus: !released && principal >= self.cfg.min_stake.0,
-            keeper_eligible: !released && principal >= self.cfg.keeper_stake.0,
+            // Stakers of the generation that just died keep their say over its
+            // successor until they withdraw.
+            keeper_eligible: principal >= self.cfg.keeper_stake.0
+                && (!released || (s.generation == self.generation && !p.alive)),
         })
     }
 
@@ -203,7 +236,7 @@ impl Contract {
             if let Some(rec) = self.graves.get(&g) {
                 out.push(rec.clone());
             } else if g == self.generation {
-                out.push(self.life_record(None, None));
+                out.push(self.projected_life_record(env::block_timestamp()));
             }
             g += 1;
         }
@@ -212,7 +245,10 @@ impl Contract {
 
     /// Flat list of gravestones (dead generations only).
     pub fn get_graveyard(&self, from: Option<u32>, limit: Option<u32>) -> Vec<LifeRecord> {
-        self.get_lineage(from, limit).into_iter().filter(|r| !r.alive).collect()
+        self.get_lineage(from, limit)
+            .into_iter()
+            .filter(|r| !r.alive)
+            .collect()
     }
 
     /// All immutable parameters. Proves there is no admin key and nothing hidden.
@@ -235,14 +271,29 @@ impl Contract {
     pub fn get_caretaker(&self, account_id: AccountId) -> CaretakerView {
         let lt = self.lifetime_points.get(&account_id).copied().unwrap_or(0);
         let earned = crate::rewards::tier_name(self.tier_for(lt));
-        let claimed = crate::rewards::tier_name(
-            self.badges_claimed.get(&account_id).copied().unwrap_or(0),
-        );
+        let claimed =
+            crate::rewards::tier_name(self.badges_claimed.get(&account_id).copied().unwrap_or(0));
         CaretakerView {
             account_id,
             lifetime_points: U128(lt),
             badge_earned: earned.to_string(),
             badge_claimed: claimed.to_string(),
+        }
+    }
+
+    pub fn get_keeper(&self, account_id: AccountId) -> KeeperView {
+        let stake = self.get_stake(account_id.clone());
+        let by_stake = stake.as_ref().is_some_and(|s| s.keeper_eligible);
+        let staked = stake.map(|s| s.staked).unwrap_or(U128(0));
+        let lt = self.lifetime_points.get(&account_id).copied().unwrap_or(0);
+        let tier = self.tier_for(lt);
+        KeeperView {
+            account_id,
+            eligible: by_stake || tier >= 2,
+            by_stake,
+            by_badge: tier >= 2,
+            staked,
+            badge_earned: crate::rewards::tier_name(tier).to_string(),
         }
     }
 
@@ -284,6 +335,10 @@ impl Contract {
             reserve: self.reserve,
             belly: self.belly.clone(),
             pending: vec![],
+            burned: 0,
+            slashed: 0,
+            peak_level: self.max_level,
+            died_at: None,
             rampage_start: self.rampage_started_at,
             bites_done: self.bites_applied,
         };
@@ -309,6 +364,7 @@ impl Contract {
         }
         p.happy_days = (happy_ns / day) as u32;
         p.level = level_for(&self.cfg, p.happy_days).max(self.level);
+        p.peak_level = p.peak_level.max(p.level);
 
         let to_zero = (f0 as u128 * day as u128 / FULL_BP as u128) as u64;
         if elapsed < to_zero {
@@ -317,7 +373,9 @@ impl Contract {
         } else {
             p.fullness = 0;
             p.in_rampage = true;
-            let r = self.rampage_started_at.unwrap_or(self.last_settled_at + to_zero);
+            let r = self
+                .rampage_started_at
+                .unwrap_or(self.last_settled_at + to_zero);
             if self.rampage_started_at.is_none() {
                 p.bites_done = 0;
             }
@@ -328,13 +386,17 @@ impl Contract {
                 p.bites_done += 1;
                 let t = r + p.bites_done * iv;
                 p.belly.expire(t);
-                bite_math(&mut p.reserve, &mut p.belly, &self.cfg);
+                let (burn, slashed) = bite_math(&mut p.reserve, &mut p.belly, &self.cfg);
+                p.burned += burn;
+                p.slashed += slashed;
                 p.level -= 1;
                 p.happy_days = level_floor_days(&self.cfg, p.level);
                 p.pending.push(t);
             }
             if p.level == 0 {
                 p.alive = false;
+                p.died_at = p.pending.last().copied();
+                p.burned += p.reserve; // death burns what is left of the Reserve
                 p.reserve = 0;
                 p.in_rampage = false;
                 p.rampage_start = None;
@@ -342,6 +404,19 @@ impl Contract {
         }
         p.belly.expire(now);
         p
+    }
+
+    /// The current generation's life record projected to `now`: pending bites
+    /// are counted, and a Totem that starved but was not settled by a
+    /// transaction yet already shows as dead with its gravestone record.
+    pub(crate) fn projected_life_record(&self, now: u64) -> crate::LifeRecord {
+        let p = self.project(now);
+        let cause = p.died_at.map(|_| "starved at Level 0".to_string());
+        let mut rec = self.life_record(p.died_at, cause);
+        rec.stats.burned.0 += p.burned;
+        rec.stats.slashed.0 += p.slashed;
+        rec.max_level = rec.max_level.max(p.peak_level);
+        rec
     }
 
     fn mood_for(&self, fullness: u32, alive: bool, in_rampage: bool) -> Mood {

@@ -38,10 +38,13 @@ export interface NearCtx {
   signIn: () => Promise<void>;
   /** Start (or resume) a free guest account: no wallet, no NEAR needed. */
   playAsGuest: () => Promise<string>;
+  /** A call to another contract (the tribe's DAO). Guests: zero-deposit only, relayed. */
+  callAt: (receiverId: string, method: string, args: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
   /** Several calls in one go (one meta-transaction for guests, one wallet tx otherwise). */
   callMany: (calls: Call[]) => Promise<void>;
   signOut: () => Promise<void>;
   view: <T = unknown>(method: string, args?: Record<string, unknown>) => Promise<T>;
+  viewAt: <T = unknown>(contractId: string, method: string, args?: Record<string, unknown>) => Promise<T>;
   call: (method: string, args?: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
 }
 
@@ -142,6 +145,11 @@ export function NearProvider({ children }: PropsWithChildren) {
       (await provider.callFunction({ contractId: CONTRACT_ID, method, args })) as T,
     [provider]
   );
+  const viewAt = useCallback(
+    async <T,>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
+      (await provider.callFunction({ contractId, method, args })) as T,
+    [provider]
+  );
 
   const call = useCallback(
     async (method: string, args: Record<string, unknown> = {}, opts: { gas?: string; deposit?: string } = {}) => {
@@ -165,6 +173,29 @@ export function NearProvider({ children }: PropsWithChildren) {
     [wallet, guest]
   );
 
+  const callAt = useCallback(
+    async (receiverId: string, method: string, args: Record<string, unknown>, opts: { gas?: string; deposit?: string } = {}) => {
+      const g = guestRef.current;
+      if (!wallet && g) {
+        if (opts.deposit && opts.deposit !== "0") throw new Error("Guests can't attach NEAR");
+        const { hash } = await guestCall(g, [{ method, args, gas: opts.gas ? BigInt(opts.gas) : undefined }], receiverId);
+        return hash;
+      }
+      if (!wallet) throw new Error("Connect a wallet first");
+      const r = await wallet.signAndSendTransaction({
+        receiverId,
+        actions: [
+          {
+            type: "FunctionCall",
+            params: { methodName: method, args, gas: opts.gas ?? "100000000000000", deposit: opts.deposit ?? "0" },
+          },
+        ],
+      });
+      return getTransactionLastResult(r);
+    },
+    [wallet]
+  );
+
   const callMany = useCallback(
     async (calls: Call[]) => {
       const g = guestRef.current;
@@ -185,8 +216,8 @@ export function NearProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo(
-    () => ({ ready, accountId, isGuest, signIn, signOut, playAsGuest, view, call, callMany }),
-    [ready, accountId, isGuest, signIn, signOut, playAsGuest, view, call, callMany]
+    () => ({ ready, accountId, isGuest, signIn, signOut, playAsGuest, view, viewAt, call, callAt, callMany }),
+    [ready, accountId, isGuest, signIn, signOut, playAsGuest, view, viewAt, call, callAt, callMany]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

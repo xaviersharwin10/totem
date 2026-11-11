@@ -11,7 +11,10 @@ impl Contract {
     pub fn claim_blessing(&mut self, period_id: u64) {
         self.settle();
         let caller = env::predecessor_account_id();
-        assert!(self.is_registered(&caller), "register storage first (storage_deposit)");
+        assert!(
+            self.is_registered(&caller),
+            "register storage first (storage_deposit)"
+        );
 
         let reserve = self.period_reserved.get(&period_id).copied().unwrap_or(0);
         assert!(reserve > 0, "no blessing reserved for that period");
@@ -20,7 +23,10 @@ impl Contract {
 
         let key = (period_id, caller.clone());
         let my = self.period_points.get(&key).copied().unwrap_or(0);
-        assert!(my > 0, "you earned no points that period (or already claimed)");
+        assert!(
+            my > 0,
+            "you earned no points that period (or already claimed)"
+        );
 
         let share = reserve * my / total;
         assert!(share > 0, "your share rounds to zero");
@@ -41,7 +47,10 @@ impl Contract {
     pub fn claim_badge(&mut self) {
         self.settle();
         let caller = env::predecessor_account_id();
-        assert!(self.max_level >= 2, "badges unlock once the Totem reaches L2");
+        assert!(
+            self.max_level >= 2,
+            "badges unlock once the Totem reaches L2"
+        );
         let lt = self.lifetime_points.get(&caller).copied().unwrap_or(0);
         let tier = self.tier_for(lt);
         assert!(tier > 0, "no badge earned yet");
@@ -51,7 +60,12 @@ impl Contract {
         let name = tier_name(tier);
         let mut title = name.to_string();
         title[..1].make_ascii_uppercase();
-        self.mint_badge(&caller, name, format!("badge-{name}-{caller}"), format!("{title} Caretaker"));
+        self.mint_badge(
+            &caller,
+            name,
+            format!("badge-{name}-{caller}"),
+            format!("{title} Caretaker"),
+        );
         events::badge_minted(&caller, name);
     }
 

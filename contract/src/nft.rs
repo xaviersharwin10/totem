@@ -29,21 +29,36 @@ use near_sdk::{env, near, AccountId, PromiseOrValue};
 use std::collections::HashMap;
 
 pub fn is_soulbound(token_id: &str) -> bool {
-    token_id.starts_with("badge-") || token_id.starts_with("hero-") || token_id.starts_with("founder-")
+    token_id.starts_with("badge-")
+        || token_id.starts_with("hero-")
+        || token_id.starts_with("founder-")
 }
 
 impl Contract {
     /// Mint a token; the contract covers storage. Emits the standard `nft_mint`.
-    pub(crate) fn nft_mint_internal(&mut self, token_id: String, owner: &AccountId, meta: TokenMetadata) {
+    pub(crate) fn nft_mint_internal(
+        &mut self,
+        token_id: String,
+        owner: &AccountId,
+        meta: TokenMetadata,
+    ) {
         self.nft
             .internal_mint_with_refund(token_id.clone(), owner.clone(), Some(meta), None);
-        NftMint { owner_id: owner, token_ids: &[&token_id], memo: None }.emit();
+        NftMint {
+            owner_id: owner,
+            token_ids: &[&token_id],
+            memo: None,
+        }
+        .emit();
     }
 
     /// Current owner of the Totem token (alive or gravestone): the tribe's DAO,
     /// or whoever it was transferred to. Governs rename / evolve / hatch.
     pub(crate) fn totem_owner(&self) -> AccountId {
-        self.nft.owner_by_id.get(&self.totem_id).expect("totem token missing")
+        self.nft
+            .owner_by_id
+            .get(&self.totem_id)
+            .expect("totem token missing")
     }
 
     pub(crate) fn totem_base_metadata(&self) -> TokenMetadata {
@@ -66,28 +81,19 @@ impl Contract {
 
     /// Convert the Totem token into a gravestone, freezing the life record.
     pub(crate) fn engrave_gravestone(&mut self, rec: &crate::LifeRecord) {
-        let meta = TokenMetadata {
-            title: Some(format!("🪦 {}", rec.lineage_name)),
-            description: Some(format!(
-                "Here lies {}, generation {}. Reached Level {}; {}.",
-                rec.lineage_name,
-                rec.generation,
-                rec.max_level,
-                rec.cause_of_death.clone().unwrap_or_default()
-            )),
-            issued_at: Some(rec.born_at.0.to_string()),
-            updated_at: rec.died_at.map(|d| d.0.to_string()),
-            extra: Some(
-                json!({ "kind": "gravestone", "life": rec }).to_string(),
-            ),
-            ..Default::default()
-        };
+        let meta = gravestone_metadata(rec);
         if let Some(m) = self.nft.token_metadata_by_id.as_mut() {
             m.insert(&self.totem_id, &meta);
         }
     }
 
-    pub(crate) fn mint_badge(&mut self, who: &AccountId, kind: &str, token_id: String, title: String) {
+    pub(crate) fn mint_badge(
+        &mut self,
+        who: &AccountId,
+        kind: &str,
+        token_id: String,
+        title: String,
+    ) {
         let meta = TokenMetadata {
             title: Some(title),
             description: Some(format!(
@@ -124,6 +130,24 @@ impl Contract {
     }
 }
 
+/// Gravestone metadata: the frozen life record.
+fn gravestone_metadata(rec: &crate::LifeRecord) -> TokenMetadata {
+    TokenMetadata {
+        title: Some(format!("🪦 {}", rec.lineage_name)),
+        description: Some(format!(
+            "Here lies {}, generation {}. Reached Level {}; {}.",
+            rec.lineage_name,
+            rec.generation,
+            rec.max_level,
+            rec.cause_of_death.clone().unwrap_or_default()
+        )),
+        issued_at: Some(rec.born_at.0.to_string()),
+        updated_at: rec.died_at.map(|d| d.0.to_string()),
+        extra: Some(json!({ "kind": "gravestone", "life": rec }).to_string()),
+        ..Default::default()
+    }
+}
+
 #[near]
 impl NonFungibleTokenCore for Contract {
     #[payable]
@@ -134,8 +158,12 @@ impl NonFungibleTokenCore for Contract {
         approval_id: Option<u64>,
         memo: Option<String>,
     ) {
-        assert!(!is_soulbound(&token_id), "badges are soulbound and cannot be transferred");
-        self.nft.nft_transfer(receiver_id, token_id, approval_id, memo)
+        assert!(
+            !is_soulbound(&token_id),
+            "badges are soulbound and cannot be transferred"
+        );
+        self.nft
+            .nft_transfer(receiver_id, token_id, approval_id, memo)
     }
 
     #[payable]
@@ -147,14 +175,25 @@ impl NonFungibleTokenCore for Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<bool> {
-        assert!(!is_soulbound(&token_id), "badges are soulbound and cannot be transferred");
-        self.nft.nft_transfer_call(receiver_id, token_id, approval_id, memo, msg)
+        assert!(
+            !is_soulbound(&token_id),
+            "badges are soulbound and cannot be transferred"
+        );
+        self.nft
+            .nft_transfer_call(receiver_id, token_id, approval_id, memo, msg)
     }
 
     fn nft_token(&self, token_id: TokenId) -> Option<Token> {
         let mut t = self.nft.nft_token(token_id.clone())?;
         if token_id == self.totem_id && self.alive {
-            t.metadata = Some(self.live_totem_metadata());
+            // Dynamic NFT: live state, or the gravestone if it starved but the
+            // death has not been settled by a transaction yet.
+            let rec = self.projected_life_record(env::block_timestamp());
+            t.metadata = Some(if rec.alive {
+                self.live_totem_metadata()
+            } else {
+                gravestone_metadata(&rec)
+            });
         }
         Some(t)
     }
@@ -170,8 +209,12 @@ impl NonFungibleTokenResolver for Contract {
         token_id: TokenId,
         approved_account_ids: Option<HashMap<AccountId, u64>>,
     ) -> bool {
-        self.nft
-            .nft_resolve_transfer(previous_owner_id, receiver_id, token_id, approved_account_ids)
+        self.nft.nft_resolve_transfer(
+            previous_owner_id,
+            receiver_id,
+            token_id,
+            approved_account_ids,
+        )
     }
 }
 

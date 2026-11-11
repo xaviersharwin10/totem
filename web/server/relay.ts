@@ -5,6 +5,12 @@
 //     account) with the browser's key as its only key. The private key never
 //     leaves the browser.
 //
+//   POST /api/propose { type: "hatch" } | { type: "keeper", accountId }  -> { id }
+//     Opens a DAO proposal for players without NEAR (the relayer pays the
+//     proposal bond, refunded when it passes), only when the chain says it is
+//     valid: the Totem is dead and no hatch vote is open; or the account is
+//     eligible (get_keeper), not a Keeper yet and not already nominated.
+//
 //   POST /api/relay  { signedDelegate }   -> { hash }  |  { error }
 //     `signedDelegate` is a base64 borsh SignedDelegate (NEP-366) the player
 //     signed in the browser. The relayer checks it only calls this game's
@@ -18,7 +24,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { Account, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions } from "near-api-js";
+import { Account, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
 import { deserialize } from "borsh";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
@@ -28,6 +34,11 @@ const RPC = process.env.RELAYER_RPC_URL ?? "https://test.rpc.fastnear.com";
 const ALLOWED = new Set(["faucet", "feed", "poke", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing"]);
 const MAX_GAS_PER_ACTION = 100_000_000_000_000n; // 100 Tgas
 const MAX_ACTIONS = 3;
+// Keepers vote for free too: only act_proposal on the tribe's DAO. The vote
+// that passes a hatch also runs it, hence the higher gas cap.
+const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
+const DAO_METHODS = new Set(["act_proposal"]);
+const MAX_GAS_DAO = 250_000_000_000_000n; // 250 Tgas
 
 let relayer: Account | null = null;
 function getRelayer(): Account {
@@ -144,14 +155,15 @@ export async function relayHandler(req: IncomingMessage, res: ServerResponse) {
     const da = sd.delegateAction;
 
     // Only this game's contract, only allow-listed zero-deposit function calls.
-    if (da.receiverId !== CONTRACT_ID) throw new Error(`only ${CONTRACT_ID} is sponsored`);
-    if (!da.actions.length || da.actions.length > MAX_ACTIONS) throw new Error("1 to 3 actions");
+    const toDao = da.receiverId === DAO_ID;
+    if (da.receiverId !== CONTRACT_ID && !toDao) throw new Error(`only ${CONTRACT_ID} and ${DAO_ID} are sponsored`);
+    if (!da.actions.length || da.actions.length > (toDao ? 1 : MAX_ACTIONS)) throw new Error("too many actions");
     for (const a of da.actions) {
       const fc = a.functionCall;
       if (!fc) throw new Error("only function calls are sponsored");
-      if (!ALLOWED.has(fc.methodName)) throw new Error(`method ${fc.methodName} is not sponsored`);
+      if (!(toDao ? DAO_METHODS : ALLOWED).has(fc.methodName)) throw new Error(`method ${fc.methodName} is not sponsored`);
       if (BigInt(fc.deposit) !== 0n) throw new Error("deposits are not sponsored");
-      if (BigInt(fc.gas) > MAX_GAS_PER_ACTION) throw new Error("too much gas");
+      if (BigInt(fc.gas) > (toDao ? MAX_GAS_DAO : MAX_GAS_PER_ACTION)) throw new Error("too much gas");
     }
     if (over(`relay-sender:${da.senderId}`, 30, 60 * 60_000)) throw new Error("Too many free actions for this account this hour.");
 
@@ -166,6 +178,70 @@ export async function relayHandler(req: IncomingMessage, res: ServerResponse) {
     const fail = failureOf(outcome);
     if (fail) return send(res, 200, { hash, error: fail });
     send(res, 200, { hash });
+  } catch (e) {
+    send(res, 400, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+// ---------------- /api/propose ----------------
+async function viewJson<T>(r: Account, contractId: string, method: string, args: Record<string, unknown> = {}): Promise<T> {
+  return (await r.provider.callFunction({ contractId, method, args })) as T;
+}
+
+interface DaoProposal {
+  id: number;
+  status: string;
+  kind: Record<string, { receiver_id?: string; actions?: { method_name: string }[]; member_id?: string; role?: string }>;
+}
+
+async function openProposals(r: Account): Promise<DaoProposal[]> {
+  const last = await viewJson<number>(r, DAO_ID, "get_last_proposal_id");
+  const from = Math.max(0, last - 30);
+  const list = await viewJson<DaoProposal[]>(r, DAO_ID, "get_proposals", { from_index: from, limit: 30 });
+  return list.filter((p) => p.status === "InProgress");
+}
+
+export async function proposeHandler(req: IncomingMessage, res: ServerResponse) {
+  if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+  if (over(`propose:${ipOf(req)}`, 6, 60 * 60_000)) return send(res, 429, { error: "Too many proposals from here this hour." });
+  try {
+    const body = await readJson(req);
+    const r = getRelayer();
+    const policy = await viewJson<{ proposal_bond: string; roles: { name: string; kind: unknown }[] }>(r, DAO_ID, "get_policy");
+    const open = await openProposals(r);
+    let proposal: { description: string; kind: unknown };
+
+    if (body.type === "hatch") {
+      const t = await viewJson<{ alive: boolean; generation: number; name: string }>(r, CONTRACT_ID, "get_totem");
+      if (t.alive) throw new Error("The Totem is alive: nothing to hatch.");
+      const already = open.find((p) => p.kind.FunctionCall?.receiver_id === CONTRACT_ID && p.kind.FunctionCall.actions?.some((a) => a.method_name === "hatch"));
+      if (already) return send(res, 200, { id: already.id, existing: true });
+      proposal = {
+        description: `Hatch generation ${t.generation + 1} (requested from the app${body.accountId ? ` by ${String(body.accountId).slice(0, 64)}` : ""})`,
+        kind: { FunctionCall: { receiver_id: CONTRACT_ID, actions: [{ method_name: "hatch", args: Buffer.from("{}").toString("base64"), deposit: "0", gas: "150000000000000" }] } },
+      };
+    } else if (body.type === "keeper") {
+      const who = String(body.accountId ?? "");
+      if (!/^[a-z0-9._-]{2,64}$/.test(who)) throw new Error("bad account id");
+      const k = await viewJson<{ eligible: boolean; staked: string; badge_earned: string }>(r, CONTRACT_ID, "get_keeper", { account_id: who });
+      if (!k.eligible) throw new Error("Not eligible yet: stake 1,000 $TOTEM in the living Totem, or earn the Silver badge.");
+      const role = policy.roles.find((x) => x.name === "keepers");
+      const members = (role?.kind as { Group?: string[] })?.Group ?? [];
+      if (members.includes(who)) throw new Error("Already a Keeper.");
+      const already = open.find((p) => p.kind.AddMemberToRole?.member_id === who && p.kind.AddMemberToRole.role === "keepers");
+      if (already) return send(res, 200, { id: already.id, existing: true });
+      const why = k.badge_earned === "silver" || k.badge_earned === "gold" ? `${k.badge_earned} badge` : `${Number(BigInt(k.staked) / 10n ** 18n).toLocaleString("en-US")} TOTEM staked`;
+      proposal = { description: `Add Keeper ${who} (${why}, verified by get_keeper)`, kind: { AddMemberToRole: { member_id: who, role: "keepers" } } };
+    } else {
+      throw new Error("type must be hatch or keeper");
+    }
+
+    const outcome = await r.signAndSendTransaction({
+      receiverId: DAO_ID,
+      actions: [actions.functionCall("add_proposal", { proposal }, 50_000_000_000_000n, BigInt(policy.proposal_bond))],
+    });
+    const id = Number(getTransactionLastResult(outcome as Parameters<typeof getTransactionLastResult>[0]));
+    send(res, 200, { id });
   } catch (e) {
     send(res, 400, { error: e instanceof Error ? e.message : String(e) });
   }

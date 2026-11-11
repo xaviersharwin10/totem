@@ -7,17 +7,18 @@
 #   scripts/keepers-sync.sh [candidate.testnet ...]
 #
 # Candidates are the accounts given plus the current Keepers (the contract has
-# no list of all stakers, by design: no unbounded iteration). The council
-# (OWNER_ID) proposes and approves each change.
+# no list of all stakers, by design: no unbounded iteration). OWNER_ID proposes
+# each change (anyone may); the Keepers vote (VOTERS, default: the Keepers whose
+# keys are on this machine). Players can also nominate themselves in the app.
 . "$(dirname "$0")/lib.sh"
 : "${CONTRACT_ID:?}"; : "${OWNER_ID:?}"; : "${DAO_ID:?}"
 ROLE=keepers
 
-eligible() {  # prints "yes" / "no" and why
-  local a=$1 stake badges
-  stake=$(view "$CONTRACT_ID" get_stake "{\"account_id\":\"$a\"}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("yes" if d and d.get("keeper_eligible") else "no")' 2>/dev/null || echo no)
-  badges=$(view "$CONTRACT_ID" nft_tokens_for_owner "{\"account_id\":\"$a\",\"limit\":100}" | python3 -c 'import json,sys; ids=[t["token_id"] for t in json.load(sys.stdin)]; print("yes" if any(i.startswith(("badge-silver-","badge-gold-")) for i in ids) else "no")' 2>/dev/null || echo no)
-  if [ "$stake" = yes ] || [ "$badges" = yes ]; then echo "yes (stake:$stake silver+badge:$badges)"; else echo "no (stake:$stake silver+badge:$badges)"; fi
+eligible() {  # prints "yes" / "no" and why, from the contract's one rule: get_keeper
+  view "$CONTRACT_ID" get_keeper "{\"account_id\":\"$1\"}" | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+print(("yes" if d["eligible"] else "no"), "(stake:", int(d["staked"])//10**18, "badge:", d["badge_earned"]+")")' 2>/dev/null || echo "no (unreadable)"
 }
 
 POLICY=$(view "$DAO_ID" get_policy '{}')
@@ -55,13 +56,29 @@ print(json.dumps({"ChangePolicy":{"policy":policy}}))' "$ROLE" "${ADD[@]}")
   exit 0
 fi
 
+# Grace: a hatch releases every stake of the previous life, so Keepers get one
+# Totem-day to re-stake into the new Totem before anyone proposes removing them.
+AGE=$(python3 - "$(view "$CONTRACT_ID" get_lineage '{"limit":100}')" "$(view "$CONTRACT_ID" get_config '{}')" <<'PY'
+import json,sys,time
+life=json.loads(sys.argv[1])[-1]; cfg=json.loads(sys.argv[2])
+age=time.time()*1e9-int(life["born_at"])
+print("young" if life["alive"] and age < int(cfg["day_length_ns"]) else "old")
+PY
+)
+if [ "$AGE" = young ] && [ ${#REMOVE[@]} -gt 0 ]; then
+  echo "==> new generation is less than a Totem-day old: not removing ${REMOVE[*]} yet (they can re-stake)"
+  REMOVE=()
+fi
+VOTERS="${VOTERS:-$(keeper_voters)}"
 for a in "${ADD[@]}"; do
-  ID=$(propose "Add Keeper $a (>= 1,000 staked or Silver badge)" "{\"AddMemberToRole\":{\"member_id\":\"$a\",\"role\":\"$ROLE\"}}")
-  approve "$ID" "$OWNER_ID"
+  ID=$(propose "Add Keeper $a (eligible per get_keeper)" "{\"AddMemberToRole\":{\"member_id\":\"$a\",\"role\":\"$ROLE\"}}")
+  # shellcheck disable=SC2086
+  approve "$ID" $VOTERS
 done
 for a in "${REMOVE[@]}"; do
-  ID=$(propose "Remove Keeper $a (no longer eligible)" "{\"RemoveMemberFromRole\":{\"member_id\":\"$a\",\"role\":\"$ROLE\"}}")
-  approve "$ID" "$OWNER_ID"
+  ID=$(propose "Remove Keeper $a (no longer eligible per get_keeper)" "{\"RemoveMemberFromRole\":{\"member_id\":\"$a\",\"role\":\"$ROLE\"}}")
+  # shellcheck disable=SC2086
+  approve "$ID" $VOTERS
 done
 [ ${#ADD[@]} -eq 0 ] && [ ${#REMOVE[@]} -eq 0 ] && echo "==> keepers already in sync: ${CURRENT:-none}"
 exit 0

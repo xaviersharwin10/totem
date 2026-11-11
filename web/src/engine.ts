@@ -65,7 +65,7 @@ const BITE_INTERVAL_MS = DAY_MS / 4;
 const BITE_BURN = 0.15;
 const POKE_TIP = 0.01;
 
-function roman(n: number): string {
+export function roman(n: number): string {
   const t: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
   let s = "";
   for (const [v, r] of t) while (n >= v) { s += r; n -= v; }

@@ -20,6 +20,8 @@ export interface TotemView {
   xpHappyDays: number;
   nextLevelHappyDays: number | null;
   hoard: number;
+  /** stakes of dead generations awaiting withdrawal (live chain only; not the tribe's) */
+  releasedStakes?: number;
   totalBurned: number;
   totalFed: number;
   mealSize: number;

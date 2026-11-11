@@ -882,3 +882,39 @@ fn keepers_of_a_dead_generation_keep_their_say_until_they_withdraw() {
     c.withdraw();
     assert!(!c.get_keeper(k.clone()).eligible);
 }
+
+#[test]
+fn the_hoard_counts_only_the_living_totem_never_released_stakes() {
+    let (mut c, genesis, dao) = setup();
+    let bob = accounts(2);
+    fund(&mut c, &genesis, &bob, 1_000, 0);
+    set_ctx(&bob, 0);
+    c.stake(U128(400 * ONE));
+    let v = c.get_totem();
+    assert_eq!(v.living_staked.0, 400 * ONE);
+    assert_eq!(v.released_stakes.0, 0);
+    assert_eq!(v.hoard.0, v.reserve.0 + 400 * ONE);
+
+    // dead (projected, not yet settled): nothing is the tribe's any more
+    set_ctx(&genesis, 5 * DAY);
+    let v = c.get_totem();
+    assert!(!v.alive);
+    assert_eq!(v.hoard.0, 0, "the Reserve burned at death; stakes are released");
+    assert_eq!(v.living_staked.0, 0);
+    assert_eq!(v.released_stakes.0, 340 * ONE);
+
+    // a new generation: bob's old stake stays released until he moves it
+    c.poke();
+    set_ctx(&dao, 5 * DAY);
+    c.hatch();
+    let v = c.get_totem();
+    assert_eq!(v.hoard.0, 0);
+    assert_eq!(v.released_stakes.0, 340 * ONE);
+    set_ctx(&bob, 5 * DAY);
+    c.withdraw();
+    c.stake(U128(300 * ONE));
+    let v = c.get_totem();
+    assert_eq!(v.living_staked.0, 300 * ONE);
+    assert_eq!(v.released_stakes.0, 0);
+    assert_eq!(v.hoard.0, v.reserve.0 + 300 * ONE);
+}

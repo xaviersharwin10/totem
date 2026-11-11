@@ -13,9 +13,8 @@
 #      all      anyone may propose (bond 0.1 NEAR, refunded when it passes)
 #      keepers  hatch / rename / evolve the Totem, admit and remove Keepers,
 #               move the DAO's NEAR: majority of Keepers (2 of 3)
-#      council  constitution only (policy, config, upgrades). It cannot hatch,
-#               rename, evolve or pick Keepers. If every Keeper leaves, its
-#               only power is to rewrite the policy and appoint new ones.
+#               change the constitution itself: two thirds of Keepers
+#      no council: the founders keep no power (scripts/adopt-constitution.sh)
 #
 # Steps 1-4 are the last things the founding council decides alone.
 . "$(dirname "$0")/lib.sh"
@@ -68,30 +67,7 @@ done
 feed_full
 
 echo "==> 4. the tribe constitution"
-KIND=$(view "$DAO_ID" get_policy '{}' | python3 -c '
-import json,sys
-old=json.load(sys.stdin)
-keepers=[x for x in old["roles"] if x["name"]=="keepers"][0]["kind"]["Group"]
-council=[x for x in old["roles"] if x["name"]=="council"][0]["kind"]["Group"]
-acts=["VoteApprove","VoteReject","VoteRemove","Finalize"]
-perm=lambda kinds:[f"{k}:{a}" for k in kinds for a in acts]
-policy={
-  "roles":[
-    {"name":"all","kind":"Everyone","permissions":["*:AddProposal"],"vote_policy":{}},
-    {"name":"keepers","kind":{"Group":keepers},
-     "permissions":perm(["call","add_member_to_role","remove_member_from_role","transfer","vote"]),"vote_policy":{}},
-    {"name":"council","kind":{"Group":council},
-     "permissions":perm(["policy","config","upgrade_self","upgrade_remote","set_vote_token"]),"vote_policy":{}},
-  ],
-  "default_vote_policy":{"weight_kind":"RoleWeight","quorum":"0","threshold":[1,2]},
-  "proposal_bond":"100000000000000000000000",
-  "proposal_period":old["proposal_period"],
-  "bounty_bond":old["bounty_bond"],
-  "bounty_forgiveness_period":old["bounty_forgiveness_period"],
-}
-print(json.dumps({"ChangePolicy":{"policy":policy}}))')
-ID=$(propose "Adopt the tribe constitution: Keepers (majority) govern the Totem and membership; the council only guards the policy" "$KIND")
-approve "$ID" "$OWNER_ID"
+scripts/adopt-constitution.sh
 feed_full
 echo "==> done"
 view "$DAO_ID" get_policy '{}' | python3 -c '

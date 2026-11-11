@@ -1,8 +1,8 @@
 // The tribe's Sputnik DAO, read and acted on from the app.
 //
 // Who decides what is the DAO's own policy (scripts/bootstrap-governance.sh):
-// Keepers (by majority) hatch / rename / evolve the Totem and admit Keepers;
-// anyone may propose. Keeper eligibility is one contract view, get_keeper.
+// Keepers (by majority) hatch / rename / evolve the Totem and admit Keepers,
+// and (by two thirds) change those rules; there is no council. Anyone may propose. Keeper eligibility is one contract view, get_keeper.
 // Nothing here is simulated: every number is read from the DAO and the contract.
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -56,8 +56,9 @@ interface Policy {
 export interface Tribe {
   ready: boolean;
   keepers: string[];
-  council: string[];
   needed: number; // Keeper votes needed to pass (majority)
+  /** Keeper votes a given proposal needs (constitution changes need two thirds). */
+  neededFor: (p: Proposal) => number;
   bond: string; // yoctoNEAR
   proposals: Proposal[]; // newest first
   open: Proposal[];
@@ -158,9 +159,12 @@ export function useTribe(active: boolean): Tribe {
 
   const keepersRole = policy?.roles.find((r) => r.name === "keepers");
   const keepers = group(keepersRole);
-  const council = group(policy?.roles.find((r) => r.name === "council"));
-  const threshold = keepersRole?.vote_policy?.call?.threshold ?? policy?.default_vote_policy.threshold ?? [1, 2];
-  const needed = votesNeeded(keepers.length, threshold);
+  const dflt = policy?.default_vote_policy.threshold ?? [1, 2];
+  const needed = votesNeeded(keepers.length, keepersRole?.vote_policy?.call?.threshold ?? dflt);
+  const neededFor = (p: Proposal) => {
+    const label = p.type === "policy" ? "policy" : p.type === "add_keeper" ? "add_member_to_role" : p.type === "remove_keeper" ? "remove_member_from_role" : "call";
+    return votesNeeded(keepers.length, keepersRole?.vote_policy?.[label]?.threshold ?? dflt);
+  };
   const open = proposals.filter((p) => p.status === "InProgress");
   const openHatch = open.find((p) => p.type === "hatch") ?? null;
   const amKeeper = !!near.accountId && keepers.includes(near.accountId);
@@ -232,8 +236,8 @@ export function useTribe(active: boolean): Tribe {
   return {
     ready: !!policy,
     keepers,
-    council,
     needed,
+    neededFor,
     bond: policy?.proposal_bond ?? "0",
     proposals,
     open,

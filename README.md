@@ -23,15 +23,16 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 ## How NEAR is used
 
 - **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
-- **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers.
+- **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers. The Hoard shown in the app is the Reserve plus the **living** Totem's stakes: stakes from a dead generation are reported separately (`released_stakes`, "stakes to withdraw"), so a dead Totem's Hoard is 0.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **The tribe governs through a Sputnik DAO, with real separation of powers.** The DAO owns the Totem NFT, so hatch / rename / evolve happen only by DAO proposal (a `FunctionCall` to the contract); the DAO cannot touch the Hoard or change a game rule. Its policy (set by [`scripts/bootstrap-governance.sh`](scripts/bootstrap-governance.sh)):
   - **Everyone** may propose (0.1 NEAR bond, refunded when it passes; players without NEAR propose through the game, which pays the bond).
   - **Keepers** decide by majority (2 of 3, 3 of 4…): hatching, the name, evolution, and who becomes a Keeper. A Keeper is whoever the contract's `get_keeper` view says qualifies: ≥ 1,000 $TOTEM staked in the living Totem (or in the one that just died, until withdrawn), or the Silver/Gold Caretaker tier.
-  - **Council** (founders) guards the constitution only (policy, config, upgrades). It **cannot** hatch, rename, evolve or pick Keepers: on testnet its vote on a hatch fails with `ERR_PERMISSION_DENIED`.
+  - **No council, no founder powers.** Changing the constitution itself (policy, config, upgrades) takes **two thirds** of the Keepers. The founding council's last vote was to delete itself ([`scripts/adopt-constitution.sh`](scripts/adopt-constitution.sh), proposal 13); the founders' account now has no vote on anything.
+  - **Trezu-ready.** It is a plain Sputnik DAO, the same contract NEAR's Trezu treasury app is built on. Trezu runs on mainnet only, so on testnet the 🏛 Tribe panel is the client; deployed as a mainnet `*.sputnik-dao.near` DAO, the panel links straight to it in Trezu.
   - On testnet: a guest with no wallet staked, nominated itself in the app, was admitted by two Keepers, then proposed and voted the hatch of Mochi VI from the death card; it passed 3 of 3 and the hatch ran in the deciding vote ([proposal 10](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet)).
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
-- **Gasless play for anyone: zero-balance accounts + meta-transactions.** A rescuer with no wallet and no NEAR taps "Rescue": the game creates `g<hex>.totem-grumbo-relay.testnet` holding **0 NEAR** (a NEP-448 zero-balance account) with a key generated in their browser. Each action is a NEP-366 `DelegateAction` signed in the browser; our relayer wraps it in a transaction and pays the gas. The relayer only sponsors zero-deposit calls to this contract's game methods, rate-limited. On testnet a fresh guest rescued the Totem from a Rampage and received the Hero NFT with 0 NEAR in its account.
+- **Gasless play for anyone: zero-balance accounts + meta-transactions.** A rescuer with no wallet and no NEAR taps "Rescue": the game creates `g<hex>.totem-grumbo-relay.testnet` holding **0 NEAR** (a NEP-448 zero-balance account) with a key generated in their browser. Each action is a NEP-366 `DelegateAction` signed in the browser; our relayer wraps it in a transaction and pays the gas. The relayer only sponsors zero-deposit calls to this contract's game methods, rate-limited. On testnet a fresh guest rescued the Totem from a Rampage and received the Hero NFT with 0 NEAR in its account. The guest key lives in the browser; **🔑 back up** gives a code that restores the same account in another browser (checked on-chain before it is accepted).
 - **The Totem talks (NEAR AI Cloud).** The panda is an AI character whose facts all come from the chain: a small server endpoint reads `get_totem`, `get_lineage`, `get_caretaker` and `get_stake`, then asks a model on NEAR AI Cloud to answer in character. Its personality is derived from its on-chain traits, which are a hash of the previous generation's top 3 feeders, so the tribe's best feeders shape how the next panda talks. It knows who fed it, by account name, and remembers its ancestors from their gravestones.
 
 ## The rules (all fixed at launch)
@@ -78,7 +79,7 @@ Prerequisites: Rust via `rustup` (the contract's `rust-toolchain.toml` selects s
 ```bash
 # Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
 cd contract
-cargo test                              # expect: 29 passed
+cargo test                              # expect: 30 passed
 
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
@@ -179,7 +180,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 |---|---|
 | TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
-| Genesis holder and DAO council member (1-of-1 for the demo) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
+| Genesis holder (founder; no DAO vote since the constitution) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
 | A Keeper (1,000 $TOTEM staked) | [`totem-grumbo-keeper.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-keeper.testnet) |
 | Gas relayer for free guests (NEP-366); guests are its zero-balance sub-accounts `g<hex>.totem-grumbo-relay.testnet` | [`totem-grumbo-relay.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-relay.testnet) |
 
@@ -190,13 +191,12 @@ near contract call-function as-read-only totem-grumbo.testnet get_totem json-arg
 near contract call-function as-read-only totem-grumbo.testnet get_config json-args '{}' network-config testnet now
 ```
 
-Govern it through the DAO (creates a proposal and votes it through; the demo council is 1-of-1):
+Govern it through the DAO (creates a proposal, then the Keepers whose keys are on this machine vote it through):
 
 ```bash
 scripts/dao-propose.sh rename Mochi
 scripts/dao-propose.sh evolve dragon   # only between Level 4 and the deadline
 scripts/dao-propose.sh hatch           # after a death
-VOTERS=totem-grumbo-keeper.testnet scripts/dao-propose.sh rename Mochi   # a Keeper passes it alone
 
 # Sync the Keepers role with on-chain reputation (>= 1,000 staked or a Silver/Gold badge)
 scripts/keepers-sync.sh some-staker.testnet another.testnet

@@ -19,7 +19,7 @@ For what is done and what is left, see [STATUS.md](STATUS.md).
 
 ```bash
 cd contract
-cargo test            # expect: 29 passed
+cargo test            # expect: 30 passed
 ```
 
 Needs Rust 1.95+ (`contract/rust-toolchain.toml` pins stable + wasm32; run `rustup update stable` if it complains).
@@ -62,7 +62,7 @@ The default mode (**Live testnet**) reads `totem-grumbo.testnet` (demo mode: 1 T
 
 1. **The Totem must be alive.** If the app shows the 🪦 death card, hatch it through the DAO (only the tribe can):
    ```bash
-   scripts/dao-propose.sh hatch          # needs .env and the council key in ~/.near-credentials
+   scripts/dao-propose.sh hatch          # needs .env and the Keeper keys in ~/.near-credentials
    ```
    A newborn starves in about **2.5 minutes** unless fed, so hatch right before testing.
 2. **Your account needs a little testnet NEAR for gas** (0.1 is plenty).
@@ -81,6 +81,8 @@ The default mode (**Live testnet**) reads `totem-grumbo.testnet` (demo mode: 1 T
 - [ ] **Feed.** Approve. **See:** belly, Hoard and Burned update from chain; "you fed …" in the event feed.
 - [ ] **Explorer.** "contract on explorer ↗" shows your `feed` transaction on testnet.nearblocks.io.
 - [ ] **Bite on chain:** stop feeding ~2 minutes and watch a block fall and the Hoard shrink.
+- [ ] **Honest Hoard:** while the Totem is dead the 💰 Hoard reads **0** and, if stakes are waiting, shows "+N stakes to withdraw" under it; tapping the chest explains both. After a hatch, old stakes stay in that line until their owners withdraw or re-stake.
+- [ ] **Guest backup:** as a guest, press **🔑 back up** → Copy code. Open the app in a private window, press **have a guest backup code?**, paste, Restore. **See:** the same `guest g…` account and balance. A tampered code is refused ("That key no longer opens this guest account").
 
 - [ ] **Talk (live):** press **💬** and ask "Who feeds you the most?". It names real accounts and amounts from `get_lineage`. Connected, it knows your own feeding, badge and stake. Dead, it talks as a ghost from its gravestone.
 
@@ -131,14 +133,15 @@ Keepers on testnet: `totem-grumbo-keeper{,2,3}.testnet` (keys on the dev machine
 - [ ] Let the Totem die. The death card shows **🥚 Propose hatching …** (anyone can; guests too, the game pays the bond). Click it. **See:** "Hatch vote is open · 0 of N Keeper votes".
 - [ ] As a Keeper (connect a Keeper wallet, or a guest that is a Keeper): **Vote yes**. **See:** the tally moves and "You voted yes ✅".
 - [ ] Finish the vote from the CLI: `scripts/dao-propose.sh` is not needed, just `. scripts/lib.sh; approve <id> totem-grumbo-keeper.testnet totem-grumbo-keeper2.testnet`. **See:** the app shows the new Totem within seconds; the deciding vote ran `hatch`.
-- [ ] The council cannot: `approve <id> totem-grumbo-tribe.testnet` fails with `ERR_PERMISSION_DENIED`.
+- [ ] The founders cannot: `approve <id> totem-grumbo-tribe.testnet` fails with `ERR_PERMISSION_DENIED` (there is no council; `get_policy` lists only `all` and `keepers`).
+- [ ] **🏛 Tribe → Keepers** ends with "No council, no admin…". A constitution proposal (`ChangePolicy`) counts against two thirds of the Keepers (4 Keepers: 3 votes; 6 Keepers: 5), Totem calls against a majority (6 Keepers: 4).
 - [ ] **🏛 Tribe → Keepers:** each Keeper with why they qualify. With an account that has ≥ 1,000 staked: **Nominate me** opens an `AddMemberToRole` proposal (check `get_keeper` first: `near contract call-function as-read-only totem-grumbo.testnet get_keeper json-args '{"account_id":"…"}' network-config testnet now`).
 - [ ] After a hatch, a Keeper's stake is released: the panel shows **⏳ needs to re-stake** and a **Re-stake** button (withdraw + stake in one transaction).
 - [ ] **Decided** tab: past proposals with "vote passed" / "rejected".
 
 ## 5. DAO and Keepers (CLI)
 
-Needs `.env` (copy `.env.example`) and the council key in `~/.near-credentials`.
+Needs `.env` (copy `.env.example`) and the Keeper keys in `~/.near-credentials` (`OWNER_ID` only proposes and pays the bond).
 
 ```bash
 scripts/bootstrap-governance.sh k1.testnet k2.testnet k3.testnet    # once per new DAO: Keepers + constitution

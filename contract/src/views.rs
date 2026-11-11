@@ -29,9 +29,14 @@ pub struct TotemView {
     pub next_level_happy_days: Option<u32>,
     /// Totem-owned part of the Hoard.
     pub reserve: U128,
-    /// Sum of all stakes in the belly.
+    /// Every token the contract holds for stakers, all generations, until withdrawn.
     pub total_staked: U128,
-    /// reserve + total_staked, the number shown as "the Hoard".
+    /// Stakes in the living Totem's belly (0 while dead).
+    pub living_staked: U128,
+    /// Stakes of dead generations, free to withdraw: their owners', not the tribe's.
+    pub released_stakes: U128,
+    /// reserve + living_staked, the number shown as "the Hoard". Released
+    /// stakes are not part of it; a dead Totem's Hoard is 0 (its Reserve burned).
     pub hoard: U128,
     /// Blessings reserved and not yet claimed.
     pub reserved: U128,
@@ -164,6 +169,14 @@ impl Contract {
             None => to_rampage_ns + iv,
         };
         let death_ns = next_bite_ns + (p.level.saturating_sub(1) as u64) * iv;
+        // The living generation's stakes; the rest of total_staked is released
+        // (dead generations) or rounding dust.
+        let living = if p.alive {
+            let b = &p.belly;
+            (b.unshielded + b.buckets.iter().map(|(_, a)| a).sum::<u128>()).min(b.total_staked)
+        } else {
+            0
+        };
 
         TotemView {
             totem_id: self.totem_id.clone(),
@@ -182,7 +195,9 @@ impl Contract {
             next_level_happy_days: next,
             reserve: U128(p.reserve),
             total_staked: U128(p.belly.total_staked),
-            hoard: U128(p.reserve + p.belly.total_staked),
+            living_staked: U128(living),
+            released_stakes: U128(p.belly.total_staked.saturating_sub(living)),
+            hoard: U128(p.reserve + living),
             reserved: U128(self.reserved),
             meal_size: U128(ms),
             fill_amount: U128(fill),

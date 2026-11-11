@@ -45,6 +45,47 @@ export async function createGuest(): Promise<Guest> {
   return g;
 }
 
+const PREFIX = "totem-guest:";
+const GUEST_SUFFIX = ".totem-grumbo-relay.testnet";
+
+/** A code that moves this guest to another browser. Whoever holds it controls the account. */
+export function guestBackupCode(g: Guest): string {
+  return PREFIX + btoa(JSON.stringify({ a: g.accountId, k: g.secretKey }));
+}
+
+/** Restore a guest from its backup code, after checking on-chain that the key
+ * really is a key of that account. Replaces any guest in this browser. */
+export async function restoreGuest(code: string): Promise<Guest> {
+  let g: Guest;
+  try {
+    const j = JSON.parse(atob(code.trim().replace(PREFIX, "")));
+    g = { accountId: String(j.a), secretKey: String(j.k) };
+    KeyPair.fromString(g.secretKey as KeyPairString);
+  } catch {
+    throw new Error("That is not a guest backup code");
+  }
+  if (!g.accountId.endsWith(GUEST_SUFFIX)) throw new Error("That code is not for a TOTEM guest account");
+  const pk = KeyPair.fromString(g.secretKey as KeyPairString).getPublicKey().toString();
+  const r = await fetch(RPC_URLS[0], {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "restore",
+      method: "query",
+      params: { request_type: "view_access_key", finality: "final", account_id: g.accountId, public_key: pk },
+    }),
+  });
+  const j = (await r.json()) as { result?: { error?: string }; error?: unknown };
+  if (j.error || !j.result || j.result.error) throw new Error("That key no longer opens this guest account");
+  try {
+    localStorage.setItem(STORE, JSON.stringify(g));
+  } catch {
+    /* private mode: lasts for this tab */
+  }
+  return g;
+}
+
 export function forgetGuest() {
   try {
     localStorage.removeItem(STORE);
@@ -83,4 +124,4 @@ export async function guestCall(g: Guest, calls: Call[], receiverId: string = CO
   return { hash: j.hash };
 }
 
-export const shortGuest = (id: string) => (id.includes(".totem-grumbo-relay.") ? `guest ${id.split(".")[0]}` : id);
+export const shortGuest = (id: string) => (id.endsWith(GUEST_SUFFIX) ? `guest ${id.split(".")[0]}` : id);

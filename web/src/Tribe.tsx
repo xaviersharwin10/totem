@@ -41,7 +41,7 @@ function Tally({ p, t }: { p: Proposal; t: Tribe }) {
         ))}
       </div>
       <span>
-        <b>{yes}</b> of {t.needed} Keeper votes{no ? ` · ${no} against` : ""}
+        <b>{yes}</b> of {t.neededFor(p)} Keeper votes{no ? ` · ${no} against` : ""}
       </span>
     </div>
   );
@@ -134,7 +134,7 @@ export function TribePanel({
         <div className="tribe-title">🏛 The Tribe</div>
         <div className="tribe-sub">
           The Totem belongs to the tribe's DAO. <b>Keepers</b> (1,000 $TOTEM staked, or a Silver badge) decide by majority:
-          hatching, its name, its evolution, and who joins them. Anyone may propose.
+          hatching, its name, its evolution, and who joins them. Anyone may propose. No founder or council can overrule them.
         </div>
 
         <div className="tabs">
@@ -233,11 +233,9 @@ export function TribePanel({
                 </>
               )}
             </div>
-            {t.council.length > 0 && (
-              <div className="council-note">
-                Council ({t.council.map(nice).join(", ")}): guards the constitution only. It cannot hatch, rename, evolve or choose Keepers.
-              </div>
-            )}
+            <div className="council-note">
+              No council, no admin: the founders hold no vote. Changing these rules takes two thirds of the Keepers.
+            </div>
           </div>
         )}
 
@@ -256,7 +254,15 @@ export function TribePanel({
         )}
 
         <div className="tribe-foot">
-          DAO <a href={`${EXPLORER}/address/${DAO_ID}`} target="_blank" rel="noreferrer">{DAO_ID}</a> · votes are on-chain; any Sputnik DAO client shows the same proposals.
+          DAO <a href={`${EXPLORER}/address/${DAO_ID}`} target="_blank" rel="noreferrer">{DAO_ID}</a> · votes are on-chain; any Sputnik DAO client shows the same proposals
+          {DAO_ID.endsWith(".sputnik-dao.near") ? (
+            <>
+              {" "}· <a href={`https://trezu.app/${DAO_ID}`} target="_blank" rel="noreferrer">open in Trezu</a>
+            </>
+          ) : (
+            " (on mainnet that includes Trezu)"
+          )}
+          .
         </div>
       </div>
     </div>

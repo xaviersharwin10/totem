@@ -55,6 +55,7 @@ interface ChainTotem {
   xp_happy_days: number;
   next_level_happy_days: number | null;
   hoard: string;
+  released_stakes?: string;
   meal_size: string;
   fill_amount: string;
   traits: { palette: number };
@@ -90,6 +91,7 @@ function toView(t: ChainTotem, s: ChainStats): TotemView {
     xpHappyDays: t.xp_happy_days,
     nextLevelHappyDays: t.next_level_happy_days,
     hoard: toTokens(t.hoard),
+    releasedStakes: toTokens(t.released_stakes ?? "0"),
     totalBurned: toTokens(s.total_burned),
     totalFed: toTokens(s.total_fed),
     mealSize: toTokens(t.meal_size),

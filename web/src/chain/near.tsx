@@ -9,7 +9,7 @@ import { FailoverRpcProvider, JsonRpcProvider, getTransactionLastResult } from "
 import { NearConnector, type EventMap } from "@hot-labs/near-connect";
 import { createAccessKeyPlugin } from "function-call-key-plugin";
 import { CONTRACT_ID, KEY_METHODS, NETWORK, RPC_URLS } from "./config";
-import { Call, Guest, createGuest, guestCall, loadGuest } from "./guest";
+import { Call, Guest, createGuest, guestCall, loadGuest, restoreGuest } from "./guest";
 
 const GUEST_ON = "totem.guest.active";
 const guestActive = () => {
@@ -38,6 +38,10 @@ export interface NearCtx {
   signIn: () => Promise<void>;
   /** Start (or resume) a free guest account: no wallet, no NEAR needed. */
   playAsGuest: () => Promise<string>;
+  /** Continue a guest from another browser with its backup code. */
+  restoreGuestCode: (code: string) => Promise<string>;
+  /** The guest in this browser, for its backup code (null with a wallet). */
+  guest: Guest | null;
   /** A call to another contract (the tribe's DAO). Guests: zero-deposit only, relayed. */
   callAt: (receiverId: string, method: string, args: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
   /** Several calls in one go (one meta-transaction for guests, one wallet tx otherwise). */
@@ -114,6 +118,14 @@ export function NearProvider({ children }: PropsWithChildren) {
 
   const playAsGuest = useCallback(async () => {
     const g = await createGuest();
+    setGuestActive(true);
+    guestRef.current = g;
+    setGuest(g);
+    return g.accountId;
+  }, []);
+
+  const restoreGuestCode = useCallback(async (code: string) => {
+    const g = await restoreGuest(code);
     setGuestActive(true);
     guestRef.current = g;
     setGuest(g);
@@ -216,8 +228,8 @@ export function NearProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo(
-    () => ({ ready, accountId, isGuest, signIn, signOut, playAsGuest, view, viewAt, call, callAt, callMany }),
-    [ready, accountId, isGuest, signIn, signOut, playAsGuest, view, viewAt, call, callAt, callMany]
+    () => ({ ready, accountId, isGuest, guest: isGuest ? guest : null, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany }),
+    [ready, accountId, isGuest, guest, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

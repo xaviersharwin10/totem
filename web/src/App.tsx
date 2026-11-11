@@ -9,6 +9,7 @@ import { sfx, setMuted } from "./sfx";
 import { MochiChat, useMochi } from "./MochiChat";
 import { RescueCard, SosSheet } from "./Sos";
 import { shortGuest } from "./chain/guest";
+import { GuestKeySheet } from "./GuestKey";
 import { useTribe } from "./chain/dao";
 import { HatchVote, TribePanel } from "./Tribe";
 
@@ -63,6 +64,7 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [info, setInfo] = useState<null | "totem" | "hoard">(null);
+  const [guestKey, setGuestKey] = useState<null | "backup" | "restore">(null);
   // generation whose death card the player hid (it shrinks to a pill; a new death shows it again)
   const [deathHidden, setDeathHidden] = useState<number | null>(null);
   const [hint, setHint] = useState(true);
@@ -293,6 +295,7 @@ export default function App() {
         <div className="stat-card glass" onClick={() => setInfo("hoard")}>
           <div className="stat-lbl">💰 Hoard</div>
           <div className="stat-val gold"><Ticker value={view.hoard} /></div>
+          {(view.releasedStakes ?? 0) >= 1 && <div className="stat-sub">+{fmt(view.releasedStakes ?? 0)} stakes to withdraw</div>}
         </div>
         <div className="stat-card glass">
           <div className="stat-lbl">🔥 Burned forever</div>
@@ -316,7 +319,12 @@ export default function App() {
                   {game.balance === null ? "…" : `${fmt(game.balance)} $TOTEM`}
                   <button className="mini-btn" onClick={doFaucet} disabled={game.busy}>🚰 Get test $TOTEM</button>
                 </div>
-                {game.isGuest && <div className="guest-note">⚡ free guest · the game pays your gas</div>}
+                {game.isGuest && (
+                  <div className="guest-note">
+                    ⚡ free guest · the game pays your gas ·{" "}
+                    <button className="link-btn" onClick={() => setGuestKey("backup")}>🔑 back up</button>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -324,6 +332,7 @@ export default function App() {
                 <button className="ghost-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
                   ⚡ Play free, no wallet
                 </button>
+                <button className="link-btn restore-link" onClick={() => setGuestKey("restore")}>have a guest backup code?</button>
               </>
             ))}
           {game.mode === "live" && (
@@ -506,11 +515,20 @@ export default function App() {
                 <b>{fmt(view.hoard)} $TOTEM</b>. Half of every meal lands here and half is burned forever. A rampage bite burns
                 15% of it. The tribe's caretakers are paid Blessings from it.
               </p>
+              {!view.alive && <p>{view.name} is dead: its Reserve burned at death, so the Hoard is empty until the tribe hatches the next egg.</p>}
+              {(view.releasedStakes ?? 0) >= 1 && (
+                <p>
+                  Not counted: <b>{fmt(view.releasedStakes ?? 0)} $TOTEM</b> of stakes from {view.alive ? "earlier lives" : "this life"}.
+                  They belong to their stakers, who can withdraw them any time (or re-stake in the Tribe panel).
+                </p>
+              )}
             </>
           )}
           <div className="ip-close">tap to close</div>
         </div>
       )}
+
+      {guestKey && <GuestKeySheet mode={guestKey} onClose={() => setGuestKey(null)} onDone={(m) => pushToast(m, "info")} />}
 
       {/* ---------- tribe drawer ---------- */}
       <aside className={`drawer glass ${drawer ? "open" : ""}`}>

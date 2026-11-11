@@ -1,9 +1,8 @@
-// Dev/preview-only NEAR RPC proxy at /rpc.
+// NEAR RPC proxy at /rpc (dev / preview server, and reused by /api/mochi).
 // Public testnet RPCs rate-limit per IP, and a throttled reply (429) carries no
 // CORS header, so the browser shows it as a "CORS" failure. Proxying from the
 // dev server keeps requests same-origin, rotates upstreams past 429s/5xx, and
 // shares identical view calls for a moment (many tabs / StrictMode doubles).
-import type { Plugin } from "vite";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 const UPSTREAMS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
@@ -11,7 +10,7 @@ const CACHE_MS = 1000;
 const cache = new Map<string, { at: number; p: Promise<{ status: number; body: string }> }>();
 let next = 0;
 
-async function forward(body: string) {
+export async function rpcForward(body: string) {
   let last = { status: 502, body: JSON.stringify({ jsonrpc: "2.0", id: 0, error: { message: "all RPC upstreams failed" } }) };
   for (let i = 0; i < UPSTREAMS.length; i++) {
     const url = UPSTREAMS[(next + i) % UPSTREAMS.length];
@@ -42,7 +41,7 @@ function cacheKey(body: string): string | null {
   return null;
 }
 
-function handler(req: IncomingMessage, res: ServerResponse) {
+export function rpcHandler(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== "POST") {
     res.statusCode = 405;
     return res.end();
@@ -55,7 +54,7 @@ function handler(req: IncomingMessage, res: ServerResponse) {
     const hit = key ? cache.get(key) : undefined;
     if (hit && Date.now() - hit.at < CACHE_MS) p = hit.p;
     else {
-      p = forward(body);
+      p = rpcForward(body);
       if (key) cache.set(key, { at: Date.now(), p });
     }
     const out = await p;
@@ -71,16 +70,4 @@ function handler(req: IncomingMessage, res: ServerResponse) {
     res.setHeader("content-type", "application/json");
     res.end(text);
   });
-}
-
-export function rpcProxy(): Plugin {
-  return {
-    name: "near-rpc-proxy",
-    configureServer(s) {
-      s.middlewares.use("/rpc", handler);
-    },
-    configurePreviewServer(s) {
-      s.middlewares.use("/rpc", handler);
-    },
-  };
 }

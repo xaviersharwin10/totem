@@ -27,6 +27,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **Sputnik DAO ownership:** the tribe's DAO owns the Totem NFT, so rename / evolution / hatching happen only through DAO proposals (`FunctionCall` to the contract). The DAO cannot touch the Hoard or change a rule. On testnet, Generation 2 was hatched by a DAO vote.
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
+- **The Totem talks (NEAR AI Cloud).** The panda is an AI character whose facts all come from the chain: a small server endpoint reads `get_totem`, `get_lineage`, `get_caretaker` and `get_stake`, then asks a model on NEAR AI Cloud to answer in character. Its personality is derived from its on-chain traits, which are a hash of the previous generation's top 3 feeders, so the tribe's best feeders shape how the next panda talks. It knows who fed it, by account name, and remembers its ancestors from their gravestones.
 
 ## The rules (all fixed at launch)
 
@@ -59,6 +60,7 @@ Points, Badges and Blessings are all proportional to tokens actually spent, and 
 ├── contract/   Rust contract (near-sdk 5.30): token + game + staking + lineage + NFTs
 ├── sim/        Python agent-based balance model + committed charts
 ├── web/        Vite + React + three.js: the 3D farm where the Totem lives
+│   └── server/ /rpc proxy and /api/mochi (the Totem's AI voice on NEAR AI Cloud)
 ├── bot/        Telegram alerts (wip)
 ├── scripts/    deploy / DAO / demo (wip)
 └── RULES.md    final parameters
@@ -90,7 +92,8 @@ npm install && npm run dev
 
 The Totem is a chubby panda living on a small 3D farm island (React Three Fiber, no external models or art assets: everything is built from primitives in code).
 
-- **Do:** tap the panda. **See:** it jumps, spins and hearts float up.
+- **Do:** tap the panda. **See:** it jumps, hearts float up, and it says hi in a speech bubble, mentioning how it really feels (belly, level, bites left).
+- **Do:** press 💬 (or T) and ask "Who feeds you the most?" or "Tell me about your ancestors". **See:** it answers in character with real account names and amounts from the chain. Each generation has its own personality, derived from its on-chain traits. Needs `NEAR_AI_API_KEY` in `web/.env` (see `web/.env.example`); without it, it answers from canned lines that still use the real numbers.
 - **Do:** pick 🎋 in the dock, tap the grass (or press Space). **See:** bamboo falls, the panda runs over and eats it, the belly bar rises, and the Hoard and Burned counters go up.
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
 - Also: ⚽ throw a ball it chases, shake trees for apples, tap the **treasure chest** (the Hoard) or the totem pole for an explanation, drag to orbit, 🎥 to follow the panda. One Totem-day = 2 minutes, with a matching day/night cycle.

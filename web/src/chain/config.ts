@@ -4,7 +4,7 @@ export const CONTRACT_ID: string = import.meta.env.VITE_CONTRACT_ID ?? "totem-gr
 export const DAO_ID: string = import.meta.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
 // Public testnet RPCs rate-limit per IP; a throttled (429) reply has no CORS
 // header, so browsers report it as a CORS error. In dev / preview every call
-// goes through the same-origin /rpc proxy (web/rpc-proxy.ts), which rotates
+// goes through the same-origin /rpc proxy (web/server/rpc.ts), which rotates
 // upstreams and shares identical view calls. A static build talks to FastNEAR.
 const PUBLIC_RPCS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
 export const RPC_URLS: string[] = import.meta.env.VITE_RPC_URL

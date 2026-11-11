@@ -8,9 +8,11 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { Form, Mood } from "../engine";
 import { addBurst, bump, OBSTACLES, ROAM_RADIUS, world } from "./store";
+import { Rich, bubbleText } from "../rich";
 
 export interface PandaLook {
   patch: string; // the "black" patches, tinted per generation
@@ -27,12 +29,14 @@ export function Panda({
   level,
   look,
   onPet,
+  speech,
 }: {
   mood: Mood;
   form: Form;
   level: number;
   look: PandaLook;
   onPet: () => void;
+  speech?: { id: number; text: string; typing?: boolean } | null;
 }) {
   const root = useRef<THREE.Group>(null!);
   const pose = useRef<THREE.Group>(null!); // squash/roll/lie transforms
@@ -421,7 +425,7 @@ export function Panda({
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
-    if (mood === "dead") return;
+    if (mood === "dead") return onPet(); // the ghost can still talk
     world.panda.petAt = performance.now();
     for (let i = 0; i < 3; i++) {
       addBurst("heart", world.panda.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.2, 2.4 * size, 0)));
@@ -679,6 +683,13 @@ export function Panda({
           <sphereGeometry args={[0.05, 8, 6]} />
         </mesh>
       </group>
+      {speech && (
+        <Html position={[0, 2.55, 0]} center zIndexRange={[6, 0]} style={{ pointerEvents: "none" }}>
+          <div key={speech.id} className={`speech ${speech.typing ? "typing" : ""}`}>
+            {speech.typing ? <span className="dots"><i /><i /><i /></span> : <Rich text={bubbleText(speech.text)} />}
+          </div>
+        </Html>
+      )}
     </group>
   );
 }

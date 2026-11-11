@@ -24,3 +24,4 @@ __pycache__/
 *.pyc
 .venv/
 # Note: sim/out/ charts ARE committed intentionally (judge evidence, per brief 12.3)
+*.tsbuildinfo

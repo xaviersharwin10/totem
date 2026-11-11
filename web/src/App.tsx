@@ -7,6 +7,7 @@ import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
 import { sfx, setMuted } from "./sfx";
+import { MochiChat, useMochi } from "./MochiChat";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -36,6 +37,8 @@ interface Toast {
 
 export default function App() {
   const game = useGame();
+  const chat = useMochi(game);
+  const [chatOpen, setChatOpen] = useState(false);
   const start = useRef(Date.now());
 
   const [tool, setTool] = useState<Tool>("pet");
@@ -125,6 +128,7 @@ export default function App() {
         sfx.rescue();
         addBurst("text", new THREE.Vector3(x, 2.8, z), "RESCUE ×2!", "#ffd54a");
       }
+      chat.fed();
       setCombo((c) => c + 1);
       clearTimeout(comboTimer.current);
       comboTimer.current = setTimeout(() => setCombo(0), 1800);
@@ -192,6 +196,7 @@ export default function App() {
       if (e.key === "2") setTool("bamboo");
       if (e.key === "3") setTool("ball");
       if (e.key === "f") setFollow((f) => !f);
+      if (e.key === "t") setChatOpen((o) => !o);
       if (e.key === " ") {
         e.preventDefault();
         feedNearPanda();
@@ -222,7 +227,9 @@ export default function App() {
           onPet={() => {
             setHint(false);
             sfx.feed(2);
+            chat.hello();
           }}
+          speech={chat.speech}
           onShakeTree={() => {
             sfx.click();
             pushToast("🍎 Apples are a free snack. Only $TOTEM bamboo fills its belly.", "info");
@@ -301,6 +308,7 @@ export default function App() {
           )}
         </div>
         <div className="icon-row">
+          <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
           <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
           <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
           <button className="icon-btn" onClick={toggleMute} title="Sound">{muted ? "🔇" : "🔊"}</button>
@@ -388,6 +396,10 @@ export default function App() {
             <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
           </div>
         </div>
+      )}
+
+      {chatOpen && !loading && (
+        <MochiChat name={view.name} live={game.mode === "live"} chat={chat} onClose={() => setChatOpen(false)} />
       )}
 
       {/* ---------- death ---------- */}

@@ -34,6 +34,7 @@ export interface WorldProps {
   follow: boolean;
   onGround: (p: THREE.Vector3) => void;
   onPet: () => void;
+  speech?: { id: number; text: string; typing?: boolean } | null;
   onShakeTree: () => void;
   onInfo: (what: "totem" | "hoard") => void;
 }
@@ -65,7 +66,7 @@ export function World(p: WorldProps) {
       <Clouds />
       <Foods />
       <Ball />
-      <Panda mood={p.mood} form={p.form} level={p.level} look={p.look} onPet={p.onPet} />
+      <Panda mood={p.mood} form={p.form} level={p.level} look={p.look} onPet={p.onPet} speech={p.speech} />
       <Bursts />
       {night && <Stars radius={60} depth={20} count={1500} factor={3} fade speed={0.6} />}
       {night && <Sparkles count={40} scale={[18, 3, 18]} position={[0, 1.4, 0]} size={4} speed={0.4} color="#fff3a0" />}

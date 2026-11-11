@@ -14,6 +14,7 @@ Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTE
 | NFTs (NEP-171) | `totem-{gen}` minted to the DAO (dynamic metadata while alive, converted to a gravestone at death, transferable: governance follows the owner); soulbound `badge-{tier}-{acct}`, `hero-{gen}-{n}`, `founder-{gen}-{acct}`; contract pays the storage | [`nft.rs`](contract/src/nft.rs) |
 | Contract tests | 26 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split, NFTs (Totem, gravestone, soulbound badges, Hero, Founder, transfer), governance, evolution deadline, Blessings at/below L3 and after death | [`tests.rs`](contract/src/tests.rs) |
 | Web app | 3D farm (React Three Fiber) with an original chubby panda; feed / pet / ball / trees; totem pole = levels, treasure chest = Hoard, graveyard = lineage; day/night; glass HUD | [`web/src/`](web/src/) |
+| Mochi's voice (AI) | Tap the panda or press 💬: an AI character on NEAR AI Cloud (`anthropic/claude-haiku-5-5` by default), grounded in `get_totem` / `get_lineage` / `get_caretaker` / `get_stake`; personality from on-chain traits; knows feeders by name, ancestors, founders; thanks you after a feed; ghost voice when dead. Key stays server-side, 20 msgs/min/IP, canned fallback without a key | [`web/server/mochi.ts`](web/server/mochi.ts), [`web/src/MochiChat.tsx`](web/src/MochiChat.tsx) |
 | Docs | README (judge-facing), RULES.md (all parameters), brief updated to the 3D farm | root |
 
 **Run it:**
@@ -23,7 +24,8 @@ cd web && npm install && npm run dev  # http://localhost:5173
 ```
 
 **Know before you build on it:**
-- The web app runs a **client-side mirror** of the rules ([`web/src/engine.ts`](web/src/engine.ts)). It has the new bite rules but no staking, and is **not connected** to any contract or wallet yet.
+- The web app is **live on testnet** by default (NEAR Connect wallet, polled views) and keeps a **client-side mirror** of the rules ([`web/src/engine.ts`](web/src/engine.ts)) for Practice mode. The mirror has the bite rules but no staking.
+- The dev server also serves `/rpc` (RPC proxy) and `/api/mochi` (AI voice) from [`web/server/`](web/server/). A hosted build needs those two as serverless functions; `NEAR_AI_API_KEY` goes in `web/.env` (see [`web/.env.example`](web/.env.example)), never in git.
 - NFT storage is paid by the contract's own NEAR balance; fund the contract account generously on deploy.
 - Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
 - Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
@@ -54,7 +56,10 @@ The brief's cut order still applies if time runs out (section 16): cut the bot f
 - [x] **9. Web ↔ contract:** [`web/src/game.ts`](web/src/game.ts) is one interface over two backends: **live** (polls `get_totem` / `get_stats` / `get_lineage` on `totem-grumbo.testnet`, signs `feed` / `poke` / `faucet`) and **practice** (`engine.ts`, also the offline fallback). Wallet: NEAR Connect (`@hot-labs/near-connect@0.11.4`, the docs say Wallet Selector is deprecated) + `function-call-key-plugin@2.1.0` so zero-deposit calls sign without popups ([`web/src/chain/`](web/src/chain/)). Verified in a browser: live state renders, wallet picker opens. **Not yet verified:** a real wallet sign-in + feed from the browser (needs a human with a wallet).
 - [ ] **10. Web staking UI:** stake, unstake, withdraw, shield status ("🛡 Shielded for 14h" / "⚠️ feed 5 to protect your stake"), unbonding countdown.
 - [ ] **11. Other web screens:** claim Blessings and badges, lineage tree from `get_lineage`, rules from `get_config`, history with explorer links, faucet button.
-- [ ] **12. Hosting:** Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
+- [x] **18. Mochi's voice:** the Totem is an AI character grounded in chain state (see Done).
+- [ ] **19. SOS links:** when the Totem starves, a share card ("🆘 3 bites left, 1,240 $TOTEM about to burn") with a one-tap `/rescue` landing page; rescuers get the Hero badge and a thank-you from Mochi.
+- [ ] **20. Gasless rescue (stretch):** NEP-366 meta-transactions with a small relayer so new accounts (e.g. a fresh MetaMask address with 0 NEAR) can feed without gas.
+- [ ] **12. Hosting:** must also run `web/server/` (`/rpc`, `/api/mochi`) as serverless functions. Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
 - [ ] **13. Telegram bot:** grammY alerts (brief section 11). First to cut.
 - [ ] **14. README polish:** testnet contract + DAO addresses, working "try it in 5 minutes" steps against the hosted app, libraries used, limitations, prior art; add `.env.example`.
 - [ ] **15. Demo video + X post:** recorded and posted by the team (brief section 20).

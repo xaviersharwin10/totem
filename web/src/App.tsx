@@ -8,6 +8,8 @@ import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
 import { sfx, setMuted } from "./sfx";
 import { MochiChat, useMochi } from "./MochiChat";
+import { RescueCard, SosSheet } from "./Sos";
+import { shortGuest } from "./chain/guest";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -39,6 +41,17 @@ export default function App() {
   const game = useGame();
   const chat = useMochi(game);
   const [chatOpen, setChatOpen] = useState(false);
+  const [sosOpen, setSosOpen] = useState(false);
+  // opened from an SOS link (?rescue=1)
+  const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
+  const closeRescue = () => {
+    setRescueOpen(false);
+    history.replaceState(null, "", location.pathname);
+  };
+  useEffect(() => {
+    if (rescueOpen) game.setMode("live");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const start = useRef(Date.now());
 
   const [tool, setTool] = useState<Tool>("pet");
@@ -292,22 +305,29 @@ export default function App() {
             (game.accountId ? (
               <>
                 <div className="acct" title={game.accountId}>
-                  <span className="acct-id">{game.accountId}</span>
+                  <span className="acct-id">{game.isGuest ? shortGuest(game.accountId) : game.accountId}</span>
                   <button className="link-btn" onClick={() => game.disconnect()}>sign out</button>
                 </div>
                 <div className="acct-bal">
                   {game.balance === null ? "…" : `${fmt(game.balance)} $TOTEM`}
                   <button className="mini-btn" onClick={doFaucet} disabled={game.busy}>🚰 Get test $TOTEM</button>
                 </div>
+                {game.isGuest && <div className="guest-note">⚡ free guest · the game pays your gas</div>}
               </>
             ) : (
-              <button className="press-btn wallet-btn" onClick={() => game.connect().catch(() => undefined)}>Connect wallet</button>
+              <>
+                <button className="press-btn wallet-btn" onClick={() => game.connect().catch(() => undefined)}>Connect wallet</button>
+                <button className="ghost-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
+                  ⚡ Play free, no wallet
+                </button>
+              </>
             ))}
           {game.mode === "live" && (
             <a className="explorer-link" href={game.explorer} target="_blank" rel="noreferrer">contract on explorer ↗</a>
           )}
         </div>
         <div className="icon-row">
+          <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
           <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
           <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
           <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
@@ -342,6 +362,11 @@ export default function App() {
             </>
           )}
         </div>
+        {view.alive && view.fullnessBp < 7000 && (
+          <button className={`sos-btn ${rampage ? "hot" : ""}`} onClick={() => setSosOpen(true)}>
+            🆘 Call for help
+          </button>
+        )}
         {combo > 1 && <div className="combo">{combo}× combo!</div>}
       </div>
 
@@ -396,6 +421,20 @@ export default function App() {
             <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
           </div>
         </div>
+      )}
+
+      {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
+      {rescueOpen && (
+        <RescueCard
+          game={game}
+          toast={(t) => pushToast(t, "info")}
+          onClose={closeRescue}
+          onDone={(heroic) => {
+            sfx.rescue();
+            addBurst("text", world.panda.pos.clone().setY(3), heroic ? "🦸 HERO!" : "+🎋", "#ffd54a");
+            chat.fed(heroic ? "rescue" : "fed");
+          }}
+        />
       )}
 
       {chatOpen && !loading && (
@@ -557,9 +596,10 @@ function DockItem({
 function friendly(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/NotEnoughBalance|LackBalanceForState|balance/i.test(msg) && !/TOTEM/.test(msg))
-    return "Your account needs a little testnet NEAR for gas. Get some free at near-faucet.io, then try again.";
+    return "Your account has no testnet NEAR for gas. Sign out and tap “⚡ Play free, no wallet” (the game pays the gas), or get NEAR at near-faucet.io.";
   if (/AccessKeyDoesNotExist|does not exist/i.test(msg)) return "Wallet key not found on-chain. Sign out and connect again.";
   if (/reject|cancel|denied|closed/i.test(msg)) return "Cancelled in the wallet.";
+  if (/once per Totem-day/.test(msg)) return "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment.";
   return msg.length > 140 ? msg.slice(0, 140) + "…" : msg;
 }
 

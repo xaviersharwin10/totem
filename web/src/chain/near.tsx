@@ -9,13 +9,37 @@ import { FailoverRpcProvider, JsonRpcProvider, getTransactionLastResult } from "
 import { NearConnector, type EventMap } from "@hot-labs/near-connect";
 import { createAccessKeyPlugin } from "function-call-key-plugin";
 import { CONTRACT_ID, KEY_METHODS, NETWORK, RPC_URLS } from "./config";
+import { Call, Guest, createGuest, guestCall, loadGuest } from "./guest";
+
+const GUEST_ON = "totem.guest.active";
+const guestActive = () => {
+  try {
+    return localStorage.getItem(GUEST_ON) === "1";
+  } catch {
+    return false;
+  }
+};
+const setGuestActive = (on: boolean) => {
+  try {
+    if (on) localStorage.setItem(GUEST_ON, "1");
+    else localStorage.removeItem(GUEST_ON);
+  } catch {
+    /* ignore */
+  }
+};
 
 type Wallet = Awaited<ReturnType<NearConnector["wallet"]>>;
 
 export interface NearCtx {
   ready: boolean;
   accountId: string;
+  /** true when playing as a gasless guest (no wallet; the game pays the gas) */
+  isGuest: boolean;
   signIn: () => Promise<void>;
+  /** Start (or resume) a free guest account: no wallet, no NEAR needed. */
+  playAsGuest: () => Promise<string>;
+  /** Several calls in one go (one meta-transaction for guests, one wallet tx otherwise). */
+  callMany: (calls: Call[]) => Promise<void>;
   signOut: () => Promise<void>;
   view: <T = unknown>(method: string, args?: Record<string, unknown>) => Promise<T>;
   call: (method: string, args?: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
@@ -43,7 +67,14 @@ export function NearProvider({ children }: PropsWithChildren) {
   );
   const provider = useMemo(() => new FailoverRpcProvider(RPC_URLS.map((url) => new JsonRpcProvider({ url }))), []);
   const [wallet, setWallet] = useState<Wallet | undefined>();
-  const [accountId, setAccountId] = useState("");
+  const [walletAccount, setAccountId] = useState("");
+  const [guest, setGuest] = useState<Guest | null>(() => (guestActive() ? loadGuest() : null));
+  // a connected wallet wins over the guest
+  const accountId = walletAccount || guest?.accountId || "";
+  // read by call/callMany right after playAsGuest(), before React re-renders
+  const guestRef = useRef(guest);
+  guestRef.current = guest;
+  const isGuest = !walletAccount && !!guest;
   const [ready, setReady] = useState(false);
   const pluginReady = useRef<Promise<void>>();
 
@@ -78,6 +109,14 @@ export function NearProvider({ children }: PropsWithChildren) {
     };
   }, [connector, plugin]);
 
+  const playAsGuest = useCallback(async () => {
+    const g = await createGuest();
+    setGuestActive(true);
+    guestRef.current = g;
+    setGuest(g);
+    return g.accountId;
+  }, []);
+
   const signIn = useCallback(async () => {
     const w = await connector.connect();
     setWallet(w);
@@ -86,7 +125,13 @@ export function NearProvider({ children }: PropsWithChildren) {
   }, [connector]);
 
   const signOut = useCallback(async () => {
-    if (!wallet) return;
+    if (!wallet) {
+      // the guest key stays in this browser, so "Play free" brings the same account back
+      setGuestActive(false);
+      guestRef.current = null;
+      setGuest(null);
+      return;
+    }
     await connector.disconnect(wallet);
     setWallet(undefined);
     setAccountId("");
@@ -100,6 +145,11 @@ export function NearProvider({ children }: PropsWithChildren) {
 
   const call = useCallback(
     async (method: string, args: Record<string, unknown> = {}, opts: { gas?: string; deposit?: string } = {}) => {
+      const g = guestRef.current;
+      if (!wallet && g) {
+        const { hash } = await guestCall(g, [{ method, args, gas: opts.gas ? BigInt(opts.gas) : undefined }]);
+        return hash;
+      }
       if (!wallet) throw new Error("Connect a wallet first");
       const r = await wallet.signAndSendTransaction({
         receiverId: CONTRACT_ID,
@@ -112,10 +162,32 @@ export function NearProvider({ children }: PropsWithChildren) {
       });
       return getTransactionLastResult(r);
     },
-    [wallet]
+    [wallet, guest]
   );
 
-  const value = useMemo(() => ({ ready, accountId, signIn, signOut, view, call }), [ready, accountId, signIn, signOut, view, call]);
+  const callMany = useCallback(
+    async (calls: Call[]) => {
+      const g = guestRef.current;
+      if (!wallet && g) {
+        await guestCall(g, calls);
+        return;
+      }
+      if (!wallet) throw new Error("Connect a wallet first");
+      await wallet.signAndSendTransaction({
+        receiverId: CONTRACT_ID,
+        actions: calls.map((c) => ({
+          type: "FunctionCall" as const,
+          params: { methodName: c.method, args: c.args ?? {}, gas: String(c.gas ?? 50_000_000_000_000n), deposit: "0" },
+        })),
+      });
+    },
+    [wallet, guest]
+  );
+
+  const value = useMemo(
+    () => ({ ready, accountId, isGuest, signIn, signOut, playAsGuest, view, call, callMany }),
+    [ready, accountId, isGuest, signIn, signOut, playAsGuest, view, call, callMany]
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

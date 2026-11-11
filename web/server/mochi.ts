@@ -101,7 +101,12 @@ async function view<T>(method: string, args: Record<string, unknown> = {}): Prom
 const tokens = (yocto: string | bigint) => Number(BigInt(yocto) / (ONE / 100n)) / 100;
 const fmt = (n: number) => (n >= 100 ? Math.round(n).toLocaleString("en-US") : String(Math.round(n * 100) / 100));
 // shorten only long hex accounts (0x… Ethereum-style, 64-char implicit); named accounts stay readable
-export const short = (id: string) => (/^(0x)?[0-9a-f]{40,64}$/.test(id) ? `${id.slice(0, 6)}…${id.slice(-4)}` : id);
+export const short = (id: string) =>
+  /^(0x)?[0-9a-f]{40,64}$/.test(id)
+    ? `${id.slice(0, 6)}…${id.slice(-4)}`
+    : /^g[0-9a-f]{8}\.totem-grumbo-relay\./.test(id)
+      ? `guest ${id.split(".")[0]}` // free guest accounts (web/server/relay.ts)
+      : id;
 const dur = (s: string | null | undefined) => {
   if (s == null) return null;
   const n = Number(s);
@@ -276,6 +281,7 @@ function fallback(s: Snapshot, trigger?: string): string {
     const anc = s.lineage.filter((l) => !l.alive && l.generation < t.generation).length;
     return `👻 ${name} rests in the graveyard now… ${anc ? `beside ${anc} ancestor${anc === 1 ? "" : "s"}. ` : ""}Ask the tribe's DAO to hatch the next egg.`;
   }
+  if (trigger === "rescue") return `🦸 You saved me${s.you ? `, ${short(s.you.id)}` : ""}! The Rampage is over. I'll never forget this.`;
   if (trigger === "fed") return `Nom nom! 🎋 Thank you${s.you ? `, ${short(s.you.id)}` : ""}! Half of that just burned forever.`;
   if (t.mood === "rampage")
     return `HUNGRY!! 😭 ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} until I'm gone and every bite burns 15% of my ${fmt(tokens(t.hoard))} $TOTEM Hoard. Please feed me!`;
@@ -337,7 +343,7 @@ export interface MochiRequest {
   accountId?: string;
   events?: string[];
   practice?: PracticeState;
-  trigger?: "fed" | "hello";
+  trigger?: "fed" | "hello" | "rescue";
 }
 
 export async function mochiReply(req: MochiRequest): Promise<{ reply: string; source: "ai" | "fallback" }> {
@@ -351,6 +357,8 @@ export async function mochiReply(req: MochiRequest): Promise<{ reply: string; so
   let system = systemPrompt(snap, practice);
   if (events.length) system += `\n\nRecent things the player saw happen (newest first):\n${events.map((e) => `- ${e}`).join("\n")}`;
 
+  if (req.trigger === "rescue")
+    history.push({ role: "user", content: "(The player just RESCUED you from your Rampage and earned a Hero badge. Thank them by name, heroically and emotionally, in one or two short lines.)" });
   if (req.trigger === "fed") history.push({ role: "user", content: "(The player just fed you. React with one short, happy, in-character line.)" });
   if (req.trigger === "hello" || history.length === 0)
     history.push({ role: "user", content: "(The player just tapped you to say hi. Greet them in one or two short lines, mentioning how you feel right now.)" });

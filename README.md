@@ -27,6 +27,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **Sputnik DAO ownership:** the tribe's DAO owns the Totem NFT, so rename / evolution / hatching happen only through DAO proposals (`FunctionCall` to the contract). The DAO cannot touch the Hoard or change a rule. On testnet, Generation 2 was hatched by a DAO vote.
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
+- **Gasless play for anyone: zero-balance accounts + meta-transactions.** A rescuer with no wallet and no NEAR taps "Rescue": the game creates `g<hex>.totem-grumbo-relay.testnet` holding **0 NEAR** (a NEP-448 zero-balance account) with a key generated in their browser. Each action is a NEP-366 `DelegateAction` signed in the browser; our relayer wraps it in a transaction and pays the gas. The relayer only sponsors zero-deposit calls to this contract's game methods, rate-limited. On testnet a fresh guest rescued the Totem from a Rampage and received the Hero NFT with 0 NEAR in its account.
 - **The Totem talks (NEAR AI Cloud).** The panda is an AI character whose facts all come from the chain: a small server endpoint reads `get_totem`, `get_lineage`, `get_caretaker` and `get_stake`, then asks a model on NEAR AI Cloud to answer in character. Its personality is derived from its on-chain traits, which are a hash of the previous generation's top 3 feeders, so the tribe's best feeders shape how the next panda talks. It knows who fed it, by account name, and remembers its ancestors from their gravestones.
 
 ## The rules (all fixed at launch)
@@ -60,7 +61,7 @@ Points, Badges and Blessings are all proportional to tokens actually spent, and 
 ├── contract/   Rust contract (near-sdk 5.30): token + game + staking + lineage + NFTs
 ├── sim/        Python agent-based balance model + committed charts
 ├── web/        Vite + React + three.js: the 3D farm where the Totem lives
-│   └── server/ /rpc proxy and /api/mochi (the Totem's AI voice on NEAR AI Cloud)
+│   └── server/ /rpc proxy, /api/mochi (AI voice), /api/guest + /api/relay (gasless guests, NEP-366 relayer)
 ├── bot/        Telegram alerts (wip)
 ├── scripts/    deploy / DAO / demo (wip)
 └── RULES.md    final parameters
@@ -93,6 +94,8 @@ npm install && npm run dev
 The Totem is a chubby panda living on a small 3D farm island (React Three Fiber, no external models or art assets: everything is built from primitives in code).
 
 - **Do:** tap the panda. **See:** it jumps, hearts float up, and it says hi in a speech bubble, mentioning how it really feels (belly, level, bites left).
+- **Do:** when it gets hungry, press **🆘 Call for help** (or 📣 any time). **See:** a share card with a snapshot of the farm and the real numbers ("1 bite from death · next bite burns 128 $TOTEM"), with Share / Post on X / Telegram / Copy buttons. Nothing is posted for you.
+- **Do:** open the link from the card (`/?rescue=1`) in a fresh browser with no wallet and tap **Rescue**. **See:** a free guest account is made, the faucet + feed go through as one gasless meta-transaction, the Rampage ends, a soulbound Hero NFT is minted to the guest, and Mochi thanks them by name.
 - **Do:** press 💬 (or T) and ask "Who feeds you the most?" or "Tell me about your ancestors". **See:** it answers in character with real account names and amounts from the chain. Each generation has its own personality, derived from its on-chain traits. Needs `NEAR_AI_API_KEY` in `web/.env` (see `web/.env.example`); without it, it answers from canned lines that still use the real numbers.
 - **Do:** pick 🎋 in the dock, tap the grass (or press Space). **See:** bamboo falls, the panda runs over and eats it, the belly bar rises, and the Hoard and Burned counters go up.
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
@@ -103,6 +106,7 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 Full manual test checklist (practice, live wallet flow, DAO, troubleshooting): **[TESTING.md](TESTING.md)**.
 
 - **Do:** click **Connect wallet** (NEAR Connect: Meteor, Intear, Nightly, Ledger, NEAR CLI, or an Ethereum wallet). **See:** your account and $TOTEM balance in the wallet panel.
+- **Or:** click **⚡ Play free, no wallet**. **See:** a guest account (`guest g1a2b3c4d`) with 0 NEAR; faucet, feed and poke work without gas or popups (the game relays them).
 - **Do:** click **🚰 Get test $TOTEM**. **See:** +1,000 $TOTEM (the demo-mode faucet).
 - **Do:** feed. **See:** a real `feed` transaction; the belly, Hoard and Burned numbers update from chain. Sign-in adds a limited key for this contract, so feeding / poking / faucet don't pop the wallet every time.
 - If the Totem is dead on-chain, only the tribe's DAO can hatch it (`scripts/dao-propose.sh hatch`); the app says so.
@@ -171,6 +175,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
 | Genesis holder and DAO council member (1-of-1 for the demo) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
 | A Keeper (1,000 $TOTEM staked) | [`totem-grumbo-keeper.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-keeper.testnet) |
+| Gas relayer for free guests (NEP-366); guests are its zero-balance sub-accounts `g<hex>.totem-grumbo-relay.testnet` | [`totem-grumbo-relay.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-relay.testnet) |
 
 Read the live state (no wallet needed):
 

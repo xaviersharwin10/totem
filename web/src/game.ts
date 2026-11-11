@@ -26,9 +26,13 @@ export interface Game {
   leaderboard: { who: string; points: number; unit: string }[];
   events: GameEvent[];
   accountId: string;
+  isGuest: boolean; // playing free: no wallet, the game pays the gas
   balance: number | null; // $TOTEM, live only
   busy: boolean;
   connect: () => Promise<void>;
+  playAsGuest: () => Promise<void>;
+  /** One tap: (make a free guest if needed,) top up from the faucet if short, feed to full. */
+  rescue: () => Promise<FeedResult>;
   disconnect: () => Promise<void>;
   faucet: () => Promise<void>;
   feed: (amount: number | "fill") => Promise<FeedResult>;
@@ -300,6 +304,38 @@ export function useGame(): Game {
     }
   };
 
+  const rescue = async (): Promise<FeedResult> => {
+    if (mode === "practice") return feed("fill");
+    if (!live) throw new Error("Still loading the Totem…");
+    if (!live.t.alive) throw new Error("Too late: it already starved. Only the tribe's DAO can hatch the next egg.");
+    let who = near.accountId;
+    if (!who) who = await near.playAsGuest(); // note: `near` here is this render's snapshot; calls read the guest from a ref
+    const fillYocto = BigInt(live.t.fill_amount);
+    if (fillYocto <= 0n) throw new Error("I'm full! 😋 Someone already rescued me.");
+    setBusy(true);
+    try {
+      const bal = BigInt(await near.view<string>("ft_balance_of", { account_id: who }));
+      const calls: { method: string; args?: Record<string, unknown> }[] = [];
+      let have = bal;
+      if (bal < fillYocto) {
+        calls.push({ method: "faucet" });
+        have += BigInt(Math.round(1000 * 1e6)) * 10n ** 12n;
+      }
+      const amt = fillYocto < have ? fillYocto : have;
+      if (amt <= 0n) throw new Error("No $TOTEM to feed with.");
+      calls.push({ method: "feed", args: { amount: amt.toString() } });
+      const rescueNow = live.t.fullness_bp < 3000;
+      await near.callMany(calls);
+      const accepted = toTokens(amt);
+      pushLive("rescue", `${rescueNow ? "🦸" : "🎋"} you fed ${fmt(accepted)}: ${fmt(accepted / 2)} burned forever`);
+      return { accepted, burn: accepted / 2, rescue: rescueNow };
+    } finally {
+      setBusy(false);
+      refresh();
+      refreshBalance();
+    }
+  };
+
   const hatch =
     mode === "practice"
       ? () => {
@@ -319,9 +355,14 @@ export function useGame(): Game {
     leaderboard,
     events,
     accountId: near.accountId,
+    isGuest: near.isGuest,
     balance,
     busy,
     connect: near.signIn,
+    playAsGuest: async () => {
+      await near.playAsGuest();
+    },
+    rescue,
     disconnect: near.signOut,
     faucet,
     feed,

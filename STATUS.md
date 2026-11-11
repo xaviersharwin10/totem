@@ -25,7 +25,7 @@ cd web && npm install && npm run dev  # http://localhost:5173
 
 **Know before you build on it:**
 - The web app is **live on testnet** by default (NEAR Connect wallet, polled views) and keeps a **client-side mirror** of the rules ([`web/src/engine.ts`](web/src/engine.ts)) for Practice mode. The mirror has the bite rules but no staking.
-- The dev server also serves `/rpc` (RPC proxy) and `/api/mochi` (AI voice) from [`web/server/`](web/server/). A hosted build needs those two as serverless functions; `NEAR_AI_API_KEY` goes in `web/.env` (see [`web/.env.example`](web/.env.example)), never in git.
+- The dev server also serves `/rpc` (RPC proxy), `/api/mochi` (AI voice), `/api/guest` and `/api/relay` (gasless guests) from [`web/server/`](web/server/). A hosted build needs those two as serverless functions; `NEAR_AI_API_KEY` goes in `web/.env` (see [`web/.env.example`](web/.env.example)), never in git.
 - NFT storage is paid by the contract's own NEAR balance; fund the contract account generously on deploy.
 - Blessings use the level at settle time when a period closes (a small approximation; documented in the code).
 - Commits go out as `xaviersharwin10` / `Raksha001` only, with no AI co-author trailers.
@@ -57,9 +57,9 @@ The brief's cut order still applies if time runs out (section 16): cut the bot f
 - [ ] **10. Web staking UI:** stake, unstake, withdraw, shield status ("🛡 Shielded for 14h" / "⚠️ feed 5 to protect your stake"), unbonding countdown.
 - [ ] **11. Other web screens:** claim Blessings and badges, lineage tree from `get_lineage`, rules from `get_config`, history with explorer links, faucet button.
 - [x] **18. Mochi's voice:** the Totem is an AI character grounded in chain state (see Done).
-- [ ] **19. SOS links:** when the Totem starves, a share card ("🆘 3 bites left, 1,240 $TOTEM about to burn") with a one-tap `/rescue` landing page; rescuers get the Hero badge and a thank-you from Mochi.
-- [ ] **20. Gasless rescue (stretch):** NEP-366 meta-transactions with a small relayer so new accounts (e.g. a fresh MetaMask address with 0 NEAR) can feed without gas.
-- [ ] **12. Hosting:** must also run `web/server/` (`/rpc`, `/api/mochi`) as serverless functions. Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
+- [x] **19. SOS links:** 🆘 Call for help / 📣 share sheet with a 1200×630 card (snapshot of the farm + live numbers), native share / X / Telegram / copy / save image; `/?rescue=1` opens a one-tap Rescue card (live countdown, Hoard at risk); Hero badge + Mochi's thank-you; "Brag on X" after. Nothing is ever posted automatically. [`web/src/Sos.tsx`](web/src/Sos.tsx)
+- [x] **20. Gasless play:** "⚡ Play free, no wallet" and the Rescue card create a zero-balance guest `g<hex>.totem-grumbo-relay.testnet` (NEP-448) whose key lives in the browser; actions are NEP-366 meta-transactions relayed by `totem-grumbo-relay.testnet` (10 testnet NEAR). The relayer only sponsors zero-deposit calls to the game's methods (≤3 actions, ≤100 Tgas each; 5 new guests/IP/hour, 40 relays/IP/hour, 30/account/hour). Verified on testnet: guest `g4b1793d4…` rescued Mochi IV with 0 NEAR and owns `hero-4-2`. [`web/server/relay.ts`](web/server/relay.ts), [`web/src/chain/guest.ts`](web/src/chain/guest.ts)
+- [ ] **12. Hosting:** must also run `web/server/` (`/rpc`, `/api/mochi`, `/api/guest`, `/api/relay`) as serverless functions, with `NEAR_AI_API_KEY` and `RELAYER_PRIVATE_KEY` as secrets. Rate limits are in-memory today (per instance). Vercel or GitHub Pages; keep it up until at least Nov 18 (ideally Nov 25).
 - [ ] **13. Telegram bot:** grammY alerts (brief section 11). First to cut.
 - [ ] **14. README polish:** testnet contract + DAO addresses, working "try it in 5 minutes" steps against the hosted app, libraries used, limitations, prior art; add `.env.example`.
 - [ ] **15. Demo video + X post:** recorded and posted by the team (brief section 20).

@@ -41,7 +41,7 @@ export function useMochi(game: Game) {
     speechTimer.current = setTimeout(() => setSpeech(null), SPEECH_MS);
   };
 
-  const ask = async (history: ChatMsg[], trigger?: "fed" | "hello"): Promise<string> => {
+  const ask = async (history: ChatMsg[], trigger?: "fed" | "hello" | "rescue"): Promise<string> => {
     setTyping(true);
     clearTimeout(speechTimer.current);
     setSpeech({ id: Date.now(), text: "", typing: true });
@@ -88,10 +88,10 @@ export function useMochi(game: Game) {
 
   /** The player just fed it (at most every 20 s, to spare the AI credits). */
   const lastFed = useRef(0);
-  const fed = async () => {
-    if (typing || Date.now() - lastFed.current < 20_000) return;
+  const fed = async (why: "fed" | "rescue" = "fed") => {
+    if (typing || (why === "fed" && Date.now() - lastFed.current < 20_000)) return;
     lastFed.current = Date.now();
-    const reply = await ask(messages, "fed");
+    const reply = await ask(messages, why);
     setMessages((m) => [...m, { role: "assistant", content: reply }]);
     say(reply);
   };

@@ -84,6 +84,21 @@ The default mode (**Live testnet**) reads `totem-grumbo.testnet` (demo mode: 1 T
 
 - [ ] **Talk (live):** press **💬** and ask "Who feeds you the most?". It names real accounts and amounts from `get_lineage`. Connected, it knows your own feeding, badge and stake. Dead, it talks as a ghost from its gravestone.
 
+### SOS and gasless rescue (no wallet, no NEAR)
+
+The relayer key is read from `~/.near-credentials/testnet/totem-grumbo-relay.testnet.json` on the dev machine (or `RELAYER_PRIVATE_KEY` in `web/.env`).
+
+- [ ] When the belly drops below 70%, **🆘 Call for help** appears under the belly bar (📣 in the top-right works any time). **See:** a card image of the farm with live numbers, and Share / Post on X / Telegram / Copy / Save image. Nothing is posted unless you post it.
+- [ ] Open `http://127.0.0.1:5173/?rescue=1` in a **private window** (no wallet, no guest). **See:** the Rescue card ("is safe" / "is hungry" / "needs you!" with bites left, countdown and $TOTEM at risk).
+- [ ] Wait for the Rampage (a newborn starves in ~2.5 min), tap **Rescue**. **See:** "Making you a free account…", then "You saved …! A soulbound Hero badge NFT was minted to guest g…". Mochi thanks you in a speech bubble.
+- [ ] Check on chain: the guest has **0 NEAR** and owns the Hero token:
+  ```bash
+  near account view-account-summary g<hex>.totem-grumbo-relay.testnet network-config testnet now
+  near contract call-function as-read-only totem-grumbo.testnet nft_tokens_for_owner json-args '{"account_id":"g<hex>.totem-grumbo-relay.testnet"}' network-config testnet now
+  ```
+- [ ] **⚡ Play free, no wallet** in the wallet panel: faucet / feed / poke work with no popups and no gas. "sign out" hides the guest; "Play free" brings the same one back (the key stays in this browser).
+- [ ] The relayer refuses anything else: a call to another contract, a method outside the game list, or an attached deposit returns an error.
+
 ### Things to know
 
 - **$TOTEM does not show in MetaMask.** It is a NEAR token (NEP-141), not an ERC-20, so there is no "import token" for it.
@@ -143,4 +158,6 @@ near contract call-function as-read-only totem-grumbo.testnet ft_balance_of json
 | Death card won't go away | The Totem is dead on-chain | `scripts/dao-propose.sh hatch`, or press ✕ to hide it |
 | Gravestone says "Grumbo II" but the header says "Mochi II" | It died as Grumbo; the rename applies to the next generation | Expected |
 | Mochi only says canned lines (`"source":"fallback"`) | No `NEAR_AI_API_KEY` in `web/.env`, or NEAR AI is down / out of credits | Set the key, restart `npm run dev` |
+| "Free $TOTEM refills once per Totem-day" | The faucet was claimed less than 2 minutes ago by this account | Wait a moment and retry |
+| Rescue says "account exists with another key" | This browser's guest key was cleared but the account exists | Clear site data and try again (a new key gets a new guest) |
 | App switched itself to Practice | Testnet RPC unreachable 3 times in a row | Check the network, switch back to Live |

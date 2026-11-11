@@ -46,7 +46,7 @@ export function World(p: WorldProps) {
       shadows
       dpr={[1, 2]}
       camera={{ position: [0, 7.2, 13], fov: 42 }}
-      gl={{ antialias: true }}
+      gl={{ antialias: true, preserveDrawingBuffer: true }} // lets the SOS card snapshot the farm
       onCreated={({ scene }) => {
         scene.background = new THREE.Color("#a8dcff");
         scene.fog = new THREE.Fog("#a8dcff", 28, 60);

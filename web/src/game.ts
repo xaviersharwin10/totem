@@ -177,14 +177,14 @@ export function useGame(): Game {
   useEffect(() => {
     if (mode !== "live") return;
     refresh();
-    const t = setInterval(refresh, 1500);
+    const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
   }, [mode, refresh]);
 
   useEffect(() => {
     if (mode !== "live") return;
     refreshBalance();
-    const t = setInterval(refreshBalance, 5000);
+    const t = setInterval(refreshBalance, 10000);
     return () => clearInterval(t);
   }, [mode, refreshBalance, near.accountId]);
 

@@ -32,7 +32,11 @@ export function NearProvider({ children }: PropsWithChildren) {
     () =>
       createAccessKeyPlugin({
         network: NETWORK,
-        providers: { testnet: RPC_URLS },
+        // One RPC only: with several, near-api-js's FailoverRpcProvider wraps
+        // errors ("Exceeded N providers"), the plugin no longer recognises
+        // AccessKeyDoesNotExist, and it throws instead of falling back to the
+        // wallet (e.g. when a wallet such as MetaMask didn't add the key).
+        providers: { testnet: [RPC_URLS[0]] },
         signIn: { contractId: CONTRACT_ID, methodNames: KEY_METHODS, allowance: "250000000000000000000000" },
       }),
     []

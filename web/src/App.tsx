@@ -130,7 +130,7 @@ export default function App() {
       sfx.click();
       const msg = e instanceof Error ? e.message : String(e);
       if (/full/i.test(msg)) addBurst("text", world.panda.pos.clone().setY(2.8), "I'm full! 😋", "#ffffff");
-      else pushToast(msg.length > 140 ? msg.slice(0, 140) + "…" : msg, "info");
+      else pushToast(friendly(e), "info");
     }
   };
 
@@ -155,7 +155,7 @@ export default function App() {
       sfx.coin();
       addBurst("coin", new THREE.Vector3(2.6, 1.6, -7));
     } catch (e) {
-      pushToast(e instanceof Error ? e.message : String(e), "info");
+      pushToast(friendly(e), "info");
     }
   };
 
@@ -172,7 +172,7 @@ export default function App() {
       sfx.coin();
       pushToast("🚰 +1,000 test $TOTEM. Now feed it!", "level_up");
     } catch (e) {
-      pushToast(e instanceof Error ? e.message : String(e), "info");
+      pushToast(friendly(e), "info");
     }
   };
 
@@ -531,6 +531,16 @@ function DockItem({
       <span className="dock-tip">{label}</span>
     </button>
   );
+}
+
+/** Turn raw wallet / RPC errors into something a player can act on. */
+function friendly(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/NotEnoughBalance|LackBalanceForState|balance/i.test(msg) && !/TOTEM/.test(msg))
+    return "Your account needs a little testnet NEAR for gas. Get some free at near-faucet.io, then try again.";
+  if (/AccessKeyDoesNotExist|does not exist/i.test(msg)) return "Wallet key not found on-chain. Sign out and connect again.";
+  if (/reject|cancel|denied|closed/i.test(msg)) return "Cancelled in the wallet.";
+  return msg.length > 140 ? msg.slice(0, 140) + "…" : msg;
 }
 
 function moodEmoji(mood: string): string {

@@ -13,16 +13,25 @@ fn emit(event: &str, data: near_sdk::serde_json::Value) {
     env::log_str(&format!("EVENT_JSON:{}", payload));
 }
 
-pub fn feed(account: &AccountId, amount: u128, burned: u128, to_hoard: u128, points: u128, rescue: bool) {
+pub fn feed(
+    account: &AccountId,
+    amount: u128,
+    burned: u128,
+    to_reserve: u128,
+    points: u128,
+    rescue: bool,
+    staker: bool,
+) {
     emit(
         "feed",
         json!({
             "account": account,
             "amount": amount.to_string(),
             "burned": burned.to_string(),
-            "to_hoard": to_hoard.to_string(),
+            "to_reserve": to_reserve.to_string(),
             "points": points.to_string(),
             "rescue": rescue,
+            "staker_bonus": staker,
         }),
     );
 }
@@ -35,16 +44,29 @@ pub fn evolve(form: &str) {
     emit("evolve", json!({ "form": form }));
 }
 
-pub fn bite(amount: u128, hoard_after: u128, tip: u128, poker: Option<&AccountId>) {
+pub fn bite(
+    reserve_burned: u128,
+    stake_slashed: u128,
+    tip: u128,
+    poker: Option<&AccountId>,
+    reserve_after: u128,
+    level_after: u32,
+) {
     emit(
         "bite",
         json!({
-            "amount": amount.to_string(),
-            "hoard_after": hoard_after.to_string(),
+            "reserve_burned": reserve_burned.to_string(),
+            "stake_slashed": stake_slashed.to_string(),
             "tip": tip.to_string(),
             "poker": poker,
+            "reserve_after": reserve_after.to_string(),
+            "level_after": level_after,
         }),
     );
+}
+
+pub fn level_down(level: u32) {
+    emit("level_down", json!({ "level": level }));
 }
 
 pub fn rampage_start() {
@@ -55,15 +77,71 @@ pub fn rampage_end(by: &AccountId) {
     emit("rampage_end", json!({ "by": by }));
 }
 
-pub fn death(generation: u32, name: &str, max_level: u32) {
+pub fn death(generation: u32, lineage_name: &str, max_level: u32, lifespan_sec: u64) {
     emit(
         "death",
-        json!({ "generation": generation, "name": name, "max_level": max_level }),
+        json!({
+            "generation": generation,
+            "name": lineage_name,
+            "max_level": max_level,
+            "lifespan_sec": lifespan_sec,
+        }),
     );
 }
 
-pub fn hatch(generation: u32, owner: &AccountId) {
-    emit("hatch", json!({ "generation": generation, "owner": owner }));
+pub fn hatch(
+    generation: u32,
+    lineage_name: &str,
+    owner: &AccountId,
+    traits: &crate::Traits,
+    founders: &[AccountId],
+) {
+    emit(
+        "hatch",
+        json!({
+            "generation": generation,
+            "name": lineage_name,
+            "owner": owner,
+            "traits": traits,
+            "founders": founders,
+        }),
+    );
+}
+
+pub fn stake(account: &AccountId, amount: u128, principal_after: u128) {
+    emit(
+        "stake",
+        json!({
+            "account": account,
+            "amount": amount.to_string(),
+            "principal": principal_after.to_string(),
+        }),
+    );
+}
+
+pub fn unstake(account: &AccountId, amount: u128, unbond_at: u64) {
+    emit(
+        "unstake",
+        json!({
+            "account": account,
+            "amount": amount.to_string(),
+            "unbond_at": unbond_at.to_string(),
+        }),
+    );
+}
+
+pub fn withdraw(account: &AccountId, amount: u128) {
+    emit(
+        "withdraw",
+        json!({ "account": account, "amount": amount.to_string() }),
+    );
+}
+
+pub fn shield(account: &AccountId, until: u64) {
+    emit(
+        "shield",
+        json!({ "account": account, "until": until.to_string() }),
+    );
 }
 
 pub fn rename(name: &str) {

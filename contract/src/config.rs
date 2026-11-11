@@ -41,12 +41,30 @@ pub struct Config {
 
     /// Rampage: one bite per this interval while fullness is 0.
     pub bite_interval_ns: u64,
-    /// Each bite removes this fraction of the Hoard, in basis points (1000 = 10%).
-    pub bite_size_bp: u32,
-    /// Poke tip: fraction of each bite paid to the poker instead of burned (100 = 1%).
+    /// Each bite burns this fraction of the Reserve, in basis points (1500 = 15%).
+    pub bite_burn_bp: u32,
+    /// Each bite slashes this fraction of every unshielded stake into the Reserve.
+    pub stake_slash_bp: u32,
+    /// Poke tip: fraction of the Reserve burned by bites that is paid to the
+    /// poker instead of burned (100 = 1%).
     pub poke_tip_bp: u32,
-    /// Continuous Rampage time before death.
-    pub death_after_ns: u64,
+
+    /// Staking (5.12). Minimum stake for the staker point bonus.
+    pub min_stake: U128,
+    /// Staker point multiplier as (num, den), default 3/2 = 1.5x.
+    pub staker_points_num: u32,
+    pub staker_points_den: u32,
+    /// Stake needed to be eligible for the DAO Keepers role (read by keepers-sync).
+    pub keeper_stake: U128,
+    /// A feed of at least this much shields the feeder's stake.
+    pub shield_min_feed: U128,
+    pub shield_window_ns: u64,
+    pub unbond_delay_ns: u64,
+    /// Granularity of shield expiries (shield ends are rounded up to this).
+    pub bucket_len_ns: u64,
+
+    /// Cosmetic trait option counts (5.13): palette, pattern, marking, crest.
+    pub trait_counts: Vec<u8>,
 
     pub blessing_period_ns: u64,
     /// Blessing rates (fraction of Hoard reserved per period), basis points.
@@ -87,10 +105,19 @@ impl Config {
             rescue_multiplier: 2,
             level_thresholds: vec![1, 3, 6, 10],
             level_step_after: 5,
-            bite_interval_ns: day_ns / 24,
-            bite_size_bp: 1_000,
+            bite_interval_ns: day_ns / 4,
+            bite_burn_bp: 1_500,
+            stake_slash_bp: 1_500,
             poke_tip_bp: 100,
-            death_after_ns: 3 * day_ns,
+            min_stake: U128(100 * ONE_TOKEN),
+            staker_points_num: 3,
+            staker_points_den: 2,
+            keeper_stake: U128(1_000 * ONE_TOKEN),
+            shield_min_feed: U128(10 * ONE_TOKEN),
+            shield_window_ns: day_ns,
+            unbond_delay_ns: day_ns * 3 / 2,
+            bucket_len_ns: day_ns / 24,
+            trait_counts: vec![8, 6, 6, 4],
             blessing_period_ns: 7 * day_ns,
             blessing_rate_egg_bp: 500,
             blessing_rate_dragon_bp: 800,
@@ -113,7 +140,15 @@ impl Config {
             "starving must be below happy"
         );
         assert!(self.happy_threshold_bp <= FULL_BP, "happy > 100%");
-        assert!(self.bite_size_bp <= FULL_BP, "bite_size > 100%");
+        assert!(self.bite_burn_bp <= FULL_BP, "bite_burn > 100%");
+        assert!(self.stake_slash_bp <= FULL_BP, "stake_slash > 100%");
+        assert!(self.bite_interval_ns > 0, "bite_interval zero");
+        assert!(self.bucket_len_ns > 0, "bucket_len zero");
+        assert!(self.staker_points_den > 0, "staker_points_den zero");
+        assert!(
+            self.trait_counts.len() == 4 && self.trait_counts.iter().all(|&n| n > 0),
+            "trait_counts must be 4 positive values"
+        );
         assert!(self.poke_tip_bp <= FULL_BP, "poke_tip > 100%");
         assert!(self.appetite_den > 0, "appetite_den zero");
         assert!(!self.level_thresholds.is_empty(), "no level thresholds");

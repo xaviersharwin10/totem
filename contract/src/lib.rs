@@ -1,9 +1,11 @@
 //! TOTEM — a community creature on NEAR that dies if the tribe ignores it.
 //!
-//! One contract holds everything: the NEP-141 $TOTEM token, the game state, and
-//! (wired in a later layer) the NEP-171 NFTs. Feeding is an internal debit plus a
-//! real burn — no cross-contract calls. Time is handled lazily: every mutating
-//! call runs `settle()` first to advance hunger, XP, Rampage bites and death.
+//! One contract holds everything: the NEP-141 $TOTEM token, the game state,
+//! staking into the belly, the lineage of generations, and (wired in a later
+//! layer) the NEP-171 NFTs. Feeding is an internal debit plus a real burn, with
+//! no cross-contract calls. Time is handled lazily: every mutating call runs
+//! `settle()` first to advance hunger, XP, Rampage bites (which burn the
+//! Reserve, slash unshielded stakes and drop a level) and death at Level 0.
 //!
 //! There is no admin key. Every parameter is fixed at `new()` and read-only via
 //! `get_config()`.
@@ -20,13 +22,17 @@ use near_contract_standards::fungible_token::FungibleToken;
 mod config;
 mod events;
 mod game;
+mod lineage;
 mod rewards;
+mod staking;
 mod views;
 
 #[cfg(test)]
 mod tests;
 
 pub use config::*;
+pub use lineage::{GenStats, LifeRecord, Traits};
+pub use staking::{Belly, Stake};
 
 #[derive(BorshStorageKey)]
 #[near(serializers = [borsh])]
@@ -39,6 +45,10 @@ enum StorageKey {
     PeriodClaimed,
     Badges,
     FaucetLast,
+    Stakes,
+    Bites,
+    GenFed,
+    Graves,
 }
 
 #[near(contract_state)]
@@ -67,11 +77,13 @@ pub struct Contract {
     form: Form,
     l4_reached_at: Option<u64>,
     rampage_started_at: Option<u64>,
+    /// Bites taken in the current Rampage (reset when a feed ends it).
     bites_applied: u64,
     alive: bool,
 
     // --- treasury (all held in the contract's own ledger account) ---
-    hoard: u128,
+    /// The Totem-owned part of the Hoard. Stakes are tracked in `belly`.
+    reserve: u128,
     reserved: u128,
     total_burned: u128,
     total_fed: u128,
@@ -90,6 +102,22 @@ pub struct Contract {
     period_base: u64,
     /// Highest badge tier claimed per account: 1=Bronze, 2=Silver, 3=Gold.
     badges_claimed: LookupMap<AccountId, u8>,
+
+    // --- staking into the belly (5.12) ---
+    belly: Belly,
+    stakes: LookupMap<AccountId, Stake>,
+    /// Bite timestamps per generation. Length <= that generation's max level.
+    bites: LookupMap<u32, Vec<u64>>,
+
+    // --- lineage (5.13) ---
+    traits: Traits,
+    founders: Vec<AccountId>,
+    /// Top 3 feeders of the current generation by tokens fed.
+    top_feeders: Vec<(AccountId, u128)>,
+    gen_fed: LookupMap<(u32, AccountId), u128>,
+    gen_stats: GenStats,
+    /// Gravestones: frozen life records of dead generations.
+    graves: LookupMap<u32, LifeRecord>,
 
     // --- demo faucet ---
     faucet_last: LookupMap<AccountId, u64>,
@@ -130,6 +158,12 @@ impl Contract {
         token.internal_deposit(&genesis_account, cfg.total_supply.0);
 
         let now = env::block_timestamp();
+        // Generation 1 has no predecessor: seed traits from genesis and the DAO.
+        let traits = lineage::derive_traits(
+            &[genesis_account.clone(), dao_account.clone()],
+            1,
+            &cfg.trait_counts,
+        );
         let this = Self {
             token,
             metadata,
@@ -149,7 +183,7 @@ impl Contract {
             rampage_started_at: None,
             bites_applied: 0,
             alive: true,
-            hoard: 0,
+            reserve: 0,
             reserved: 0,
             total_burned: 0,
             total_fed: 0,
@@ -163,6 +197,15 @@ impl Contract {
             last_closed_period: 0,
             period_base: 0,
             badges_claimed: LookupMap::new(StorageKey::Badges),
+            belly: Belly::default(),
+            stakes: LookupMap::new(StorageKey::Stakes),
+            bites: LookupMap::new(StorageKey::Bites),
+            traits,
+            founders: vec![],
+            top_feeders: vec![],
+            gen_fed: LookupMap::new(StorageKey::GenFed),
+            gen_stats: GenStats::default(),
+            graves: LookupMap::new(StorageKey::Graves),
             faucet_last: LookupMap::new(StorageKey::FaucetLast),
         };
         this
@@ -170,7 +213,8 @@ impl Contract {
 
     // ----- owner-gated governance (the DAO) -------------------------------- //
 
-    /// Rename the creature. Only the Totem NFT owner (the DAO) may call.
+    /// Rename the creature's base name (the lineage numeral is added from the
+    /// generation, e.g. "Grumbo III"). Only the Totem NFT owner (the DAO) may call.
     pub fn rename(&mut self, name: String) {
         self.assert_owner();
         assert!(name.len() <= 32, "name too long (max 32)");
@@ -207,16 +251,32 @@ impl Contract {
         );
     }
 
-    /// After a death, hatch a new egg: Level 1, 100% full, empty Hoard, new id.
-    /// Reserved Blessings from the previous generation remain claimable.
+    /// After a death, hatch the next generation's egg: Level 1, 100% full, empty
+    /// Reserve, new id. Its cosmetic traits are derived from the previous
+    /// generation's top 3 feeders, who become its Founders. Nothing economic
+    /// carries over. Reserved Blessings from the dead generation stay claimable,
+    /// and its stakers can still withdraw their released stakes.
     pub fn hatch(&mut self) {
         self.assert_owner();
         self.settle();
         assert!(!self.alive, "the Totem is still alive");
         let now = env::block_timestamp();
+        let founders: Vec<AccountId> =
+            self.top_feeders.iter().map(|(a, _)| a.clone()).collect();
+
         self.generation += 1;
+        let seeds = if founders.is_empty() {
+            vec![self.owner_id.clone()]
+        } else {
+            founders.clone()
+        };
+        self.traits = lineage::derive_traits(&seeds, self.generation, &self.cfg.trait_counts);
+        self.founders = founders;
+        for f in &self.founders {
+            events::badge_minted(f, "founder");
+        }
+
         self.totem_id = format!("totem-{}", self.generation);
-        self.name = "Unnamed".to_string();
         self.born_at = now;
         self.fullness_bp = FULL_BP;
         self.last_settled_at = now;
@@ -228,11 +288,23 @@ impl Contract {
         self.rampage_started_at = None;
         self.bites_applied = 0;
         self.alive = true;
-        self.hoard = 0;
+        self.reserve = 0;
+        self.top_feeders.clear();
+        self.gen_stats = GenStats::default();
+        // Released stakes stay in total_staked until withdrawn; the live
+        // aggregate starts empty for the new generation.
+        self.belly.unshielded = 0;
+        self.belly.buckets.clear();
         // Continue Blessing period numbering past the dead generation's ids.
         self.period_base = self.last_closed_period;
         self.blessing_epoch_start = None;
-        events::hatch(self.generation, &self.owner_id);
+        events::hatch(
+            self.generation,
+            &lineage::lineage_name(&self.name, self.generation),
+            &self.owner_id,
+            &self.traits,
+            &self.founders,
+        );
     }
 }
 

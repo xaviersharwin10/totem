@@ -1,8 +1,11 @@
-//! Read-only views. These project the live state at `now` without writing, so the
+//! Read-only views. These project the live state at `now` without writing,
+//! including Rampage bites that have fallen due but not yet been settled, so the
 //! UI is always accurate between settles.
 
-use crate::game::meal_size_for;
-use crate::{Config, Contract, ContractExt, Mood, FULL_BP};
+use crate::game::{bite_math, level_floor_days, level_for, meal_size_for};
+use crate::lineage::{lineage_name, LifeRecord, Traits};
+use crate::staking::Belly;
+use crate::{Config, Contract, ContractExt, Mood, FULL_BP, NANOS_PER_SEC};
 use near_sdk::json_types::{U128, U64};
 use near_sdk::{env, near, AccountId};
 
@@ -11,23 +14,54 @@ pub struct TotemView {
     pub totem_id: String,
     pub generation: u32,
     pub name: String,
+    /// Name with the generation numeral, e.g. "Grumbo II".
+    pub lineage_name: String,
     pub owner: AccountId,
     pub alive: bool,
     pub fullness_bp: u32,
     pub mood: String,
     pub level: u32,
     pub max_level: u32,
+    /// Bites the Totem can survive from here (each bite costs a level; death at 0).
+    pub bites_until_death: u32,
     pub form: String,
     pub xp_happy_days: u32,
     pub next_level_happy_days: Option<u32>,
+    /// Totem-owned part of the Hoard.
+    pub reserve: U128,
+    /// Sum of all stakes in the belly.
+    pub total_staked: U128,
+    /// reserve + total_staked, the number shown as "the Hoard".
     pub hoard: U128,
+    /// Blessings reserved and not yet claimed.
     pub reserved: U128,
     pub meal_size: U128,
     /// Tokens to fill from the current fullness to 100%.
     pub fill_amount: U128,
+    pub traits: Traits,
+    pub founders: Vec<AccountId>,
     pub seconds_until_starving: Option<U64>,
     pub seconds_until_rampage: Option<U64>,
+    /// Seconds until the next bite (the first one if not yet in Rampage).
+    pub seconds_until_next_bite: Option<U64>,
+    /// Seconds until death if nobody feeds it.
     pub seconds_until_death: Option<U64>,
+}
+
+#[near(serializers = [json])]
+pub struct StakeView {
+    pub account_id: AccountId,
+    pub generation: u32,
+    /// Current post-slash value, excluding unbonding.
+    pub staked: U128,
+    pub unbonding: U128,
+    pub seconds_until_unbonded: Option<U64>,
+    pub shielded: bool,
+    pub seconds_shield_left: Option<U64>,
+    /// True if this stake's generation has died: everything is withdrawable now.
+    pub released: bool,
+    pub staker_bonus: bool,
+    pub keeper_eligible: bool,
 }
 
 #[near(serializers = [json])]
@@ -36,7 +70,8 @@ pub struct StatsView {
     pub total_burned: U128,
     pub total_fed: U128,
     pub total_blessed: U128,
-    pub hoard: U128,
+    pub reserve: U128,
+    pub total_staked: U128,
     pub reserved: U128,
 }
 
@@ -56,67 +91,128 @@ pub struct PeriodView {
     pub claimed: U128,
 }
 
+/// The live state projected to `now`.
+struct Projection {
+    fullness: u32,
+    alive: bool,
+    in_rampage: bool,
+    level: u32,
+    happy_days: u32,
+    reserve: u128,
+    belly: Belly,
+    /// Times of bites that are due but not yet settled.
+    pending: Vec<u64>,
+    /// Start of the (projected) current Rampage.
+    rampage_start: Option<u64>,
+    bites_done: u64,
+}
+
 #[near]
 impl Contract {
     /// Live projected state of the creature at the current block time.
     pub fn get_totem(&self) -> TotemView {
         let now = env::block_timestamp();
-        let (fullness, in_rampage, rampage_dur) = self.project_fullness(now);
-        let alive = self.alive;
-        let mood = self.mood_for(fullness, alive, in_rampage);
+        let p = self.project(now);
+        let mood = self.mood_for(p.fullness, p.alive, p.in_rampage);
+        let next = if p.alive { Some(level_floor_days(&self.cfg, p.level + 1)) } else { None };
 
-        let happy_days = self.project_happy_days(now);
-        let level = self.level_for(happy_days).max(self.level);
-        let next = self.next_level_threshold(level);
-
-        let ms = meal_size_for(&self.cfg, level, self.form);
-        let room_bp = (FULL_BP - fullness) as u128;
-        let fill = ms * room_bp / FULL_BP as u128;
+        let ms = meal_size_for(&self.cfg, p.level.max(1), self.form);
+        let room_bp = (FULL_BP - p.fullness) as u128;
+        let fill = if p.alive { ms * room_bp / FULL_BP as u128 } else { 0 };
 
         let day = self.cfg.day_length_ns;
-        let secs = |ns: u64| ns / crate::config::NANOS_PER_SEC;
+        let iv = self.cfg.bite_interval_ns;
+        let secs = |ns: u64| U64(ns / NANOS_PER_SEC);
+        let alive_and = |v: Option<U64>| if p.alive { v } else { None };
 
-        let until_starving = if fullness > self.cfg.starving_threshold_bp {
-            Some(U64(secs(
-                (fullness - self.cfg.starving_threshold_bp) as u64 * day / FULL_BP as u64,
-            )))
-        } else {
-            None
+        let to_starving = (p.fullness > self.cfg.starving_threshold_bp).then(|| {
+            secs((p.fullness - self.cfg.starving_threshold_bp) as u64 * day / FULL_BP as u64)
+        });
+        let to_rampage_ns = p.fullness as u64 * day / FULL_BP as u64;
+        let next_bite_ns = match p.rampage_start {
+            Some(r) => (r + (p.bites_done + 1) * iv).saturating_sub(now),
+            None => to_rampage_ns + iv,
         };
-        let until_rampage = if fullness > 0 {
-            Some(U64(secs(fullness as u64 * day / FULL_BP as u64)))
-        } else {
-            None
-        };
-        let until_death = if in_rampage && alive {
-            Some(U64(secs(
-                self.cfg.death_after_ns.saturating_sub(rampage_dur),
-            )))
-        } else {
-            None
-        };
+        let death_ns = next_bite_ns + (p.level.saturating_sub(1) as u64) * iv;
 
         TotemView {
             totem_id: self.totem_id.clone(),
             generation: self.generation,
             name: self.name.clone(),
+            lineage_name: lineage_name(&self.name, self.generation),
             owner: self.owner_id.clone(),
-            alive,
-            fullness_bp: fullness,
+            alive: p.alive,
+            fullness_bp: p.fullness,
             mood: mood.as_str().to_string(),
-            level,
-            max_level: self.max_level.max(level),
+            level: p.level,
+            max_level: self.max_level.max(p.level),
+            bites_until_death: p.level,
             form: self.form.as_str().to_string(),
-            xp_happy_days: happy_days,
+            xp_happy_days: p.happy_days,
             next_level_happy_days: next,
-            hoard: U128(self.hoard),
+            reserve: U128(p.reserve),
+            total_staked: U128(p.belly.total_staked),
+            hoard: U128(p.reserve + p.belly.total_staked),
             reserved: U128(self.reserved),
             meal_size: U128(ms),
             fill_amount: U128(fill),
-            seconds_until_starving: until_starving,
-            seconds_until_rampage: until_rampage,
-            seconds_until_death: until_death,
+            traits: self.traits.clone(),
+            founders: self.founders.clone(),
+            seconds_until_starving: alive_and(to_starving),
+            seconds_until_rampage: alive_and((p.fullness > 0).then(|| secs(to_rampage_ns))),
+            seconds_until_next_bite: alive_and(Some(secs(next_bite_ns))),
+            seconds_until_death: alive_and(Some(secs(death_ns))),
         }
+    }
+
+    /// An account's stake, projected to now (pending bites applied).
+    pub fn get_stake(&self, account_id: AccountId) -> Option<StakeView> {
+        let s = self.stakes.get(&account_id)?;
+        let now = env::block_timestamp();
+        let p = self.project(now);
+        let released = s.generation != self.generation || !p.alive;
+        let mut bites = self.gen_bites(s.generation).to_vec();
+        if s.generation == self.generation {
+            bites.extend_from_slice(&p.pending);
+        }
+        let (principal, unbonding) = s.value_after(&bites, self.cfg.stake_slash_bp);
+        let shielded = !released && s.shield_until > now;
+        Some(StakeView {
+            account_id,
+            generation: s.generation,
+            staked: U128(principal),
+            unbonding: U128(unbonding),
+            seconds_until_unbonded: (unbonding > 0 && !released && s.unbond_at > now)
+                .then(|| U64((s.unbond_at - now) / NANOS_PER_SEC)),
+            shielded,
+            seconds_shield_left: shielded.then(|| U64((s.shield_until - now) / NANOS_PER_SEC)),
+            released,
+            staker_bonus: !released && principal >= self.cfg.min_stake.0,
+            keeper_eligible: !released && principal >= self.cfg.keeper_stake.0,
+        })
+    }
+
+    /// The family tree: every generation from `from` (default 1), gravestones
+    /// plus the living (or freshly dead, not yet hatched) Totem, with parent links.
+    pub fn get_lineage(&self, from: Option<u32>, limit: Option<u32>) -> Vec<LifeRecord> {
+        let from = from.unwrap_or(1).max(1);
+        let limit = limit.unwrap_or(50).min(100);
+        let mut out = Vec::new();
+        let mut g = from;
+        while g <= self.generation && (out.len() as u32) < limit {
+            if let Some(rec) = self.graves.get(&g) {
+                out.push(rec.clone());
+            } else if g == self.generation {
+                out.push(self.life_record(None, None));
+            }
+            g += 1;
+        }
+        out
+    }
+
+    /// Flat list of gravestones (dead generations only).
+    pub fn get_graveyard(&self, from: Option<u32>, limit: Option<u32>) -> Vec<LifeRecord> {
+        self.get_lineage(from, limit).into_iter().filter(|r| !r.alive).collect()
     }
 
     /// All immutable parameters. Proves there is no admin key and nothing hidden.
@@ -130,7 +226,8 @@ impl Contract {
             total_burned: U128(self.total_burned),
             total_fed: U128(self.total_fed),
             total_blessed: U128(self.total_blessed),
-            hoard: U128(self.hoard),
+            reserve: U128(self.reserve),
+            total_staked: U128(self.belly.total_staked),
             reserved: U128(self.reserved),
         }
     }
@@ -174,48 +271,77 @@ impl Contract {
     }
 
     // ------------------------------------------------------------------ //
-    // projection helpers (read-only mirrors of the settle math)
+    // projection (a read-only mirror of settle)
     // ------------------------------------------------------------------ //
 
-    fn project_fullness(&self, now: u64) -> (u32, bool, u64) {
+    fn project(&self, now: u64) -> Projection {
+        let mut p = Projection {
+            fullness: self.fullness_bp,
+            alive: self.alive,
+            in_rampage: self.rampage_started_at.is_some(),
+            level: self.level,
+            happy_days: (self.happy_ns / self.cfg.day_length_ns) as u32,
+            reserve: self.reserve,
+            belly: self.belly.clone(),
+            pending: vec![],
+            rampage_start: self.rampage_started_at,
+            bites_done: self.bites_applied,
+        };
         if !self.alive {
-            return (0, false, 0);
+            p.fullness = 0;
+            p.in_rampage = false;
+            p.level = 0;
+            p.rampage_start = None;
+            return p;
         }
         if now <= self.last_settled_at {
-            let in_r = self.rampage_started_at.is_some();
-            let rd = self
-                .rampage_started_at
-                .map(|s| now.saturating_sub(s))
-                .unwrap_or(0);
-            return (self.fullness_bp, in_r, rd);
+            return p;
         }
         let day = self.cfg.day_length_ns;
         let elapsed = now - self.last_settled_at;
         let f0 = self.fullness_bp;
+
+        let mut happy_ns = self.happy_ns;
+        if f0 > self.cfg.happy_threshold_bp {
+            let drop_bp = (f0 - self.cfg.happy_threshold_bp) as u128;
+            let dur = (drop_bp * day as u128 / FULL_BP as u128) as u64;
+            happy_ns += dur.min(elapsed);
+        }
+        p.happy_days = (happy_ns / day) as u32;
+        p.level = level_for(&self.cfg, p.happy_days).max(self.level);
+
         let to_zero = (f0 as u128 * day as u128 / FULL_BP as u128) as u64;
         if elapsed < to_zero {
             let drain = (elapsed as u128 * FULL_BP as u128 / day as u128) as u32;
-            (f0.saturating_sub(drain), false, 0)
+            p.fullness = f0.saturating_sub(drain);
         } else {
-            let z = self.last_settled_at + to_zero;
-            let r_start = self.rampage_started_at.unwrap_or(z);
-            (0, true, now.saturating_sub(r_start))
-        }
-    }
-
-    fn project_happy_days(&self, now: u64) -> u32 {
-        let mut happy = self.happy_ns;
-        if self.alive && now > self.last_settled_at {
-            let f0 = self.fullness_bp;
-            if f0 > self.cfg.happy_threshold_bp {
-                let day = self.cfg.day_length_ns;
-                let elapsed = now - self.last_settled_at;
-                let drop_bp = (f0 - self.cfg.happy_threshold_bp) as u128;
-                let dur = (drop_bp * day as u128 / FULL_BP as u128) as u64;
-                happy += dur.min(elapsed);
+            p.fullness = 0;
+            p.in_rampage = true;
+            let r = self.rampage_started_at.unwrap_or(self.last_settled_at + to_zero);
+            if self.rampage_started_at.is_none() {
+                p.bites_done = 0;
+            }
+            p.rampage_start = Some(r);
+            let iv = self.cfg.bite_interval_ns;
+            let due = (now - r) / iv;
+            while p.level > 0 && p.bites_done < due {
+                p.bites_done += 1;
+                let t = r + p.bites_done * iv;
+                p.belly.expire(t);
+                bite_math(&mut p.reserve, &mut p.belly, &self.cfg);
+                p.level -= 1;
+                p.happy_days = level_floor_days(&self.cfg, p.level);
+                p.pending.push(t);
+            }
+            if p.level == 0 {
+                p.alive = false;
+                p.reserve = 0;
+                p.in_rampage = false;
+                p.rampage_start = None;
             }
         }
-        (happy / self.cfg.day_length_ns) as u32
+        p.belly.expire(now);
+        p
     }
 
     fn mood_for(&self, fullness: u32, alive: bool, in_rampage: bool) -> Mood {
@@ -231,19 +357,6 @@ impl Contract {
             Mood::Hungry
         } else {
             Mood::Starving
-        }
-    }
-
-    /// Cumulative Happy-days needed for the level after `level` (None if unbounded math).
-    fn next_level_threshold(&self, level: u32) -> Option<u32> {
-        let t = &self.cfg.level_thresholds;
-        let idx = (level - 1) as usize;
-        if idx < t.len() {
-            Some(t[idx])
-        } else {
-            let base = *t.last().unwrap();
-            let steps_past = (level as usize) - t.len();
-            Some(base + self.cfg.level_step_after * (steps_past as u32 + 1))
         }
     }
 }

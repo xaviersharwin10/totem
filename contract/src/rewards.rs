@@ -73,7 +73,7 @@ impl Contract {
         }
     }
 
-    /// Close every Blessing period that has fully elapsed, reserving `rate x Hoard`
+    /// Close every Blessing period that has fully elapsed, reserving `rate x Reserve`
     /// for each, and return still-unclaimed reservations that have aged out.
     pub(crate) fn close_due_periods(&mut self, now: u64) {
         let epoch = match self.blessing_epoch_start {
@@ -87,13 +87,16 @@ impl Contract {
         while self.last_closed_period < current {
             let p = self.last_closed_period;
             let tot = self.period_totals.get(&p).copied().unwrap_or(0);
-            if tot > 0 {
+            // Perks follow the current level: below L3 a period closes with no
+            // payout (its points simply earn nothing).
+            if tot > 0 && self.level >= 3 {
                 let rate = self.blessing_rate_bp();
-                let reserve = self.hoard * rate as u128 / FULL_BP as u128;
+                let reserve = self.reserve * rate as u128 / FULL_BP as u128;
                 if reserve > 0 {
-                    self.hoard -= reserve;
+                    self.reserve -= reserve;
                     self.reserved += reserve;
                     self.total_blessed += reserve;
+                    self.gen_stats.blessed.0 += reserve;
                     self.period_reserved.insert(p, reserve);
                     events::blessing_reserved(p, reserve, tot);
                 }
@@ -106,7 +109,7 @@ impl Contract {
                 if res > claimed {
                     let ret = res - claimed;
                     self.reserved -= ret;
-                    self.hoard += ret;
+                    self.reserve += ret;
                     self.period_claimed.insert(q, res);
                 }
             }

@@ -143,7 +143,8 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | near-workspaces integration tests (§8.5 edge cases) | in progress |
 | Testnet deploy (demo mode, 2-minute day) | done: [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Sputnik DAO owns the Totem; rename / evolve / hatch via proposals | done: hatch of Generation 2 executed by a DAO vote ([tx](https://testnet.nearblocks.io/txns/BWnntErjehHtN6yF9x5cZJkQ8H8a94v43YnMGQxnX2YC)) |
-| Demo script, Keepers role | pending |
+| Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2) |
+| Demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
 | Web app: wallet + testnet contract, staking UI | pending |
 | Telegram bot | pending |
@@ -155,6 +156,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
 | Genesis holder and DAO council member (1-of-1 for the demo) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
+| A Keeper (1,000 $TOTEM staked) | [`totem-grumbo-keeper.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-keeper.testnet) |
 
 Read the live state (no wallet needed):
 
@@ -169,6 +171,10 @@ Govern it through the DAO (creates a proposal and votes it through; the demo cou
 scripts/dao-propose.sh rename Mochi
 scripts/dao-propose.sh evolve dragon   # only between Level 4 and the deadline
 scripts/dao-propose.sh hatch           # after a death
+VOTERS=totem-grumbo-keeper.testnet scripts/dao-propose.sh rename Mochi   # a Keeper passes it alone
+
+# Sync the Keepers role with on-chain reputation (>= 1,000 staked or a Silver/Gold badge)
+scripts/keepers-sync.sh some-staker.testnet another.testnet
 ```
 
 Redeploy or deploy your own copy: `cp .env.example .env`, set the accounts, run [`scripts/deploy.sh`](scripts/deploy.sh). On the 2-minute demo clock an unfed newborn starves in about 2.5 minutes; the Totem owner can then `hatch`.

@@ -82,20 +82,29 @@ fn stake_of(c: &Contract, who: &AccountId) -> u128 {
         .unwrap_or(0)
 }
 
-/// total_supply == sum of ledger balances, and the contract's own ledger
-/// balance == Reserve + reserved Blessings + staked tokens.
+/// total_supply == sum of ledger balances; the treasury sub-account holds the
+/// Reserve; the contract's own balance == reserved Blessings + staked tokens.
 fn assert_supply_conserved(c: &Contract, holders: &[AccountId]) {
     let ledger: u128 = holders.iter().map(|h| c.ft_balance_of(h.clone()).0).sum();
     let contract_bal = c.ft_balance_of(contract_id()).0;
+    // every generation's treasury (dead ones hold 0)
+    let treasuries: u128 = (1..=c.generation)
+        .map(|g| c.ft_balance_of(format!("totem-{g}.{}", contract_id()).parse().unwrap()).0)
+        .sum();
     assert_eq!(
         c.get_stats().total_supply.0,
-        ledger + contract_bal,
+        ledger + contract_bal + treasuries,
         "ledger balances must sum to total_supply"
     );
     assert_eq!(
+        c.ft_balance_of(c.treasury_id()).0,
+        c.reserve,
+        "the treasury sub-account holds exactly the Reserve"
+    );
+    assert_eq!(
         contract_bal,
-        c.reserve + c.reserved + c.belly.total_staked,
-        "contract account holds exactly reserve + reserved + staked"
+        c.reserved + c.belly.total_staked,
+        "the contract itself holds exactly reserved Blessings + staked tokens"
     );
 }
 
@@ -934,4 +943,88 @@ fn the_demo_faucet_logs_a_standard_mint() {
         logs.iter().any(|l| l.contains("\"event\":\"ft_mint\"") && l.contains(&minted.to_string())),
         "every mint is a NEP-141 ft_mint event: {logs:?}"
     );
+}
+
+#[test]
+fn an_expired_blessing_cannot_be_claimed_and_claimable_lists_the_rest() {
+    let (mut c, genesis, _dao) = setup();
+    // L3 at day 3 opens period 0; stay Happy until several periods have closed.
+    keep_happy(&mut c, &genesis, DAY / 4, 15 * DAY);
+    assert!(c.last_closed_period >= 3, "periods 0..2 closed");
+    assert!(c.get_period(0).reserved.0 > 0);
+
+    // period 0 went back to the Reserve when period 2 closed
+    assert_eq!(c.get_blessing_share(0, genesis.clone()).0, 0);
+    let list = c.get_claimable(genesis.clone());
+    assert!(!list.is_empty());
+    assert!(list.iter().all(|x| x.period_id >= 1 && x.amount.0 > 0));
+    assert!(list.iter().all(|x| x.periods_left.is_some()));
+    set_ctx(&genesis, 15 * DAY);
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.claim_blessing(0)));
+    assert!(r.is_err(), "an expired Blessing pays nothing");
+
+    // every listed one pays exactly what was listed
+    for x in list {
+        let before = c.ft_balance_of(genesis.clone()).0;
+        c.claim_blessing(x.period_id);
+        assert_eq!(c.ft_balance_of(genesis.clone()).0 - before, x.amount.0);
+    }
+    assert!(c.get_claimable(genesis.clone()).is_empty());
+    assert_supply_conserved(&c, &[genesis]);
+}
+
+#[test]
+fn the_reserve_lives_in_a_keyless_treasury_sub_account() {
+    let (mut c, genesis, dao) = setup();
+    let t1: AccountId = format!("totem-1.{}", contract_id()).parse().unwrap();
+    assert_eq!(c.treasury_id(), t1);
+    set_ctx(&genesis, DAY / 2);
+    c.feed(U128(40 * ONE));
+    assert!(c.reserve > 0);
+    assert_eq!(c.ft_balance_of(t1.clone()).0, c.reserve, "the Reserve share of the meal");
+    assert_eq!(c.get_totem().treasury, t1);
+
+    // nobody can pay into it (or into the contract) by plain transfer
+    for to in [t1.clone(), contract_id()] {
+        ctx(&genesis, DAY / 2, NearToken::from_yoctonear(1));
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            c.ft_transfer(to.clone(), U128(ONE), None)
+        }));
+        assert!(r.is_err(), "transfer to {to} must be refused");
+    }
+
+    // death burns the treasury; the next generation gets a fresh one
+    set_ctx(&genesis, 5 * DAY);
+    c.poke();
+    assert!(!c.alive);
+    assert_eq!(c.ft_balance_of(t1.clone()).0, 0);
+    set_ctx(&dao, 5 * DAY);
+    c.hatch();
+    let t2: AccountId = format!("totem-2.{}", contract_id()).parse().unwrap();
+    assert_eq!(c.treasury_id(), t2);
+    set_ctx(&genesis, 5 * DAY + DAY / 2);
+    c.feed(U128(10 * ONE));
+    assert_eq!(c.ft_balance_of(t2).0, 5 * ONE);
+    assert_eq!(c.ft_balance_of(t1).0, 0, "the dead one's treasury stays empty");
+    assert_supply_conserved(&c, &[genesis]);
+}
+
+#[test]
+fn a_reserve_held_by_the_contract_migrates_into_the_treasury_on_first_touch() {
+    let (mut c, genesis, _dao) = setup();
+    set_ctx(&genesis, DAY / 2);
+    c.feed(U128(40 * ONE));
+    // rebuild the pre-treasury layout: Reserve on the contract's own balance
+    let t = c.treasury_id();
+    let me = contract_id();
+    let r = c.reserve;
+    c.token.internal_transfer(&t, &me, r, None);
+    c.token.accounts.remove(&t);
+    assert_eq!(c.ft_balance_of(t.clone()).0, 0);
+
+    set_ctx(&genesis, DAY / 2 + HOUR);
+    c.poke();
+    assert!(c.reserve > 0);
+    assert_eq!(c.ft_balance_of(t).0, c.reserve, "moved on the first settle");
+    assert_supply_conserved(&c, &[genesis]);
 }

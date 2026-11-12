@@ -17,13 +17,13 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 ## Tracks
 
 - **memecoins** — "supply that reacts to the community, treasuries with rules, onchain rituals." Feeding is the ritual, it burns supply, the treasury has hard rules, every parameter is fixed at launch with no admin key.
-- **nfts** — "NFTs as accounts: assets that own money ... ownership with behavior." The Totem is a living NFT that owns the treasury; its level and art change over time; Caretaker Badges are credential NFTs.
+- **nfts** — "NFTs as accounts: assets that own money ... ownership with behavior." The Totem is a living NFT that owns a treasury **sub-account** (`totem-<gen>.<contract>`, keyless); its level and art change over time; Caretaker Badges are credential NFTs.
 - **social** — "shared budgets, programmable rewards, reputation-based access on Sputnik DAO." The tribe's Sputnik DAO owns the Totem and votes on its name, evolution and rebirth; Blessings are programmable rewards; Badges are reputation.
 
 ## How NEAR is used
 
 - **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
-- **The NFT owns the treasury.** The Reserve (the Totem-owned part of the Hoard) is attributed to the Totem token, not to any person. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers. The Hoard shown in the app is the Reserve plus the **living** Totem's stakes: stakes from a dead generation are reported separately (`released_stakes`, "stakes to withdraw"), so a dead Totem's Hoard is 0.
+- **The NFT owns the treasury, in its own account.** Each Totem NFT `totem-<gen>` has a treasury sub-account, `totem-<gen>.totem-grumbo.testnet`, created by the contract with **no access keys and 0 NEAR** (a NEP-448 zero-balance account): nobody can ever sign for it. Its $TOTEM balance *is* the Reserve. Every meal pays into it, and bites, death, poke tips and Blessings take from it, as ordinary NEP-141 transfers and burns anyone can follow on the explorer. Direct transfers into it (or into the contract) are refused, so its balance always equals the Reserve. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers. The Hoard shown in the app is the Reserve plus the **living** Totem's stakes: stakes from a dead generation are reported separately (`released_stakes`, "stakes to withdraw"), so a dead Totem's Hoard is 0.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **The tribe governs through a Sputnik DAO, with real separation of powers.** The DAO owns the Totem NFT, so hatch / rename / evolve happen only by DAO proposal (a `FunctionCall` to the contract); the DAO cannot touch the Hoard or change a game rule. Its policy (set by [`scripts/bootstrap-governance.sh`](scripts/bootstrap-governance.sh)):
   - **Everyone** may propose (0.1 NEAR bond, refunded when it passes; players without NEAR propose through the game, which pays the bond).
@@ -66,7 +66,7 @@ The Totem NFT (`totem-<gen>`) is transferable, normally by DAO vote. Here is eve
 | The token controls | On transfer |
 |---|---|
 | Naming, evolving, hatching (`rename`, `choose_evolution`, `hatch`) | Move to the new owner at once. Each call checks `predecessor == nft owner` at call time, so there is no cached owner to go stale |
-| The Reserve (the Totem-owned part of the Hoard) | Stays where it is: in the contract's own ledger account, attributed to the token. It can only leave by a bite or death burn, a poke tip, or a Blessing paid to feeders by points. **No method pays the owner** |
+| The Reserve (the Totem-owned part of the Hoard) | Stays where it is: in the Totem's keyless treasury sub-account `totem-<gen>.<contract>`, which no one (seller, buyer, DAO or developer) can sign for. It can only leave by a bite or death burn, a poke tip, or a Blessing paid to feeders by points. **No method pays the owner** |
 | Its metadata (live state, later the gravestone) | Computed from chain state on every read, so the buyer sees exactly what the seller saw |
 
 | The seller tries to… | Why it fails |
@@ -99,12 +99,13 @@ What a buyer gets is the right to steer the Totem, not an income stream. That's 
 Prerequisites: Rust via `rustup` (the contract's `rust-toolchain.toml` selects stable + the wasm target automatically), Python 3.9+, Node 18+. To deploy: `cargo install --locked cargo-near near-cli-rs` (needs `libudev-dev` on Linux, or add `--no-default-features`).
 
 ```bash
-# Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
-cd contract
-cargo test                              # expect: 31 passed
-
 # Contract: build the deployable wasm + ABI
+cd contract
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
+
+# Contract: unit tests (settle, feed, rampage, death, sybil-neutrality…) and
+# sandbox integration tests (the wasm on a local NEAR node, real block time)
+cargo test                              # expect: 34 passed (unit) + 2 passed (sandbox)
 
 # Simulation: 60-day balance model, five scenarios, charts to sim/out/
 cd ../sim
@@ -139,6 +140,8 @@ Full manual test checklist (practice, live wallet flow, DAO, troubleshooting): *
 - **Do:** click **Connect wallet** (NEAR Connect: Meteor, Intear, Nightly, Ledger, NEAR CLI, or an Ethereum wallet). **See:** your account and $TOTEM balance in the wallet panel.
 - **Or:** click **⚡ Play free, no wallet**. **See:** a guest account (`guest g1a2b3c4d`) with 0 NEAR; faucet, feed and poke work without gas or popups (the game relays them).
 - **Do:** click **🚰 Get test $TOTEM**. **See:** +1,000 $TOTEM (the demo-mode faucet).
+- **Do:** tap **🛡 Stake in the belly** under your balance, stake 1,000. **See:** "1,000 staked · ⚠️ not shielded: the next bite takes 15%" with a **Feed 5 to shield it** button; press it. **See:** "🛡 Shielded for 4m", the staker bonus and "You qualify as a Keeper". **Unstake** 100. **See:** an unbonding countdown (3 min on the demo clock), then **Withdraw**. If the Totem dies, the panel offers **Withdraw** for the released stake.
+- **Do:** after feeding through a Blessing period at Level 3+, open the same panel. **See:** 🎁 on the wallet line, each Blessing with its deadline, **Claim all**; and **Mint your Bronze badge** once you pass 100 lifetime points (from Level 2).
 - **Do:** feed. **See:** a real `feed` transaction; the belly, Hoard and Burned numbers update from chain. Sign-in adds a limited key for this contract, so feeding / poking / faucet don't pop the wallet every time.
 - If the Totem is dead on-chain, only the tribe's DAO can hatch it (`scripts/dao-propose.sh hatch`); the app says so.
 - **🧪 Practice** mode (top-right switch) runs the same rules locally in the browser (`web/src/engine.ts`) with no wallet; the app also falls back to it if testnet RPC is unreachable.
@@ -163,6 +166,14 @@ The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 - `badges_are_soulbound_nfts`, `rescuing_a_rampage_mints_a_hero_badge` — badges are real NFTs and `nft_transfer` on one panics.
 - `transferring_the_totem_moves_governance_with_it`, `non_owners_cannot_govern` — whoever owns the Totem NFT governs it; the Reserve follows the token.
 - `evolution_defaults_to_golem_after_the_deadline`, `blessings_pay_at_l3_and_stay_claimable_after_death`, `no_blessing_when_a_period_closes_below_l3`.
+- `an_expired_blessing_cannot_be_claimed_and_claimable_lists_the_rest` — once an unclaimed Blessing returns to the Reserve, claiming it fails; `get_claimable` lists exactly what pays.
+- `the_reserve_lives_in_a_keyless_treasury_sub_account`, `a_reserve_held_by_the_contract_migrates_into_the_treasury_on_first_touch` — treasury balance = Reserve through feed, bite, death and hatch; transfers into the treasury or the contract are refused. Every test that checks supply also checks: treasury = Reserve, contract = Blessings + stakes.
+- `the_hoard_counts_only_the_living_totem_never_released_stakes`, `the_demo_faucet_logs_a_standard_mint`.
+
+The sandbox tests (`contract/tests/sandbox.rs`, near-workspaces) run the compiled wasm on a local node:
+
+- `a_whole_life_on_a_real_node` — init creates the treasury as a real account with **no access keys and 0 NEAR**; the faucet logs `ft_mint`; a feed lands half in the treasury; transfers into the treasury or the contract fail; a non-owner can't rename; real block time starves it to death (the unshielded staker is slashed, the treasury is burned, the NFT becomes a gravestone); only the DAO can hatch, and generation 2 gets a new keyless treasury; the staker withdraws exactly the released stake.
+- `the_ledger_always_adds_up` — total supply = every holder + contract + treasury; treasury = Reserve; contract = Blessings + stakes; supply = 1B + faucet − burned.
 
 ### What the simulation shows
 
@@ -188,14 +199,16 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Lineage: gravestone records, inherited traits, founders, `get_lineage` | done, tested |
 | Contract → wasm + ABI | done |
 | NEP-171 NFTs: dynamic Totem → gravestone, soulbound Bronze/Silver/Gold, Hero, Founder badges | done, tested |
-| near-workspaces integration tests (§8.5 edge cases) | in progress |
+| near-workspaces integration tests (sandbox: a whole life, keyless treasury account, ledger reconciliation) | done, 2 tests |
+| Treasury sub-account per Totem (keyless, zero-balance) | done, tested; live: [`totem-7.totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-grumbo.testnet) |
 | Testnet deploy (demo mode, 2-minute day) | done: [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Sputnik DAO owns the Totem; rename / evolve / hatch via proposals | done: hatch of Generation 2 executed by a DAO vote ([tx](https://testnet.nearblocks.io/txns/BWnntErjehHtN6yF9x5cZJkQ8H8a94v43YnMGQxnX2YC)) |
 | Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2) |
 | Demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
 | Web app: live testnet state, NEAR Connect wallet, feed / poke / faucet transactions, practice-mode fallback | done (wallet signing needs a manual test) |
-| Web app: staking UI | pending |
+| Web app: staking (stake / unstake / withdraw, shield status + one-tap shield, unbonding countdown), claim Blessings and badges | done |
+| Web app: 🧾 on-chain history (every mint/burn/bite/life, tx links) and gravestone life stories | done |
 | Telegram bot | pending |
 
 ## On testnet
@@ -205,6 +218,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
 | Genesis holder (founder; no DAO vote since the constitution) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
+| The living Totem's treasury (keyless; its balance is the Reserve) | [`totem-7.totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-grumbo.testnet) |
 | A Keeper (1,000 $TOTEM staked) | [`totem-grumbo-keeper.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-keeper.testnet) |
 | Gas relayer for free guests (NEP-366); guests are its zero-balance sub-accounts `g<hex>.totem-grumbo-relay.testnet` | [`totem-grumbo-relay.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-relay.testnet) |
 

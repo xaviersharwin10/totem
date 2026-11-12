@@ -144,6 +144,10 @@ pub fn shield(account: &AccountId, until: u64) {
     );
 }
 
+pub fn treasury_opened(generation: u32, account: &AccountId) {
+    emit("treasury_opened", json!({ "generation": generation, "account": account }));
+}
+
 pub fn rename(name: &str) {
     emit("rename", json!({ "name": name }));
 }

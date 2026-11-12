@@ -35,6 +35,7 @@ export interface Game {
   rescue: () => Promise<FeedResult>;
   disconnect: () => Promise<void>;
   faucet: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
   feed: (amount: number | "fill") => Promise<FeedResult>;
   poke: () => Promise<void>;
   hatch: (() => void) | null; // practice only; live hatching is a DAO vote
@@ -56,6 +57,7 @@ interface ChainTotem {
   next_level_happy_days: number | null;
   hoard: string;
   released_stakes?: string;
+  treasury?: string;
   meal_size: string;
   fill_amount: string;
   traits: { palette: number };
@@ -92,6 +94,7 @@ function toView(t: ChainTotem, s: ChainStats): TotemView {
     nextLevelHappyDays: t.next_level_happy_days,
     hoard: toTokens(t.hoard),
     releasedStakes: toTokens(t.released_stakes ?? "0"),
+    treasury: t.treasury,
     totalBurned: toTokens(s.total_burned),
     totalFed: toTokens(s.total_fed),
     mealSize: toTokens(t.meal_size),
@@ -369,6 +372,7 @@ export function useGame(): Game {
     rescue,
     disconnect: near.signOut,
     faucet,
+    refreshBalance,
     feed,
     poke,
     hatch,

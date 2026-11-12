@@ -13,6 +13,7 @@ import { GuestKeySheet } from "./GuestKey";
 import { useTribe } from "./chain/dao";
 import { HatchVote, TribePanel } from "./Tribe";
 import { HistoryPanel } from "./History";
+import { BellyLine, StakeSheet, useBelly } from "./Stake";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -47,6 +48,7 @@ export default function App() {
   const [sosOpen, setSosOpen] = useState(false);
   // null = closed; 0 = open on the ledger; n = open on generation n's life
   const [histGen, setHistGen] = useState<number | null>(null);
+  const [stakeOpen, setStakeOpen] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -83,6 +85,7 @@ export default function App() {
   const graves = game.graves;
   const dayFrac = (((now - start.current) / DAY_MS + 0.08) % 1 + 1) % 1;
   const tribe = useTribe(game.mode === "live" && (tribeOpen || (!loading && !view.alive)));
+  const belly = useBelly(game.mode === "live");
   const nextName = `${view.name.replace(/\s+[IVXLCDM]+$/, "")} ${roman(view.generation + 1)}`;
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
 
@@ -323,6 +326,7 @@ export default function App() {
                   {game.balance === null ? "…" : `${fmt(game.balance)} $TOTEM`}
                   <button className="mini-btn" onClick={doFaucet} disabled={game.busy}>🚰 Get test $TOTEM</button>
                 </div>
+                <BellyLine b={belly} onOpen={() => setStakeOpen(true)} />
                 {game.isGuest && (
                   <div className="guest-note">
                     ⚡ free guest · the game pays your gas ·{" "}
@@ -461,6 +465,9 @@ export default function App() {
           onError={(m) => pushToast(friendly(m), "info")}
         />
       )}
+      {stakeOpen && game.mode === "live" && view && (
+        <StakeSheet game={game} b={belly} onClose={() => setStakeOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
+      )}
       {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (
@@ -523,6 +530,15 @@ export default function App() {
                 <b>{fmt(view.hoard)} $TOTEM</b>. Half of every meal lands here and half is burned forever. A rampage bite burns
                 15% of it. The tribe's caretakers are paid Blessings from it.
               </p>
+              {view.treasury && (
+                <p>
+                  The Reserve sits in its own account,{" "}
+                  <a href={`https://testnet.nearblocks.io/address/${view.treasury}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                    {view.treasury}
+                  </a>
+                  , which has no keys: nobody can sign for it, and its tokens move only by the contract's rules.
+                </p>
+              )}
               {!view.alive && <p>{view.name} is dead: its Reserve burned at death, so the Hoard is empty until the tribe hatches the next egg.</p>}
               {(view.releasedStakes ?? 0) >= 1 && (
                 <p>

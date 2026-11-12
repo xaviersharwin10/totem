@@ -22,6 +22,8 @@ export interface TotemView {
   hoard: number;
   /** stakes of dead generations awaiting withdrawal (live chain only; not the tribe's) */
   releasedStakes?: number;
+  /** the Totem's keyless treasury sub-account (live chain only) */
+  treasury?: string;
   totalBurned: number;
   totalFed: number;
   mealSize: number;

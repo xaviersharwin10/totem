@@ -30,6 +30,13 @@ impl Contract {
 
         let share = reserve * my / total;
         assert!(share > 0, "your share rounds to zero");
+        // Unclaimed shares go back to the Reserve `unclaimed_return_periods`
+        // later (period_claimed is then set to the full reservation).
+        let already = self.period_claimed.get(&period_id).copied().unwrap_or(0);
+        assert!(
+            already + share <= reserve,
+            "this Blessing expired: unclaimed shares went back to the Reserve"
+        );
 
         // Zero the caller's period points so they cannot claim twice.
         self.period_points.insert(key, 0);
@@ -110,6 +117,9 @@ impl Contract {
                 let rate = self.blessing_rate_bp();
                 let reserve = self.reserve * rate as u128 / FULL_BP as u128;
                 if reserve > 0 {
+                    // reserved Blessings are held by the contract until claimed
+                    let (t, c) = (self.treasury_id(), env::current_account_id());
+                    self.token.internal_transfer(&t, &c, reserve, None);
                     self.reserve -= reserve;
                     self.reserved += reserve;
                     self.total_blessed += reserve;
@@ -125,6 +135,8 @@ impl Contract {
                 let claimed = self.period_claimed.get(&q).copied().unwrap_or(0);
                 if res > claimed {
                     let ret = res - claimed;
+                    let (t, c) = (self.treasury_id(), env::current_account_id());
+                    self.token.internal_transfer(&c, &t, ret, None);
                     self.reserved -= ret;
                     self.reserve += ret;
                     self.period_claimed.insert(q, res);

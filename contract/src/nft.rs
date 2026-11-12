@@ -121,6 +121,7 @@ impl Contract {
                 "form": v.form,
                 "fullness_bp": v.fullness_bp,
                 "reserve": v.reserve,
+                "treasury": v.treasury,
                 "total_staked": v.total_staked,
                 "founders": self.founders,
             })

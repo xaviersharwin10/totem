@@ -27,8 +27,10 @@ pub struct TotemView {
     pub form: String,
     pub xp_happy_days: u32,
     pub next_level_happy_days: Option<u32>,
-    /// Totem-owned part of the Hoard.
+    /// Totem-owned part of the Hoard: the balance of `treasury`.
     pub reserve: U128,
+    /// The Totem's treasury sub-account `totem-<gen>.<contract>` (no access keys).
+    pub treasury: AccountId,
     /// Every token the contract holds for stakers, all generations, until withdrawn.
     pub total_staked: U128,
     /// Stakes in the living Totem's belly (0 while dead).
@@ -101,6 +103,15 @@ pub struct CaretakerView {
     pub lifetime_points: U128,
     pub badge_earned: String,
     pub badge_claimed: String,
+}
+
+#[near(serializers = [json])]
+pub struct ClaimView {
+    pub period_id: u64,
+    pub amount: U128,
+    /// Periods left to claim before it returns to the Reserve (None: no deadline,
+    /// because its generation has ended).
+    pub periods_left: Option<u64>,
 }
 
 #[near(serializers = [json])]
@@ -194,6 +205,7 @@ impl Contract {
             xp_happy_days: p.happy_days,
             next_level_happy_days: next,
             reserve: U128(p.reserve),
+            treasury: self.treasury_id(),
             total_staked: U128(p.belly.total_staked),
             living_staked: U128(living),
             released_stakes: U128(p.belly.total_staked.saturating_sub(living)),
@@ -333,7 +345,34 @@ impl Contract {
             .get(&(period_id, account_id))
             .copied()
             .unwrap_or(0);
-        U128(reserve * my / total)
+        let claimed = self.period_claimed.get(&period_id).copied().unwrap_or(0);
+        let share = reserve * my / total;
+        // expired (returned to the Reserve) or otherwise not payable
+        U128(if claimed + share <= reserve { share } else { 0 })
+    }
+
+    /// Every Blessing this account can claim now, newest first. Scans the last
+    /// 32 closed periods (bounded gas); older ones have long been returned.
+    pub fn get_claimable(&self, account_id: AccountId) -> Vec<ClaimView> {
+        let last = self.last_closed_period;
+        let from = last.saturating_sub(32);
+        let ret = self.cfg.unclaimed_return_periods;
+        (from..last)
+            .rev()
+            .filter_map(|p| {
+                let amount = self.get_blessing_share(p, account_id.clone()).0;
+                (amount > 0).then(|| ClaimView {
+                    period_id: p,
+                    amount: U128(amount),
+                    // while this generation's periods keep closing, the share
+                    // returns to the Reserve when period p + ret closes
+                    periods_left: self
+                        .blessing_epoch_start
+                        .is_some()
+                        .then(|| (p + ret + 1).saturating_sub(last)),
+                })
+            })
+            .collect()
     }
 
     // ------------------------------------------------------------------ //

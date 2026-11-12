@@ -6,7 +6,7 @@ use crate::lineage::{self, LifeRecord};
 use crate::staking::Belly;
 use crate::{Config, Contract, ContractExt, Form, FULL_BP, ONE_TOKEN};
 use near_sdk::json_types::{U128, U64};
-use near_sdk::{env, near, AccountId};
+use near_sdk::{env, near, AccountId, Promise};
 
 #[near]
 impl Contract {
@@ -36,11 +36,11 @@ impl Contract {
         let burn = accepted * self.cfg.burn_share_bp as u128 / FULL_BP as u128;
         let to_reserve = accepted - burn;
 
-        let current = env::current_account_id();
-        // Move the Reserve share into the contract's own ledger account (supply
+        // Move the Reserve share into the Totem's treasury account (supply
         // unchanged), then burn the rest (supply down).
+        let treasury = self.treasury_id();
         self.token
-            .internal_transfer(&caller, &current, to_reserve, None);
+            .internal_transfer(&caller, &treasury, to_reserve, None);
         self.token.internal_withdraw(&caller, burn);
         self.reserve += to_reserve;
         self.total_burned += burn;
@@ -127,6 +127,7 @@ impl Contract {
     /// Bounded gas: every bite removes a level and death stops the loop, so at
     /// most `level` bites run; shield buckets number at most ~25.
     fn settle_inner(&mut self, poker: Option<AccountId>) {
+        self.ensure_treasury();
         let now = env::block_timestamp();
         if now <= self.last_settled_at {
             return;
@@ -184,18 +185,23 @@ impl Contract {
     fn apply_bite(&mut self, t: u64, poker: &Option<AccountId>) {
         let (burn, slashed) = bite_math(&mut self.reserve, &mut self.belly, &self.cfg);
         let current = env::current_account_id();
+        let treasury = self.treasury_id();
+        // slashed stake leaves the belly (held by the contract) for the treasury
+        if slashed > 0 {
+            self.token.internal_transfer(&current, &treasury, slashed, None);
+        }
         let mut tip = 0u128;
         if let Some(p) = poker {
             let tt = burn * self.cfg.poke_tip_bp as u128 / FULL_BP as u128;
-            if tt > 0 && self.is_registered(p) && p != &current {
+            if tt > 0 && self.is_registered(p) && p != &current && p != &treasury {
                 tip = tt;
-                self.token.internal_transfer(&current, p, tip, None);
+                self.token.internal_transfer(&treasury, p, tip, None);
             }
         }
         let burned = burn - tip;
         if burned > 0 {
-            self.token.internal_withdraw(&current, burned);
-            events::ft_burn(&current, burned);
+            self.token.internal_withdraw(&treasury, burned);
+            events::ft_burn(&treasury, burned);
         }
         self.total_burned += burned;
         self.gen_stats.burned.0 += burned;
@@ -229,11 +235,11 @@ impl Contract {
     /// Level 0: burn the Reserve, release stakes, freeze the gravestone.
     fn die(&mut self, at: u64) {
         if self.reserve > 0 {
-            let current = env::current_account_id();
-            self.token.internal_withdraw(&current, self.reserve);
+            let treasury = self.treasury_id();
+            self.token.internal_withdraw(&treasury, self.reserve);
             self.total_burned += self.reserve;
             self.gen_stats.burned.0 += self.reserve;
-            events::ft_burn(&current, self.reserve);
+            events::ft_burn(&treasury, self.reserve);
             self.reserve = 0;
         }
         self.alive = false;
@@ -332,6 +338,34 @@ impl Contract {
 
     pub(crate) fn is_registered(&self, account: &AccountId) -> bool {
         self.token.accounts.contains_key(account)
+    }
+
+    /// The living Totem's treasury: the sub-account `totem-<gen>.<contract>`.
+    /// Its $TOTEM balance is the Reserve, always equal to `self.reserve`.
+    pub(crate) fn treasury_id(&self) -> AccountId {
+        format!("{}.{}", self.totem_id, env::current_account_id())
+            .parse()
+            .expect("valid treasury account id")
+    }
+
+    /// Open the current generation's treasury once: register it in the ledger,
+    /// move any Reserve still held by the contract itself into it (one-time
+    /// migration from the pre-treasury layout), and create the real NEAR
+    /// account with no access keys: nobody can ever sign for it, so its tokens
+    /// move only by this contract's rules.
+    pub(crate) fn ensure_treasury(&mut self) {
+        let t = self.treasury_id();
+        if self.is_registered(&t) {
+            return;
+        }
+        self.token.internal_register_account(&t);
+        if self.reserve > 0 {
+            let current = env::current_account_id();
+            self.token.internal_transfer(&current, &t, self.reserve, None);
+        }
+        // zero balance, no keys, no code: a NEP-448 zero-balance account
+        Promise::new(t.clone()).create_account().detach();
+        events::treasury_opened(self.generation, &t);
     }
 }
 

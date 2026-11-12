@@ -67,6 +67,7 @@ const GROUP: Record<string, Filter> = {
   rampage_start: "life",
   rampage_end: "life",
   rename: "life",
+  treasury_opened: "life",
   evolve: "life",
   stake: "stakes",
   unstake: "stakes",
@@ -150,6 +151,8 @@ function line(e: HistoryEvent, receiptHasDeath: boolean): { icon: string; text: 
       return { icon: "🎁", text: `${who(d.account)} claimed ${tk(d.amount)} (Blessing #${d.period_id})`, tone: "good" };
     case "badge_minted":
       return { icon: "🏅", text: `${who(d.account)} earned the ${d.tier} badge (soulbound NFT)`, tone: "good" };
+    case "treasury_opened":
+      return { icon: "🏦", text: `Treasury account ${d.account} opened for generation ${d.generation}: no keys, its balance is the Reserve` };
     case "rename":
       return { icon: "✏️", text: `Named “${d.name}” by DAO vote` };
     case "evolve":

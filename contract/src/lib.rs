@@ -224,6 +224,7 @@ impl Contract {
             faucet_last: LookupMap::new(StorageKey::FaucetLast),
         };
         // The Totem NFT of generation 1 belongs to the tribe's DAO.
+        this.ensure_treasury();
         let meta = this.totem_base_metadata();
         this.nft_mint_internal("totem-1".to_string(), &dao_account, meta);
         this
@@ -321,6 +322,7 @@ impl Contract {
         self.period_base = self.last_closed_period;
         self.blessing_epoch_start = None;
 
+        self.ensure_treasury();
         let meta = self.totem_base_metadata();
         let id = self.totem_id.clone();
         self.nft_mint_internal(id, &owner, meta);
@@ -360,10 +362,23 @@ use near_contract_standards::storage_management::{
 };
 use near_sdk::NearToken;
 
+/// The contract and its treasury sub-accounts hold tokens only under the
+/// game's rules (Reserve, stakes, Blessings). A plain transfer there would be
+/// stuck and break the accounting, so it is refused: feed or stake instead.
+fn assert_not_totem_account(receiver: &AccountId) {
+    let me = env::current_account_id();
+    let r = receiver.as_str();
+    assert!(
+        r != me.as_str() && !r.ends_with(&format!(".{me}")),
+        "the Totem's accounts only take tokens by feed or stake, not by transfer"
+    );
+}
+
 #[near]
 impl FungibleTokenCore for Contract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        assert_not_totem_account(&receiver_id);
         self.token.ft_transfer(receiver_id, amount, memo)
     }
 
@@ -375,6 +390,7 @@ impl FungibleTokenCore for Contract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_not_totem_account(&receiver_id);
         self.token.ft_transfer_call(receiver_id, amount, memo, msg)
     }
 

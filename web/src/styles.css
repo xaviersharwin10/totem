@@ -401,3 +401,28 @@ button { font-family: inherit; }
 .life-stats b { display: block; font-size: 13.5px; }
 .life-stats span, .life-feeders, .life-nft { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
 @media (max-width: 520px) { .supply, .life-stats { grid-template-columns: repeat(2, 1fr); } }
+/* belly stake + rewards */
+.belly-line { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; margin-top: 6px; border: 0; border-radius: 10px; padding: 6px 8px; background: rgba(43,34,48,0.06); font-size: 11.5px; font-weight: 800; color: var(--ink-soft); cursor: pointer; text-align: left; }
+.belly-line:hover { background: rgba(43,34,48,0.1); }
+.belly-line .ok { color: #3f9d5a; }
+.belly-line .warn { color: #c2343f; }
+.reward-dot { background: var(--gold, #e0a420); color: #fff; border-radius: 999px; padding: 1px 7px; font-size: 11px; animation: sosPulse 1.6s ease-in-out infinite; }
+.tribe.stake { max-width: 520px; }
+.stake-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.stake-grid > div { background: rgba(255,255,255,0.75); border-radius: 12px; padding: 8px 6px; text-align: center; }
+.stake-grid b { display: block; font-family: var(--round); font-size: 17px; font-variant-numeric: tabular-nums; }
+.stake-grid span { font-size: 10.5px; font-weight: 700; color: var(--ink-soft); }
+.shield { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; border-radius: 12px; padding: 9px 11px; font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }
+.shield.ok { background: rgba(63,157,90,0.12); color: #2f7a45; }
+.shield.warn { background: rgba(255,77,94,0.1); color: #a52a36; }
+.shield .press-btn { font-size: 12.5px; padding: 6px 12px; }
+.perks { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); line-height: 1.45; margin-bottom: 8px; }
+.stake-form { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 14px; }
+.stake-form input { border: 1px solid rgba(43,34,48,0.15); border-radius: 12px; padding: 10px 12px; font: 700 16px var(--round); background: rgba(255,255,255,0.85); }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.quick button { border: 0; border-radius: 999px; padding: 5px 11px; font-weight: 800; font-size: 12px; background: rgba(43,34,48,0.07); cursor: pointer; }
+.stake-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.tribe-title.small { font-size: 16px; margin: 4px 0 6px; }
+.claims { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.claim { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: rgba(255,255,255,0.7); border-radius: 10px; padding: 7px 10px; font-size: 12.5px; font-weight: 600; }
+@media (max-width: 520px) { .stake-grid { grid-template-columns: repeat(3, 1fr); } .stake-grid b { font-size: 14px; } }

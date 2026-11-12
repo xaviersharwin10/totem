@@ -19,7 +19,7 @@ export function friendly(e: unknown): string {
     if (/is full/i.test(refusal)) return `Someone filled it first, it's full now. ${NOTHING_TAKEN}`;
     if (/still unbonding/i.test(refusal)) return `Still unbonding: wait for the countdown, then Withdraw. ${NOTHING_TAKEN}`;
     if (/once per Totem-day/i.test(refusal)) return "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment.";
-    if (/expired/i.test(refusal)) return `That Blessing expired: unclaimed shares went back to the Hoard. ${NOTHING_TAKEN}`;
+    if (/expired/i.test(refusal)) return `That Blessing expired: unclaimed shares went back to the Treasury. ${NOTHING_TAKEN}`;
     return `The contract refused: ${refusal}. ${NOTHING_TAKEN}`;
   }
   if (/NotEnoughBalance|LackBalanceForState|balance/i.test(msg) && !/TOTEM/.test(msg))

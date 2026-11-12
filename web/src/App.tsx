@@ -308,7 +308,7 @@ export default function App() {
       {/* ---------- top-right: treasury ---------- */}
       <div className="hud-tr">
         <div className="stat-card glass" onClick={() => setInfo("hoard")}>
-          <div className="stat-lbl">💰 Hoard</div>
+          <div className="stat-lbl">💰 Treasury</div>
           <div className="stat-val gold"><Ticker value={view.hoard} /></div>
           {(view.releasedStakes ?? 0) >= 1 && <div className="stat-sub">+{fmt(view.releasedStakes ?? 0)} stakes to withdraw</div>}
         </div>
@@ -457,7 +457,7 @@ export default function App() {
         <div className="rampage-card beam">
           <div className="rc-title">🔥 RAMPAGE</div>
           <div className="rc-sub">
-            {view.name} is starving. Every bite burns 15% of the Hoard and knocks a block off the totem pole.
+            {view.name} is starving. Every bite burns 15% of the Treasury and knocks a block off the totem pole.
           </div>
           <div className="rc-row">
             <button className="press-btn danger-btn" onClick={() => { setAmount("fill"); feedNearPanda(); }}>🎋 RESCUE</button>
@@ -557,21 +557,21 @@ export default function App() {
             </>
           ) : (
             <>
-              <div className="ip-title">💰 The Hoard</div>
+              <div className="ip-title">💰 The Treasury</div>
               <p>
-                <b>{fmt(view.hoard)} $TOTEM</b>. Half of every meal lands here and half is burned forever. A rampage bite burns
-                15% of it. The tribe's caretakers are paid Blessings from it.
+                <b>{fmt(view.hoard)} $TOTEM</b>: the tribe's shared money for this life. Half of every meal lands here and half is
+                burned forever. Stakes in the belly count too. A Rampage bite burns 15% of it. Caretakers are paid Blessings from it.
               </p>
               {view.treasury && (
                 <p>
-                  The Reserve sits in its own account,{" "}
+                  The meal half sits in its own account,{" "}
                   <a href={`https://testnet.nearblocks.io/address/${view.treasury}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                     {view.treasury}
                   </a>
                   , which has no keys: nobody can sign for it, and its tokens move only by the contract's rules.
                 </p>
               )}
-              {!view.alive && <p>{view.name} is dead: its Reserve burned at death, so the Hoard is empty until the tribe hatches the next egg.</p>}
+              {!view.alive && <p>{view.name} is dead: its treasury burned at death, so it is empty until the tribe hatches the next egg.</p>}
               {(view.releasedStakes ?? 0) >= 1 && (
                 <p>
                   Not counted: <b>{fmt(view.releasedStakes ?? 0)} $TOTEM</b> of stakes from {view.alive ? "earlier lives" : "this life"}.

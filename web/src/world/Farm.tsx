@@ -496,7 +496,7 @@ function FallingBlock({ idx, t0 }: { idx: number; t0: number }) {
 }
 
 // ------------------------------------------------------------------------- //
-// the Hoard: a treasure chest whose coin pile grows with the Reserve
+// the Treasury: a treasure chest whose coin pile grows with the Reserve
 // ------------------------------------------------------------------------- //
 
 export function HoardChest({ hoard, rampage, onInfo }: { hoard: number; rampage: boolean; onInfo: () => void }) {

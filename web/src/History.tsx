@@ -112,17 +112,17 @@ function line(e: HistoryEvent, receiptHasDeath: boolean): { icon: string; text: 
     case "feed":
       return {
         icon: d.rescue ? "🦸" : "🎋",
-        text: `${who(d.account)} fed ${tk(d.amount)} · 🔥 ${tk(d.burned)} burned · ${tk(d.to_reserve)} to the Reserve${d.rescue ? " · rescue!" : ""}`,
+        text: `${who(d.account)} fed ${tk(d.amount)} · 🔥 ${tk(d.burned)} burned · ${tk(d.to_reserve)} to the treasury${d.rescue ? " · rescue!" : ""}`,
         tone: "burn",
       };
     case "ft_burn":
-      return { icon: "🔥", text: `${tk(d.amount)} $TOTEM burned${receiptHasDeath ? ": the Reserve, at death" : ""}`, tone: "burn" };
+      return { icon: "🔥", text: `${tk(d.amount)} $TOTEM burned${receiptHasDeath ? ": the treasury, at death" : ""}`, tone: "burn" };
     case "ft_mint":
       return { icon: "🚰", text: `${who(d.owner_id)} got ${tk(d.amount)} from the demo faucet (minted; testnet only)`, tone: "mint" };
     case "bite":
       return {
         icon: "⚔️",
-        text: `BITE: 🔥 ${tk(d.reserve_burned)} of the Reserve burned, ${tk(d.stake_slashed)} slashed from unshielded stakes → Level ${d.level_after}${
+        text: `BITE: 🔥 ${tk(d.reserve_burned)} of the treasury burned, ${tk(d.stake_slashed)} slashed from unshielded stakes → Level ${d.level_after}${
           Number(d.tip) > 0 ? ` · ${who(d.poker)} got a ${tk(d.tip)} tip for poking` : ""
         }`,
         tone: "bad",
@@ -152,7 +152,7 @@ function line(e: HistoryEvent, receiptHasDeath: boolean): { icon: string; text: 
     case "badge_minted":
       return { icon: "🏅", text: `${who(d.account)} earned the ${d.tier} badge (soulbound NFT)`, tone: "good" };
     case "treasury_opened":
-      return { icon: "🏦", text: `Treasury account ${d.account} opened for generation ${d.generation}: no keys, its balance is the Reserve` };
+      return { icon: "🏦", text: `Treasury account ${d.account} opened for generation ${d.generation}: no keys, only the contract's rules can move its tokens` };
     case "rename":
       return { icon: "✏️", text: `Named “${d.name}” by DAO vote` };
     case "evolve":

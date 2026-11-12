@@ -143,7 +143,7 @@ function statusText(t: Totem, s: Stats): string {
     else if (t.seconds_until_rampage) lines.push(`Rampage in ${secs(t.seconds_until_rampage)} if nobody feeds it`);
     lines.push(`To fill it: ${tokens(t.fill_amount)} $TOTEM`);
   }
-  lines.push(`💰 Hoard ${tokens(t.hoard)} · 🔥 burned forever ${tokens(s.total_burned)}`);
+  lines.push(`💰 Treasury ${tokens(t.hoard)} · 🔥 burned forever ${tokens(s.total_burned)}`);
   return lines.join("\n");
 }
 

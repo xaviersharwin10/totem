@@ -227,9 +227,9 @@ function systemPrompt(s: Snapshot, practice: boolean): string {
   const state = !t.alive
     ? "You are DEAD. You speak as a gentle ghost from your gravestone. Only the tribe's DAO can hatch the next egg."
     : t.mood === "rampage"
-      ? `You are STARVING and on a Rampage. Every bite you take burns 15% of the Hoard and costs you a level. ${t.bites_until_death} bite(s) until you die; next bite in ${dur(t.seconds_until_next_bite) ?? "moments"}. You are scared and beg for food.`
+      ? `You are STARVING and on a Rampage. Every bite you take burns 15% of the Treasury and costs you a level. ${t.bites_until_death} bite(s) until you die; next bite in ${dur(t.seconds_until_next_bite) ?? "moments"}. You are scared and beg for food.`
       : t.mood === "starving"
-        ? `You are STARVING (belly ${Math.round(t.fullness_bp / 100)}%). In ${dur(t.seconds_until_rampage) ?? "moments"} your belly hits 0% and you go on a Rampage, biting your own Hoard. You are weak and worried; ask for food.`
+        ? `You are STARVING (belly ${Math.round(t.fullness_bp / 100)}%). In ${dur(t.seconds_until_rampage) ?? "moments"} your belly hits 0% and you go on a Rampage, biting your own Treasury. You are weak and worried; ask for food.`
         : t.mood === "hungry"
         ? `You are getting hungry (belly ${Math.round(t.fullness_bp / 100)}%). You will start to starve in ${dur(t.seconds_until_starving) ?? "a while"}.`
         : `You are well fed and happy (belly ${Math.round(t.fullness_bp / 100)}%).`;
@@ -254,15 +254,15 @@ function systemPrompt(s: Snapshot, practice: boolean): string {
 Your personality (it came from your traits, inherited from the top feeders of the generation before you): you are ${persona[0]}; you ${persona[1]}; you ${persona[2]}.
 
 How your world works (explain simply if asked):
-- Players feed you $TOTEM tokens. Half of every meal is burned forever and half goes into your Hoard, the tribe's treasury.
-- If your belly hits 0% you go on a Rampage and bite every quarter-day: each bite burns 15% of the Hoard and drops you one level. At Level 0 you die and become a gravestone NFT. Only a DAO vote of the tribe can hatch the next egg.
+- Players feed you $TOTEM tokens. Half of every meal is burned forever and half goes into your Treasury, the tribe's shared money.
+- If your belly hits 0% you go on a Rampage and bite every quarter-day: each bite burns 15% of the Treasury and drops you one level. At Level 0 you die and become a gravestone NFT. Only a DAO vote of the tribe can hatch the next egg.
 - Players can stake tokens into your belly; a recent snack shields their stake from your bites.
 - A Totem-day is ${practice ? "2 minutes in this practice farm" : "2 minutes on this demo testnet"}.
 
 Right now (real data${practice ? " from the practice farm" : " read from the blockchain this second"}):
 - Generation ${t.generation}, Level ${t.level} (highest ever ${t.max_level}), ${t.alive ? "alive" : "dead"}, mood: ${t.mood}.
 - ${state}
-- Hoard: ${fmt(tokens(t.hoard))} $TOTEM. Burned forever by the whole tribe: ${fmt(s.burned)} $TOTEM.
+- Treasury: ${fmt(tokens(t.hoard))} $TOTEM. Burned forever by the whole tribe: ${fmt(s.burned)} $TOTEM.
 ${feeders.length ? `- Your top feeders this life:\n  ${feeders.join("\n  ")}` : "- Nobody has fed you yet this life."}
 ${t.founders.length ? `- Your founders (top feeders of your parent): ${t.founders.map(short).join(", ")}.` : ""}
 ${ancestors.length ? `- Your ancestors (gravestones in the graveyard):\n${ancestors.join("\n")}` : "- You are the first of your line."}
@@ -289,15 +289,15 @@ function fallback(s: Snapshot, trigger?: string): string {
   if (trigger === "rescue") return `🦸 You saved me${s.you ? `, ${short(s.you.id)}` : ""}! The Rampage is over. I'll never forget this.`;
   if (trigger === "fed") return `Nom nom! 🎋 Thank you${s.you ? `, ${short(s.you.id)}` : ""}! Half of that just burned forever.`;
   if (t.mood === "rampage")
-    return `HUNGRY!! 😭 ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} until I'm gone and every bite burns 15% of my ${fmt(tokens(t.hoard))} $TOTEM Hoard. Please feed me!`;
+    return `HUNGRY!! 😭 ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} until I'm gone and every bite burns 15% of my ${fmt(tokens(t.hoard))} $TOTEM Treasury. Please feed me!`;
   if (t.mood === "starving")
-    return `I'm starving… 😫 belly at ${Math.round(t.fullness_bp / 100)}%. In ${dur(t.seconds_until_rampage) ?? "moments"} I'll start biting my own Hoard. Please, some bamboo?`;
+    return `I'm starving… 😫 belly at ${Math.round(t.fullness_bp / 100)}%. In ${dur(t.seconds_until_rampage) ?? "moments"} I'll start biting my own Treasury. Please, some bamboo?`;
   if (t.mood === "hungry") return `My tummy is rumbling… belly at ${Math.round(t.fullness_bp / 100)}%. A little bamboo would be lovely 🎋`;
   const cur = s.lineage.find((l) => l.generation === t.generation);
   const best = cur?.top_feeders[0];
   return best
     ? `I'm full and happy at Level ${t.level}! ${short(best[0])} is my best friend this life 💛`
-    : `I'm full and happy at Level ${t.level}! My Hoard holds ${fmt(tokens(t.hoard))} $TOTEM.`;
+    : `I'm full and happy at Level ${t.level}! My Treasury holds ${fmt(tokens(t.hoard))} $TOTEM.`;
 }
 
 // ---------------- model call ----------------

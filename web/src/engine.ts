@@ -221,7 +221,7 @@ export class TotemEngine {
     this.totalBurned += burn - tip;
     this.level -= 1;
     this.happyMs = this.levelFloor(this.level) * DAY_MS;
-    this.pushEvent("bite", `🔥 BITE! ${fmt(burn)} $TOTEM burned from the Hoard`, at);
+    this.pushEvent("bite", `🔥 BITE! ${fmt(burn)} $TOTEM burned from the Treasury`, at);
     if (this.level > 0) {
       this.pushEvent("level_down", `💔 ${this.name} dropped to Level ${this.level}`, at);
     } else {
@@ -281,7 +281,7 @@ export class TotemEngine {
       rescue ? "rescue" : "feed",
       `${rescue ? "⚔️" : "🍖"} ${who} fed ${fmt(accepted)} — ${fmt(burn)} burned, ${fmt(
         toHoard
-      )} to Hoard (+${pts} pts)`,
+      )} to Treasury (+${pts} pts)`,
       now
     );
     return { accepted, burn, toHoard, rescue, points: pts };

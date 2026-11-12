@@ -15,10 +15,10 @@ export function sosText(v: TotemView): string {
   if (!v.alive) return `🪦 ${v.name} starved on NEAR. The tribe can vote to hatch the next egg. Come see the farm 👉 ${url}`;
   const atRisk = fmt(v.hoard * 0.15);
   if (v.mood === "rampage")
-    return `🆘 ${v.name} is STARVING on NEAR! ${v.bitesUntilDeath} bite${v.bitesUntilDeath === 1 ? "" : "s"} from death, and the next bite burns ${atRisk} $TOTEM from its Hoard. Rescue it in one tap, no wallet needed 👉 ${url}`;
+    return `🆘 ${v.name} is STARVING on NEAR! ${v.bitesUntilDeath} bite${v.bitesUntilDeath === 1 ? "" : "s"} from death, and the next bite burns ${atRisk} $TOTEM from its Treasury. Rescue it in one tap, no wallet needed 👉 ${url}`;
   if (v.fullnessBp < 7000)
     return `🥺 ${v.name} is getting hungry (belly ${Math.round(v.fullnessBp / 100)}%). It starts biting in ${fmtTime(v.secondsUntilRampage)}. Feed it in one tap, free 👉 ${url}`;
-  return `🐼 Meet ${v.name}, our tribe's Totem on NEAR: Level ${v.level}, ${fmt(v.hoard)} $TOTEM in its Hoard. Feed it, free 👉 ${url}`;
+  return `🐼 Meet ${v.name}, our tribe's Totem on NEAR: Level ${v.level}, ${fmt(v.hoard)} $TOTEM in its Treasury. Feed it, free 👉 ${url}`;
 }
 
 /** 1200×630 share image: a snapshot of the 3D farm with the SOS banner. */
@@ -57,7 +57,7 @@ function drawCard(v: TotemView): string | null {
     ? `Reached Level ${v.maxLevel}. The tribe can hatch the next egg.`
     : danger
       ? `${v.bitesUntilDeath} bite${v.bitesUntilDeath === 1 ? "" : "s"} from death · next bite burns ${fmt(v.hoard * 0.15)} $TOTEM`
-      : `Level ${v.level} · belly ${Math.round(v.fullnessBp / 100)}% · Hoard ${fmt(v.hoard)} $TOTEM`;
+      : `Level ${v.level} · belly ${Math.round(v.fullnessBp / 100)}% · Treasury ${fmt(v.hoard)} $TOTEM`;
   g.fillStyle = "#fff";
   g.font = "700 64px Fredoka, Nunito, sans-serif";
   g.fillText(title, 56, 500);
@@ -198,7 +198,7 @@ export function RescueCard({
         <div className="rs-sub">
           {heroic
             ? <>The Rampage is over. A soulbound <b>Hero</b> badge NFT was minted to <b>{who}</b>.</>
-            : <>Its belly is full. Half of your meal burned forever, half went to its Hoard.</>}
+            : <>Its belly is full. Half of your meal burned forever, half went to its Treasury.</>}
           {game.isGuest && <><br />You paid no gas: the game relayed it for you.</>}
         </div>
         <div className="rs-row">
@@ -234,7 +234,7 @@ export function RescueCard({
               <>
                 <div><b>{Math.round(v.fullnessBp / 100)}%</b><span>belly</span></div>
                 <div><b>{v.level}</b><span>level</span></div>
-                <div><b>{fmt(v.hoard)}</b><span>$TOTEM Hoard</span></div>
+                <div><b>{fmt(v.hoard)}</b><span>$TOTEM Treasury</span></div>
               </>
             )}
           </div>

@@ -197,7 +197,7 @@ export function StakeSheet({ game, b, onClose, toast }: { game: Game; b: Belly; 
         <button className="dc-close" aria-label="Close" onClick={onClose}>✕</button>
         <div className="tribe-title">🛡 Your belly stake</div>
         <div className="tribe-sub">
-          Stake $TOTEM into {v.name}'s belly. Every bite slashes <b>{slashPct}%</b> of each <b>unshielded</b> stake into the Reserve. Feeding at
+          Stake $TOTEM into {v.name}'s belly. Every bite slashes <b>{slashPct}%</b> of each <b>unshielded</b> stake into the treasury. Feeding at
           least {fmt(shieldFeed)} shields yours for {shieldFor}. Unstaking takes {unbondFor} and stays slashable meanwhile, so nobody dodges a bite at
           the last second. If the Totem dies, every stake is released at once.
         </div>
@@ -268,7 +268,7 @@ export function StakeSheet({ game, b, onClose, toast }: { game: Game; b: Belly; 
               </div>
             ) : (
               <div className="perks">
-                No Blessings waiting. From Level 3, every Blessing period pays a share of the Reserve to whoever fed during it, by points.
+                No Blessings waiting. From Level 3, every Blessing period pays a share of the treasury to whoever fed during it, by points.
               </div>
             )}
             {b.caretaker && (

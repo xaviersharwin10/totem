@@ -26,8 +26,8 @@ The contract runs in demo mode: **1 Totem-day = 120 seconds**. Left alone, a Tot
 | 0 s | Belly 100% |
 | about 85 s | Below 30%: **starving** |
 | about 2 min | Belly 0%: **Rampage**. The screen turns red and the countdown to the first bite starts |
-| every 30 s after that | A **bite**: burns 15% of the Hoard, slashes unshielded stakes by 15%, and costs one level |
-| when the level reaches 0 | **Death**: the rest of the Hoard burns and the Totem NFT becomes a gravestone |
+| every 30 s after that | A **bite**: burns 15% of the Treasury, slashes unshielded stakes by 15%, and costs one level |
+| when the level reaches 0 | **Death**: the rest of the Treasury burns and the Totem NFT becomes a gravestone |
 
 A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching.
 
@@ -84,11 +84,11 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 
 - [ ] Open the app. **See:** "Waking the Totem on testnet…", then the farm with the panda, a red barn, a pond, the totem pole, the treasure chest and the graveyard.
 - [ ] Top left: name (for example **BaoBao X**), mood pill, `gen N`, form (`egg`), level, hearts and "N bites from death".
-- [ ] Top right: **💰 Hoard** and **🔥 Burned forever**, with numbers that animate when they change. **Live testnet** has a green dot.
+- [ ] Top right: **💰 Treasury** and **🔥 Burned forever**, with numbers that animate when they change. **Live testnet** has a green dot.
 - [ ] Tap the panda. **See:** it jumps, hearts float up, and a speech bubble says how it feels using the real numbers.
 - [ ] Drag to rotate the camera. Scroll or pinch to zoom.
 - [ ] Shake a tree. **See:** apples fall and a toast explains that apples are free, but only $TOTEM bamboo fills the belly.
-- [ ] Tap the 💰 chest or the Hoard card. **See:** an explanation and a link to the treasury account.
+- [ ] Tap the 💰 chest or the Treasury card. **See:** an explanation and a link to the treasury account.
 - [ ] Tap the totem pole. **See:** one carved block per level, explained.
 - [ ] **contract on explorer ↗** opens `totem-grumbo.testnet` on testnet.nearblocks.io.
 
@@ -97,7 +97,7 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 - [ ] Press **⚡ Play free, no wallet**. **See:** no popup. The wallet card shows `guest g…`, "⚡ free guest · the game pays your gas" and **🔑 back up**.
 - [ ] **🚰 Get test $TOTEM.** **See:** a toast and the balance becomes **1,000 $TOTEM** (allow up to 10 s).
 - [ ] Press it again right away. **See:** "Free $TOTEM refills once per Totem-day…". It works again after 2 minutes.
-- [ ] Pick **10**, then **FEED** (or the space bar). **See:** bamboo drops near the panda, it walks over and eats it, "+10 🎋" and "🔥 5 burned" float up, the belly rises, Hoard +5, Burned +5.
+- [ ] Pick **10**, then **FEED** (or the space bar). **See:** bamboo drops near the panda, it walks over and eats it, "+10 🎋" and "🔥 5 burned" float up, the belly rises, Treasury +5, Burned +5.
 - [ ] Feed several times quickly. **See:** "2× combo!", "3× combo!" on the belly card.
 - [ ] Pick **🍱** (fill up, which shows the exact amount needed) and feed. **See:** the belly reaches 100%. Feed again: "I'm full! 😋", and nothing is charged.
 - [ ] Pick **🎋** and tap the grass. **See:** the food lands where you tapped.
@@ -120,8 +120,8 @@ Hatch first, feed once, then stop feeding.
 - [ ] The belly bar drains (green → yellow → red), and the footer counts down "starving in …" and "first bite in …".
 - [ ] Below 70%, **🆘 Call for help** appears under the belly.
 - [ ] Below 30%: the mood becomes **starving** and the pill wobbles.
-- [ ] At 0%: **🔥 RAMPAGE**. A red vignette pulses, a shaking card says every bite burns 15% of the Hoard, and the footer counts down "next bite in …".
-- [ ] At the bite: the screen shakes, a block falls off the totem pole, you lose a heart and a level, and the Hoard drops by 15%. Burned goes up by the same amount.
+- [ ] At 0%: **🔥 RAMPAGE**. A red vignette pulses, a shaking card says every bite burns 15% of the Treasury, and the footer counts down "next bite in …".
+- [ ] At the bite: the screen shakes, a block falls off the totem pole, you lose a heart and a level, and the Treasury drops by 15%. Burned goes up by the same amount.
 - [ ] **⚡ poke for a tip** (in the Rampage card): anyone can trigger an overdue bite and earns 1% of what it burns. **See:** coins fly from the chest, and your balance rises slightly.
 - [ ] **🎋 RESCUE** (in the Rampage card) feeds the fill amount. **See:** "RESCUE ×2!" (rescue feeds earn double points), the Rampage ends, and "🦸 Someone rescued …".
 
@@ -141,8 +141,8 @@ Hatch first, feed once, then stop feeding.
 
 Let a Totem starve all the way (Level 1: one bite after the Rampage starts).
 
-- [ ] **See:** the death card "🪦 BaoBao N · starved at Level 0 · reached Level M", the Hoard reads **0**, and a new gravestone appears in the graveyard.
-- [ ] If anyone had stakes, the Hoard card shows "+N stakes to withdraw". Stakes are never counted in the Hoard.
+- [ ] **See:** the death card "🪦 BaoBao N · starved at Level 0 · reached Level M", the Treasury reads **0**, and a new gravestone appears in the graveyard.
+- [ ] If anyone had stakes, the Treasury card shows "+N stakes to withdraw". Stakes are never counted in the Treasury.
 - [ ] **✕** shrinks the card to a pill at the top. Tapping the pill opens it again.
 - [ ] Hover a gravestone to see its name. Tap it. **See:** the 🧾 panel opens on **Lives** with that life expanded: stats, top feeders, the NFT id and its events.
 - [ ] The Totem NFT became a gravestone:
@@ -179,7 +179,7 @@ Use a guest (gasless) with 1,000+ $TOTEM.
 ### 9. Rewards: badges and Blessings
 
 - [ ] **Badges:** with 100+ lifetime points and the Totem at Level 2+, the stake panel shows **Mint your 🥉 Bronze badge**. Mint it. **See:** a soulbound NFT `badge-bronze-<you>`. Silver needs 1,000 points and Gold 10,000.
-- [ ] **Blessings:** at Level 3+, every 3.5 Totem-days (7 minutes) a share of the Hoard is set aside for that period's caretakers. **See:** "🎁 N" on your wallet line, and the Blessings listed with a deadline.
+- [ ] **Blessings:** at Level 3+, every 3.5 Totem-days (7 minutes) a share of the Treasury is set aside for that period's caretakers. **See:** "🎁 N" on your wallet line, and the Blessings listed with a deadline.
 - [ ] **Claim all** pays them (at most 3 per transaction). Your balance rises.
 - [ ] **Expiry:** unclaimed Blessings go back to the Reserve 2 periods later, and can no longer be claimed.
 - [ ] **Founder badges:** when the tribe hatches the next egg, the previous life's top 3 feeders get `founder-<new gen>-<account>`. Check with `nft_tokens_for_owner` after a hatch.
@@ -231,7 +231,7 @@ near contract call-function as-read-only $C nft_token json-args '{"token_id":"to
 The bot runs inside the hosted app. **Don't run `npm run bot` with the real token on your machine.** Telegram allows one poller per token, and the two would fight. `npm run bot -- --dry-run` is safe; it doesn't connect to Telegram.
 
 - [ ] DM [@Babao_panda_bot](https://t.me/Babao_panda_bot) `/start`. **See:** a welcome and the command menu.
-- [ ] `/status`. **See:** name, level, mood, a belly bar, countdowns, the fill amount, the Hoard and the total burned, with buttons that open the app.
+- [ ] `/status`. **See:** name, level, mood, a belly bar, countdowns, the fill amount, the Treasury and the total burned, with buttons that open the app.
 - [ ] `/watch <your account>` (up to 3), then `/me`. **See:** stake, shield time left, Blessings and Keeper status. `/unwatch <account>` removes one.
 - [ ] `/lives` lists recent lives. `/ask how are you?` answers in BaoBao's voice (one question every 8 s).
 - [ ] `/rescue` gives a one-tap rescue button. `/alerts off` mutes tribe alarms for this chat; `/alerts on` brings them back.

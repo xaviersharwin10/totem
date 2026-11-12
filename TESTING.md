@@ -76,6 +76,7 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 | 16 | [Things that must fail](#16-things-that-must-fail-security) | any | 10 min |
 | 17 | [Phone](#17-phone) | any | 5 min |
 | 18 | [Developer tests](#18-developer-tests) | none | 5 min |
+| 19 | [Prediction market](#19-prediction-market) | alive, then Rampage | 8 min |
 
 ---
 
@@ -332,6 +333,57 @@ scripts/dao-propose.sh hatch                                        # after a de
 scripts/dao-propose.sh rename BaoBao                                # applies from the next generation
 VOTERS=totem-grumbo-keeper.testnet scripts/dao-propose.sh rename X  # one Keeper votes alone
 scripts/keepers-sync.sh some-staker.testnet                         # add/remove Keepers from on-chain reputation
+```
+
+---
+
+### 19. Prediction market
+
+Markets open automatically when a Rampage starts and resolve when the Totem is rescued or dies. The 🔮 icon pulses while a market is live.
+
+**Part A — bet on survive (winning side)**
+
+- [ ] Start a fresh guest (or use an existing one) and get test $TOTEM from the faucet.
+- [ ] Stop feeding and wait for Rampage (~2 minutes after last feed). The 🔮 icon in the top-right icon row starts pulsing.
+- [ ] Open the Prediction Market panel (🔮). **See:** "Market #N — 🔥 live", two empty pool bars (survive / die), "No one has bet yet".
+- [ ] Pick **🛡️ Survive**, amount **100**, and press **Bet 100 $TOTEM on "survive"**. **See:** the survive bar fills, "your bet: 100 on survive", and your balance is 100 lower.
+- [ ] In the Rampage card tap **🎋 RESCUE**. **See:** the Rampage ends and the market row updates to **✅ survived**. The bet box disappears; the market is resolved.
+- [ ] The row shows **🏆 Claim winnings**. Press it. **See:** "🏆 Winnings claimed!" toast, and your balance rises (you were the only survivor bettor, so you get your 100 back; with a second bettor on "die" you would receive their tokens minus the 3% burn).
+- [ ] Open the 🧾 history → **Ledger**: find the `predict_bet` and `predict_resolved` events; the claimed payout shows as an `ft_transfer`.
+
+**Part B — bet on die (winning side)**
+
+- [ ] Wait for the next Rampage (let the rescued Totem starve again, or wait for a new one).
+- [ ] Open 🔮, pick **💀 Die**, amount **50**, bet.
+- [ ] Do NOT rescue. Let the Totem starve until Level 0. **See:** on death the market row changes to **💀 died** and the "🏆 Claim winnings" button appears for the "die" bet.
+- [ ] Claim. Your balance rises.
+
+**Part C — split-pool payout**
+
+- [ ] Open 🔮 during a Rampage with two different accounts open simultaneously (one in a normal window, one in private/incognito).
+- [ ] Account A bets 100 on survive. Account B bets 200 on die.
+- [ ] Rescue the Totem (survive wins). Account A can claim; Account B cannot.
+- [ ] Account A's winnings ≈ 100 + 200 × 0.97 = 294 $TOTEM (the 3% fee is burned).
+
+**Part D — security**
+
+- [ ] Claim a resolved market twice. **See:** "nothing to claim" on the second call.
+- [ ] Try to call `predict` when no Rampage is active (no active market). **See:** the Bet button is hidden; the contract refuses "no active market".
+- [ ] Try to call `predict` as a non-registered account (missing storage). **See:** "not registered" error.
+
+**Developer verification:**
+
+```bash
+cd contract
+cargo near build non-reproducible-wasm
+cargo test                    # expect: 40 unit tests + 2 sandbox — all pass
+# The 6 new tests:
+# predict_market_opens_on_rampage
+# predict_survive_wins_when_rescued
+# predict_die_wins_on_death
+# predict_double_claim_is_rejected
+# new_market_opens_on_second_rampage
+# predict_with_no_losers_pays_stake_back
 ```
 
 ---

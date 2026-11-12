@@ -25,6 +25,7 @@ mod events;
 mod game;
 mod lineage;
 mod nft;
+mod predict;
 mod rewards;
 mod staking;
 mod views;
@@ -34,6 +35,7 @@ mod tests;
 
 pub use config::*;
 pub use lineage::{GenStats, LifeRecord, Traits};
+pub use predict::{PredictBet, PredictMarket};
 pub use staking::{Belly, Stake};
 
 #[derive(BorshStorageKey)]
@@ -54,6 +56,8 @@ enum StorageKey {
     NftOwners,
     NftMeta,
     NftEnum,
+    PredictMarkets,
+    PredictBets,
 }
 
 #[near(contract_state)]
@@ -128,6 +132,13 @@ pub struct Contract {
 
     // --- demo faucet ---
     faucet_last: LookupMap<AccountId, u64>,
+
+    // --- prediction markets ---
+    predict_next_id: u32,
+    current_predict_market: Option<u32>,
+    predict_pot: u128,
+    predict_markets: LookupMap<u32, PredictMarket>,
+    predict_bets: LookupMap<(u32, AccountId), PredictBet>,
 }
 
 #[near]
@@ -222,6 +233,11 @@ impl Contract {
             nft,
             hero_count: 0,
             faucet_last: LookupMap::new(StorageKey::FaucetLast),
+            predict_next_id: 0,
+            current_predict_market: None,
+            predict_pot: 0,
+            predict_markets: LookupMap::new(StorageKey::PredictMarkets),
+            predict_bets: LookupMap::new(StorageKey::PredictBets),
         };
         // The Totem NFT of generation 1 belongs to the tribe's DAO.
         this.ensure_treasury();
@@ -321,6 +337,9 @@ impl Contract {
         // Continue Blessing period numbering past the dead generation's ids.
         self.period_base = self.last_closed_period;
         self.blessing_epoch_start = None;
+
+        // Prediction market: close any open market and reset for the new generation.
+        self.current_predict_market = None;
 
         self.ensure_treasury();
         let meta = self.totem_base_metadata();

@@ -13,13 +13,14 @@ Where the build stands and what is left. Read this after [`TOTEM_BRIEF.md`](TOTE
 | Views | `get_totem` projects unsettled bites; `get_stake`, `get_config`, `get_stats`, `get_caretaker`, `get_period`, `get_blessing_share` | [`views.rs`](contract/src/views.rs) |
 | NFTs (NEP-171) | `totem-{gen}` minted to the DAO (dynamic metadata while alive, converted to a gravestone at death, transferable: governance follows the owner); soulbound `badge-{tier}-{acct}`, `hero-{gen}-{n}`, `founder-{gen}-{acct}`; contract pays the storage | [`nft.rs`](contract/src/nft.rs) |
 | Contract tests | 29 unit tests: feeding, bites and level loss, newborn death, shields, shield expiring between bites, many-staker invariant, unbonding, lineage/hatch, sybil split, NFTs (Totem, gravestone, soulbound badges, Hero, Founder, transfer), governance, evolution deadline, Blessings at/below L3 and after death | [`tests.rs`](contract/src/tests.rs) |
+| Prediction market | One market per Rampage; users bet $TOTEM on survive/die; winners split losers' pool (3% fee burned); `predict` / `claim_prediction` gasless via function-call key; 🔮 panel with live pool bars, side picker, quick-pick amounts, market history, claim button; 6 new unit tests (40 total) | [`contract/src/predict.rs`](contract/src/predict.rs), [`web/src/Predict.tsx`](web/src/Predict.tsx) |
 | Web app | 3D farm (React Three Fiber) with an original chubby panda; feed / pet / ball / trees; totem pole = levels, treasure chest = Hoard, graveyard = lineage; day/night; glass HUD | [`web/src/`](web/src/) |
 | BaoBao's voice (AI) | Tap the panda or press 💬: an AI character on NEAR AI Cloud (`anthropic/claude-haiku-5-5` by default), grounded in `get_totem` / `get_lineage` / `get_caretaker` / `get_stake`; personality from on-chain traits; knows feeders by name, ancestors, founders; thanks you after a feed; ghost voice when dead. Key stays server-side, 20 msgs/min/IP, canned fallback without a key | [`web/server/voice.ts`](web/server/voice.ts), [`web/src/TotemChat.tsx`](web/src/TotemChat.tsx) |
 | Docs | README (judge-facing), RULES.md (all parameters), brief updated to the 3D farm | root |
 
 **Run it:**
 ```bash
-cd contract && cargo near build non-reproducible-wasm && cargo test   # 34 unit + 2 sandbox (rust-toolchain.toml pins stable + wasm target)
+cd contract && cargo near build non-reproducible-wasm && cargo test   # 40 unit + 2 sandbox (rust-toolchain.toml pins stable + wasm target)
 cd web && npm install && npm run dev  # http://localhost:5173
 ```
 

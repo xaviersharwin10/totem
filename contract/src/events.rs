@@ -189,6 +189,48 @@ pub fn ft_mint(owner: &AccountId, amount: u128, memo: &str) {
     env::log_str(&format!("EVENT_JSON:{}", payload));
 }
 
+pub fn predict_opened(gen: u32, market_id: u32, at: u64) {
+    emit(
+        "predict_opened",
+        json!({ "gen": gen, "market_id": market_id, "opened_at": at.to_string() }),
+    );
+}
+
+pub fn predict_bet(account: &AccountId, market_id: u32, side: &str, amount: u128) {
+    emit(
+        "predict_bet",
+        json!({
+            "account": account,
+            "market_id": market_id,
+            "side": side,
+            "amount": amount.to_string(),
+        }),
+    );
+}
+
+pub fn predict_resolved(market_id: u32, survived: bool, winner_pool: u128, distributable: u128) {
+    emit(
+        "predict_resolved",
+        json!({
+            "market_id": market_id,
+            "survived": survived,
+            "winner_pool": winner_pool.to_string(),
+            "distributable": distributable.to_string(),
+        }),
+    );
+}
+
+pub fn predict_claimed(account: &AccountId, market_id: u32, payout: u128) {
+    emit(
+        "predict_claimed",
+        json!({
+            "account": account,
+            "market_id": market_id,
+            "payout": payout.to_string(),
+        }),
+    );
+}
+
 /// Standard NEP-141 burn event.
 pub fn ft_burn(owner: &AccountId, amount: u128) {
     let payload = json!({

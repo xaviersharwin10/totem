@@ -103,8 +103,8 @@ fn assert_supply_conserved(c: &Contract, holders: &[AccountId]) {
     );
     assert_eq!(
         contract_bal,
-        c.reserved + c.belly.total_staked,
-        "the contract itself holds exactly reserved Blessings + staked tokens"
+        c.reserved + c.belly.total_staked + c.predict_pot,
+        "the contract itself holds exactly reserved Blessings + staked tokens + predict pot"
     );
 }
 
@@ -1027,4 +1027,177 @@ fn a_reserve_held_by_the_contract_migrates_into_the_treasury_on_first_touch() {
     assert!(c.reserve > 0);
     assert_eq!(c.ft_balance_of(t).0, c.reserve, "moved on the first settle");
     assert_supply_conserved(&c, &[genesis]);
+}
+
+// ---------------------------------------------------------------------- //
+// prediction markets
+// ---------------------------------------------------------------------- //
+
+/// Get to L2 and then starve into Rampage without anyone feeding.
+/// Returns (contract, genesis, alice, bob, rampage_start_ns).
+fn reach_rampage() -> (Contract, AccountId, AccountId, AccountId, u64) {
+    let (mut c, genesis, _dao) = setup();
+    let alice = accounts(2);
+    let bob = accounts(3);
+    fund(&mut c, &genesis, &alice, 10_000, 0);
+    fund(&mut c, &genesis, &bob, 10_000, 0);
+
+    // Grow to L2 and then let it go empty.
+    let last = keep_happy(&mut c, &genesis, DAY / 4, DAY * 3 / 2);
+    assert_eq!(c.level, 2);
+
+    // Full at `last`; empties at `last + 1d`; Rampage at `last + 1d`.
+    let rampage_at = last + DAY;
+    set_ctx(&genesis, rampage_at + 1); // trigger rampage settle
+    c.poke();
+    assert_eq!(c.get_totem().mood, "rampage");
+    assert!(c.current_predict_market.is_some(), "market opened on rampage");
+    (c, genesis, alice, bob, rampage_at)
+}
+
+#[test]
+fn predict_market_opens_on_rampage() {
+    let (c, _, _, _, _) = reach_rampage();
+    let m = c.get_active_predict_market().expect("active market");
+    assert_eq!(m.market_id, 1);
+    assert!(!m.resolved);
+    assert_eq!(m.total_survive.0, 0);
+    assert_eq!(m.total_die.0, 0);
+}
+
+#[test]
+fn predict_survive_wins_when_rescued() {
+    let (mut c, genesis, alice, bob, rampage_at) = reach_rampage();
+    let mid = c.current_predict_market.unwrap();
+
+    // Alice bets 100 on survive, Bob bets 200 on die.
+    set_ctx(&alice, rampage_at + 1);
+    c.predict("survive".into(), U128(100 * ONE));
+    set_ctx(&bob, rampage_at + 1);
+    c.predict("die".into(), U128(200 * ONE));
+
+    let m = c.get_active_predict_market().unwrap();
+    assert_eq!(m.total_survive.0, 100 * ONE);
+    assert_eq!(m.total_die.0, 200 * ONE);
+    assert_supply_conserved(&c, &[genesis.clone(), alice.clone(), bob.clone()]);
+
+    // Genesis rescues before the first bite.
+    set_ctx(&genesis, rampage_at + DAY / 8);
+    c.feed(U128(c.get_totem().fill_amount.0));
+    assert_eq!(c.get_totem().mood, "happy");
+    assert!(c.current_predict_market.is_none(), "market resolved after rescue");
+
+    let m = c.get_predict_market(mid).unwrap();
+    assert!(m.resolved);
+    assert_eq!(m.outcome, Some(true)); // survived
+
+    // Alice (winner) claims: gets back 100 + share of (200 * 97% = 194).
+    let before = c.ft_balance_of(alice.clone()).0;
+    set_ctx(&alice, rampage_at + DAY / 8 + 1);
+    c.claim_prediction(mid);
+    let payout = c.ft_balance_of(alice.clone()).0 - before;
+    // expected = 100 + 194 = 294 (alice is the sole survive bettor)
+    assert_eq!(payout, 294 * ONE);
+
+    // Bob (loser) has nothing to claim.
+    set_ctx(&bob, rampage_at + DAY / 8 + 1);
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.claim_prediction(mid)));
+    assert!(r.is_err(), "loser cannot claim");
+
+    assert_supply_conserved(&c, &[genesis, alice, bob]);
+}
+
+#[test]
+fn predict_die_wins_on_death() {
+    let (mut c, genesis, alice, bob, rampage_at) = reach_rampage();
+    let mid = c.current_predict_market.unwrap();
+
+    // Alice bets on survive (100), Bob bets on die (300).
+    set_ctx(&alice, rampage_at + 1);
+    c.predict("survive".into(), U128(100 * ONE));
+    set_ctx(&bob, rampage_at + 1);
+    c.predict("die".into(), U128(300 * ONE));
+
+    // Let it die (L2 dies after 2 bites).
+    set_ctx(&genesis, rampage_at + 3 * DAY);
+    c.poke();
+    assert!(!c.alive);
+    assert!(c.current_predict_market.is_none());
+
+    let m = c.get_predict_market(mid).unwrap();
+    assert!(m.resolved);
+    assert_eq!(m.outcome, Some(false)); // died
+
+    // Bob wins: gets back 300 + share of (100 * 97% = 97).
+    let before = c.ft_balance_of(bob.clone()).0;
+    set_ctx(&bob, rampage_at + 3 * DAY + 1);
+    c.claim_prediction(mid);
+    let payout = c.ft_balance_of(bob.clone()).0 - before;
+    assert_eq!(payout, 300 * ONE + 97 * ONE);
+
+    assert_supply_conserved(&c, &[genesis, alice, bob]);
+}
+
+#[test]
+fn predict_double_claim_is_rejected() {
+    let (mut c, genesis, alice, bob, rampage_at) = reach_rampage();
+    let mid = c.current_predict_market.unwrap();
+
+    set_ctx(&alice, rampage_at + 1);
+    c.predict("survive".into(), U128(50 * ONE));
+
+    // Rescue it.
+    set_ctx(&genesis, rampage_at + DAY / 8);
+    c.feed(U128(c.get_totem().fill_amount.0));
+
+    set_ctx(&alice, rampage_at + DAY / 8 + 1);
+    c.claim_prediction(mid); // first claim succeeds
+
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.claim_prediction(mid)));
+    assert!(r.is_err(), "double-claim must be rejected");
+    assert_supply_conserved(&c, &[genesis, alice, bob]);
+}
+
+#[test]
+fn new_market_opens_on_second_rampage() {
+    let (mut c, genesis, alice, bob, rampage_at) = reach_rampage();
+
+    // Rescue the first Rampage.
+    set_ctx(&genesis, rampage_at + DAY / 8);
+    c.feed(U128(c.get_totem().fill_amount.0));
+    assert_eq!(c.predict_next_id, 1);
+
+    // Let it drain again.
+    let second_rampage = rampage_at + DAY / 8 + DAY + 1;
+    set_ctx(&genesis, second_rampage);
+    c.poke();
+    assert_eq!(c.get_totem().mood, "rampage");
+    assert_eq!(c.predict_next_id, 2, "second market opened");
+    let m = c.get_active_predict_market().unwrap();
+    assert_eq!(m.market_id, 2);
+
+    // Alice bets on the second market.
+    set_ctx(&alice, second_rampage + 1);
+    c.predict("survive".into(), U128(10 * ONE));
+    assert_supply_conserved(&c, &[genesis, alice, bob]);
+}
+
+#[test]
+fn predict_with_no_losers_pays_stake_back() {
+    // Everyone bets survive; nobody bets die. Winners just get their stake back (no losers' pool).
+    let (mut c, genesis, alice, bob, rampage_at) = reach_rampage();
+    let mid = c.current_predict_market.unwrap();
+
+    set_ctx(&alice, rampage_at + 1);
+    c.predict("survive".into(), U128(100 * ONE));
+
+    set_ctx(&genesis, rampage_at + DAY / 8);
+    c.feed(U128(c.get_totem().fill_amount.0));
+
+    let before = c.ft_balance_of(alice.clone()).0;
+    set_ctx(&alice, rampage_at + DAY / 8 + 1);
+    c.claim_prediction(mid);
+    let payout = c.ft_balance_of(alice.clone()).0 - before;
+    assert_eq!(payout, 100 * ONE, "stake returned when no losers");
+    assert_supply_conserved(&c, &[genesis, alice, bob]);
 }

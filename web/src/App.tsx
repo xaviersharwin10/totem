@@ -14,6 +14,7 @@ import { useTribe } from "./chain/dao";
 import { HatchVote, TribePanel } from "./Tribe";
 import { HistoryPanel } from "./History";
 import { BellyLine, StakeSheet, useBelly } from "./Stake";
+import { PredictPanel } from "./Predict";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -49,6 +50,7 @@ export default function App() {
   // null = closed; 0 = open on the ledger; n = open on generation n's life
   const [histGen, setHistGen] = useState<number | null>(null);
   const [stakeOpen, setStakeOpen] = useState(false);
+  const [predictOpen, setPredictOpen] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -361,6 +363,9 @@ export default function App() {
           {game.mode === "live" && (
             <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
           )}
+          {game.mode === "live" && (
+            <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
+          )}
           <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
           <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
           <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
@@ -454,6 +459,9 @@ export default function App() {
           <div className="rc-row">
             <button className="press-btn danger-btn" onClick={() => { setAmount("fill"); feedNearPanda(); }}>🎋 RESCUE</button>
             <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
+            {game.mode === "live" && (
+              <button className="ghost-btn" onClick={() => setPredictOpen(true)}>🔮 place a bet</button>
+            )}
           </div>
         </div>
       )}
@@ -475,6 +483,9 @@ export default function App() {
       )}
       {stakeOpen && game.mode === "live" && view && (
         <StakeSheet game={game} b={belly} onClose={() => setStakeOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
+      )}
+      {predictOpen && game.mode === "live" && (
+        <PredictPanel game={game} onClose={() => setPredictOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
       )}
       {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}

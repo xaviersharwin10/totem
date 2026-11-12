@@ -4,7 +4,7 @@
 // The 3D farm and HUD only talk to this hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DAY_MS, GameEvent, TotemEngine, TotemView, fmt } from "./engine";
+import { DAY_MS, GameEvent, TotemEngine, TotemView, fmt, PredictMarket, PredictBet } from "./engine";
 import { useNear } from "./chain/near";
 import { CONTRACT_ID, EXPLORER, toTokens, toYocto } from "./chain/config";
 
@@ -41,6 +41,13 @@ export interface Game {
   poke: () => Promise<void>;
   hatch: (() => void) | null; // practice only; live hatching is a DAO vote
   explorer: string;
+  // prediction market
+  activeMarket: PredictMarket | null;
+  myBet: PredictBet | null;
+  predict: (side: "survive" | "die", amount: number) => Promise<void>;
+  claimPrediction: (marketId: number) => Promise<void>;
+  recentMarkets: PredictMarket[];
+  refreshPredict: () => Promise<void>;
 }
 
 // ---- shapes returned by the contract views ----
@@ -140,6 +147,11 @@ export function useGame(): Game {
   const [busy, setBusy] = useState(false);
   const liveEvents = useRef<GameEvent[]>([]);
   const evId = useRef(1);
+
+  // prediction market state (live mode only)
+  const [activeMarket, setActiveMarket] = useState<PredictMarket | null>(null);
+  const [myBet, setMyBet] = useState<PredictBet | null>(null);
+  const [recentMarkets, setRecentMarkets] = useState<PredictMarket[]>([]);
   const pushLive = (kind: GameEvent["kind"], text: string) => {
     liveEvents.current = [{ id: evId.current++, kind, text, ts: Date.now() }, ...liveEvents.current].slice(0, 60);
   };
@@ -344,6 +356,62 @@ export function useGame(): Game {
     }
   };
 
+  const refreshPredict = useCallback(async () => {
+    if (mode !== "live") return;
+    try {
+      const [mkt, recent] = await Promise.all([
+        near.view<PredictMarket | null>("get_active_predict_market"),
+        near.view<PredictMarket[]>("get_predict_markets", { limit: 10 }),
+      ]);
+      setActiveMarket(mkt);
+      setRecentMarkets(recent ?? []);
+      if (mkt && near.accountId) {
+        const bet = await near.view<PredictBet>("get_predict_bet", {
+          market_id: mkt.market_id,
+          account_id: near.accountId,
+        });
+        setMyBet(bet);
+      } else {
+        setMyBet(null);
+      }
+    } catch {
+      // ignore
+    }
+  }, [mode, near]);
+
+  useEffect(() => {
+    if (mode !== "live") return;
+    refreshPredict();
+    const t = setInterval(refreshPredict, 5000);
+    return () => clearInterval(t);
+  }, [mode, refreshPredict]);
+
+  const predict = async (side: "survive" | "die", amount: number) => {
+    if (!near.accountId) await near.signIn();
+    setBusy(true);
+    try {
+      await near.call("predict", { side, amount: toYocto(amount) });
+      pushLive("feed", `🔮 you bet ${fmt(amount)} $TOTEM on "${side}"`);
+    } finally {
+      setBusy(false);
+      refreshPredict();
+      refreshBalance();
+    }
+  };
+
+  const claimPrediction = async (marketId: number) => {
+    if (!near.accountId) await near.signIn();
+    setBusy(true);
+    try {
+      await near.call("claim_prediction", { market_id: marketId });
+      pushLive("blessing", "🔮 prediction winnings claimed!");
+    } finally {
+      setBusy(false);
+      refreshPredict();
+      refreshBalance();
+    }
+  };
+
   const hatch =
     mode === "practice"
       ? () => {
@@ -379,5 +447,11 @@ export function useGame(): Game {
     poke,
     hatch,
     explorer: `${EXPLORER}/address/${CONTRACT_ID}`,
+    activeMarket: mode === "live" ? activeMarket : null,
+    myBet: mode === "live" ? myBet : null,
+    predict,
+    claimPrediction,
+    recentMarkets: mode === "live" ? recentMarkets : [],
+    refreshPredict,
   };
 }

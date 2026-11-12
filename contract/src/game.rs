@@ -57,6 +57,7 @@ impl Contract {
             self.rampage_started_at = None;
             self.bites_applied = 0;
             events::rampage_end(&caller);
+            self.resolve_predict_market(true);
             self.mint_hero(&caller);
         }
 
@@ -160,6 +161,7 @@ impl Contract {
                 self.rampage_started_at = Some(self.last_settled_at + to_zero);
                 self.bites_applied = 0;
                 events::rampage_start();
+                self.open_predict_market(self.last_settled_at + to_zero);
             }
             let r_start = self.rampage_started_at.unwrap();
             let due = (now - r_start) / self.cfg.bite_interval_ns;
@@ -244,6 +246,7 @@ impl Contract {
         }
         self.alive = false;
         self.rampage_started_at = None;
+        self.resolve_predict_market(false);
         // Stakes are released: values are frozen at their post-slash amounts and
         // withdrawable at once. The live aggregate is no longer needed.
         self.belly.unshielded = 0;

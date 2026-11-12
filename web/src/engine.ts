@@ -8,6 +8,21 @@
 export type Form = "egg" | "dragon" | "golem";
 export type Mood = "happy" | "hungry" | "starving" | "rampage" | "dead";
 
+export interface PredictMarket {
+  market_id: number;
+  gen: number;
+  opened_at: string;      // nanoseconds as string
+  total_survive: string;  // yocto string
+  total_die: string;
+  resolved: boolean;
+  outcome: boolean | null; // true = survived, false = died, null = open
+}
+
+export interface PredictBet {
+  survive: string; // yocto string
+  die: string;
+}
+
 export interface TotemView {
   name: string;
   generation: number;

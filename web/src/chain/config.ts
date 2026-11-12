@@ -14,7 +14,7 @@ export const RPC_URLS: string[] = import.meta.env.VITE_RPC_URL
   : [`${location.origin}/rpc`, ...PUBLIC_RPCS];
 export const EXPLORER = "https://testnet.nearblocks.io";
 // Zero-deposit methods the in-browser function-call key may sign without a wallet popup.
-export const KEY_METHODS = ["feed", "poke", "faucet", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing"];
+export const KEY_METHODS = ["feed", "poke", "faucet", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing", "predict", "claim_prediction"];
 export const ONE = 10n ** 18n; // $TOTEM has 18 decimals
 
 export const toTokens = (yocto: string | bigint): number => {

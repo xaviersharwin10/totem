@@ -445,23 +445,50 @@ button { font-family: inherit; }
   display: flex; flex-direction: column; gap: 14px;
 }
 .pm-head { display: flex; justify-content: space-between; align-items: center; }
+/* crystal-ball identity: violet→gold gradient title, distinct from the rampage card */
+.pm-title {
+  background: linear-gradient(100deg, #8b6fd8 10%, #b06ad8 55%, #f2a91c 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
 .pm-desc { margin: -4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.5; }
 
-/* ── active/live betting box (ember-beam style, matches rampage energy) ── */
+/* ── active/live betting box (violet mystic beam — the market's own identity) ── */
 .pm-live-box {
   position: relative; overflow: hidden; padding: 16px; border-radius: 18px;
-  border: 1.5px solid rgba(255,106,61,0.4);
-  background: linear-gradient(160deg, rgba(255,77,94,0.06), rgba(255,106,61,0.04));
+  border: 1.5px solid rgba(139,111,216,0.4);
+  background: linear-gradient(160deg, rgba(139,111,216,0.08), rgba(176,106,216,0.05));
   display: flex; flex-direction: column; gap: 12px;
 }
 .pm-live-box::before {
   content: ""; position: absolute; inset: -2px; border-radius: 20px; padding: 2px;
-  background: conic-gradient(from var(--a, 0deg), transparent 0 65%, #ff9a3c 75%, #ffd46a 82%, transparent 90%);
+  background: conic-gradient(from var(--a, 0deg), transparent 0 65%, #b06ad8 75%, #d9b8ff 82%, #f2a91c 88%, transparent 92%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
   animation: beam 3s linear infinite; pointer-events: none;
 }
-.pm-live-label { font-family: var(--round); font-weight: 700; font-size: 13px; color: var(--ember); letter-spacing: 0.5px; }
+.pm-live-head { display: flex; justify-content: space-between; align-items: center; }
+.pm-live-label { font-family: var(--round); font-weight: 700; font-size: 13px; color: #7b5fc8; letter-spacing: 0.5px; }
+.pm-live-dot { font-size: 11px; font-weight: 800; color: var(--danger); animation: pulse 1.2s infinite; }
+
+/* ── hero pot (the centrepiece number) ── */
+.pm-pot-hero { display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 2px 0 4px; }
+.pm-pot-label { font-size: 11px; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 1px; }
+.pm-pot-val {
+  font-family: var(--round); font-weight: 700; font-size: 38px; line-height: 1; color: var(--gold);
+  text-shadow: 0 2px 10px rgba(242,169,28,0.3);
+}
+.pm-pot-unit { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+
+/* ── projected return for the current pick ── */
+.pm-projected {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;
+  background: rgba(255,255,255,0.6); border: 1.5px solid rgba(43,34,48,0.08);
+}
+.pm-projected.survive { background: linear-gradient(90deg, rgba(91,216,122,0.1), rgba(255,255,255,0.5)); border-color: rgba(63,191,99,0.3); }
+.pm-projected.die { background: linear-gradient(90deg, rgba(255,77,94,0.1), rgba(255,255,255,0.5)); border-color: rgba(255,77,94,0.3); }
+.pm-projected-val { font-family: var(--round); font-weight: 700; font-size: 16px; color: var(--gold); }
+.pm-projected-val small { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
 
 /* ── two-tone ratio bar ── */
 .pm-bar-row { display: flex; flex-direction: column; gap: 4px; }
@@ -507,6 +534,13 @@ button { font-family: inherit; }
 .side-card.survive .sc-label, .side-card.active.survive .sc-label { color: #1e7a34; }
 .side-card.die .sc-label, .side-card.active.die .sc-label { color: #c0192e; }
 .sc-odds { font-size: 11px; font-weight: 800; color: var(--ink-soft); }
+/* live payout multiplier chip on each side card */
+.sc-mult {
+  font-family: var(--round); font-weight: 700; font-size: 13px; color: var(--ink-soft);
+  background: rgba(43,34,48,0.06); border-radius: 999px; padding: 1px 9px; margin-top: 1px;
+}
+.side-card.active.survive .sc-mult { background: rgba(63,191,99,0.18); color: #1a7032; }
+.side-card.active.die .sc-mult { background: rgba(255,77,94,0.18); color: #b8283a; }
 
 /* ── amount chips + input ── */
 .pm-amounts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -566,10 +600,22 @@ button { font-family: inherit; }
 .pm-lost-tag { margin-left: auto; font-size: 11px; font-weight: 800; color: var(--ink-soft); }
 
 /* ── empty / offline states ── */
-.pm-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 16px; text-align: center; }
-.pm-empty-emoji { font-size: 36px; }
-.pm-empty-text { font-size: 13.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.5; }
-.pm-offline { text-align: center; padding: 16px; font-size: 13px; font-weight: 700; color: var(--ink-soft); background: rgba(43,34,48,0.04); border-radius: 12px; }
+.pm-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 18px; text-align: center;
+  border-radius: 18px; border: 1.5px dashed rgba(139,111,216,0.35);
+  background: linear-gradient(160deg, rgba(139,111,216,0.06), rgba(255,255,255,0.4));
+}
+.pm-empty-orb { font-size: 44px; animation: bob 2.4s ease-in-out infinite; filter: drop-shadow(0 4px 10px rgba(139,111,216,0.4)); }
+.pm-empty-title { font-family: var(--round); font-weight: 700; font-size: 16px; color: #7b5fc8; }
+.pm-empty-text { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.5; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.pm-offline {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 18px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  background: rgba(43,34,48,0.04); border-radius: 14px; line-height: 1.5;
+}
+.pm-offline-emoji { font-size: 26px; }
+.pm-offline b { color: var(--ink); }
 
 /* ── pulsing 🔮 icon when a market is live ── */
 .icon-btn.pulse { animation: pulse 1.2s infinite; }

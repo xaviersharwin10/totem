@@ -1443,3 +1443,63 @@ fn the_welcome_back_bonus_is_capped() {
     // 10 + 10 + min(5, 3)
     assert_eq!(c.get_caretaker(bob).lifetime_points.0, 23);
 }
+
+// ---------------------------------------------------------------------- //
+// state migration (prediction-market upgrade)
+// ---------------------------------------------------------------------- //
+
+#[test]
+fn migrate_preserves_existing_state() {
+    // Build up real state (levels + Reserve) on a Totem.
+    let (mut c, genesis, _dao) = setup();
+    keep_happy(&mut c, &genesis, DAY / 4, DAY * 3 / 2);
+    assert!(c.level >= 2 && c.reserve > 0, "state built up");
+
+    // Snapshot the scalar fields that live in the struct body (these are what
+    // state_write/state_read round-trips; LookupMap *entries* live in trie keys).
+    let gen = c.generation;
+    let level = c.level;
+    let max_level = c.max_level;
+    let reserve = c.reserve;
+    let reserved = c.reserved;
+    let born_at = c.born_at;
+    let form = c.form;
+    let alive = c.alive;
+    let total_burned = c.total_burned;
+    let total_fed = c.total_fed;
+
+    // Persist the pre-predict layout, then migrate — under ONE env so the mocked
+    // storage written by simulate_pre_predict_state survives into migrate's read.
+    let migrate_at = DAY * 3 / 2 + 7;
+    set_ctx(&contract_id(), migrate_at);
+    crate::migrate::simulate_pre_predict_state(c);
+    let c2 = Contract::migrate();
+
+    // Every carried field is unchanged.
+    assert_eq!(c2.generation, gen);
+    assert_eq!(c2.level, level);
+    assert_eq!(c2.max_level, max_level);
+    assert_eq!(c2.reserve, reserve);
+    assert_eq!(c2.reserved, reserved);
+    assert_eq!(c2.born_at, born_at);
+    assert_eq!(c2.form, form);
+    assert_eq!(c2.alive, alive);
+    assert_eq!(c2.total_burned, total_burned);
+    assert_eq!(c2.total_fed, total_fed);
+
+    // Prediction-market state starts empty and usable.
+    assert_eq!(c2.predict_next_id, 0);
+    assert!(c2.current_predict_market.is_none());
+    assert_eq!(c2.predict_pot, 0);
+    assert!(c2.get_active_predict_market().is_none());
+    assert!(c2.get_predict_markets(None).is_empty());
+}
+
+#[test]
+fn migrate_rejects_foreign_caller() {
+    // The guard fires before any state read, so no prior state is needed.
+    let genesis = accounts(0);
+    set_ctx(&genesis, DAY); // predecessor = genesis, not the contract account
+    let r = std::panic::catch_unwind(Contract::migrate);
+    assert!(r.is_err(), "only the contract account may call migrate");
+}

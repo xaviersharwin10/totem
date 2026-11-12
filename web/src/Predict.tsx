@@ -11,19 +11,28 @@ interface Props {
   toast: (msg: string, kind?: string) => void;
 }
 
+const FEE = 0.97; // 3% of the losing pool is burned
+
 function survPct(survive: number, die: number): number {
   const t = survive + die;
   return t === 0 ? 50 : (survive / t) * 100;
 }
 
+/// Payout if `side` wins after adding `stake` to it: your stake back plus a
+/// proportional cut of 97% of the opposing pool.
+function projectedPayout(stake: number, sidePool: number, otherPool: number): number {
+  const win = sidePool + stake;
+  if (win === 0) return stake;
+  return stake + (otherPool * FEE * stake) / win;
+}
+
 function estimatePayout(myWin: number, winPool: number, losePool: number): number {
   if (winPool === 0) return myWin;
-  return myWin + (losePool * 0.97 * myWin) / winPool;
+  return myWin + (losePool * FEE * myWin) / winPool;
 }
 
 function PoolBar({ survive, die }: { survive: number; die: number }) {
   const sp = survPct(survive, die);
-  const total = survive + die;
   return (
     <div className="pm-bar-row">
       <div className="pm-ratio">
@@ -32,11 +41,8 @@ function PoolBar({ survive, die }: { survive: number; die: number }) {
       </div>
       <div className="pm-ratio-labels">
         <span className="surv">🛡 {fmt(survive)} · {sp.toFixed(0)}%</span>
-        <span className="died">💀 {fmt(die)} · {(100 - sp).toFixed(0)}%</span>
+        <span className="died">{(100 - sp).toFixed(0)}% · {fmt(die)} 💀</span>
       </div>
-      {total > 0 && (
-        <div className="pm-pot-line">pot: <b>{fmt(total)} $TOTEM</b></div>
-      )}
     </div>
   );
 }
@@ -73,11 +79,7 @@ function MarketRow({
       : estimatePayout(myD, die, survive)
     : null;
 
-  const rowClass = m.resolved
-    ? m.outcome
-      ? "pm-survived"
-      : "pm-died"
-    : "pm-open";
+  const rowClass = m.resolved ? (m.outcome ? "pm-survived" : "pm-died") : "pm-open";
 
   return (
     <div className={`pm-row ${rowClass}`}>
@@ -99,19 +101,13 @@ function MarketRow({
           <span>you bet</span>
           {myS > 0 && <span className="s-tag">🛡 {fmt(myS)} survive</span>}
           {myD > 0 && <span className="d-tag">💀 {fmt(myD)} die</span>}
-          {estimated !== null && (
-            <span className="pm-payout-hint">~{fmt(estimated)}</span>
-          )}
+          {estimated !== null && <span className="pm-payout-hint">~{fmt(estimated)}</span>}
           {lostBet && <span className="pm-lost-tag">lost</span>}
         </div>
       )}
 
       {hasWinning && accountId && (
-        <button
-          className="press-btn pm-claim-btn"
-          onClick={onClaim}
-          disabled={busy}
-        >
+        <button className="press-btn pm-claim-btn" onClick={onClaim} disabled={busy}>
           🏆 Claim{estimated ? ` ~${fmt(estimated)} $TOTEM` : " winnings"}
         </button>
       )}
@@ -136,7 +132,13 @@ export function PredictPanel({ game, onClose, toast }: Props) {
 
   const survive = m ? toTokens(m.total_survive) : 0;
   const die = m ? toTokens(m.total_die) : 0;
-  const sp = survPct(survive, die);
+  const pot = survive + die;
+
+  // projected payout + multiplier for the current selection
+  const sidePool = side === "survive" ? survive : die;
+  const otherPool = side === "survive" ? die : survive;
+  const payout = projectedPayout(amount, sidePool, otherPool);
+  const mult = amount > 0 ? payout / amount : 1;
 
   const doBet = async () => {
     try {
@@ -169,37 +171,40 @@ export function PredictPanel({ game, onClose, toast }: Props) {
     return null;
   };
 
+  const placed =
+    game.myBet && (toTokens(game.myBet.survive) > 0 || toTokens(game.myBet.die) > 0);
+
   return (
-    <div
-      className="sheet-bg"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <div className="sheet-bg" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="predict-sheet glass">
         {/* ── Header ── */}
         <div className="pm-head">
-          <span className="tribe-title">🔮 Prediction Market</span>
+          <span className="tribe-title pm-title">🔮 Prediction Market</span>
           <button className="dc-close" onClick={onClose}>✕</button>
         </div>
 
         <p className="pm-desc">
-          Bet $TOTEM on whether the Totem survives the Rampage. Winners split
-          the losers' pool — 3% burned. A new market opens with every Rampage.
+          Will the Totem survive the Rampage? Back a side — winners split the
+          losers' pool (3% burned). A fresh market opens with every Rampage.
         </p>
 
         {/* ── Not live ── */}
         {game.mode !== "live" && (
           <div className="pm-offline">
-            Prediction markets are live only. Switch to Live testnet.
+            <span className="pm-offline-emoji">📡</span>
+            Prediction markets run on the live testnet. Flip the top-right switch
+            to <b>Live testnet</b> to play.
           </div>
         )}
 
         {/* ── Empty state ── */}
         {game.mode === "live" && allMarkets.length === 0 && (
           <div className="pm-empty">
-            <span className="pm-empty-emoji">🧊</span>
+            <span className="pm-empty-orb">🔮</span>
+            <span className="pm-empty-title">The orb is quiet</span>
             <span className="pm-empty-text">
-              No market open yet.<br />
-              Markets appear when the Totem enters Rampage.
+              A market opens the moment the Totem enters a Rampage. Keep it
+              hungry… or wait for the next one.
             </span>
           </div>
         )}
@@ -207,11 +212,21 @@ export function PredictPanel({ game, onClose, toast }: Props) {
         {/* ── Live betting box ── */}
         {game.mode === "live" && inRampage && (
           <div className="pm-live-box">
-            <div className="pm-live-label">🔥 Rampage · Market #{m.market_id}</div>
+            <div className="pm-live-head">
+              <span className="pm-live-label">🔥 Rampage · Market #{m.market_id}</span>
+              <span className="pm-live-dot">● live</span>
+            </div>
+
+            {/* hero pot */}
+            <div className="pm-pot-hero">
+              <span className="pm-pot-label">prize pool</span>
+              <span className="pm-pot-val">{fmt(pot)}</span>
+              <span className="pm-pot-unit">$TOTEM</span>
+            </div>
 
             <PoolBar survive={survive} die={die} />
 
-            {/* Side picker */}
+            {/* Side picker with live payout odds */}
             <div className="pm-sides">
               <button
                 className={`side-card ${side === "survive" ? "active survive" : ""}`}
@@ -219,7 +234,11 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               >
                 <span className="sc-emoji">🛡️</span>
                 <span className="sc-label">Survive</span>
-                <span className="sc-odds">{sp.toFixed(0)}% of pool</span>
+                <span className="sc-mult">
+                  ×{projectedPayout(amount, survive, die) / Math.max(1, amount) >= 1
+                    ? (projectedPayout(amount, survive, die) / Math.max(1, amount)).toFixed(2)
+                    : "1.00"}
+                </span>
               </button>
               <button
                 className={`side-card ${side === "die" ? "active die" : ""}`}
@@ -227,7 +246,9 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               >
                 <span className="sc-emoji">💀</span>
                 <span className="sc-label">Die</span>
-                <span className="sc-odds">{(100 - sp).toFixed(0)}% of pool</span>
+                <span className="sc-mult">
+                  ×{(projectedPayout(amount, die, survive) / Math.max(1, amount)).toFixed(2)}
+                </span>
               </button>
             </div>
 
@@ -252,15 +273,25 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               <span className="pm-unit">$TOTEM</span>
             </div>
 
+            {/* projected return for the current pick */}
+            <div className={`pm-projected ${side}`}>
+              <span>
+                If <b>{side === "survive" ? "🛡 survive" : "💀 die"}</b> wins
+              </span>
+              <span className="pm-projected-val">
+                ~{fmt(payout)} <small>($TOTEM · ×{mult.toFixed(2)})</small>
+              </span>
+            </div>
+
             {/* Current bet status */}
-            {game.myBet && (toTokens(game.myBet.survive) > 0 || toTokens(game.myBet.die) > 0) && (
+            {placed && (
               <div className="pm-mybet">
                 <span>placed:</span>
-                {toTokens(game.myBet.survive) > 0 && (
-                  <span className="s-tag">🛡 {fmt(toTokens(game.myBet.survive))} survive</span>
+                {toTokens(game.myBet!.survive) > 0 && (
+                  <span className="s-tag">🛡 {fmt(toTokens(game.myBet!.survive))} survive</span>
                 )}
-                {toTokens(game.myBet.die) > 0 && (
-                  <span className="d-tag">💀 {fmt(toTokens(game.myBet.die))} die</span>
+                {toTokens(game.myBet!.die) > 0 && (
+                  <span className="d-tag">💀 {fmt(toTokens(game.myBet!.die))} die</span>
                 )}
               </div>
             )}
@@ -271,11 +302,11 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               onClick={doBet}
               disabled={game.busy || !game.accountId}
             >
-              Bet {amount} on "{side}"
+              Bet {amount} on {side === "survive" ? "🛡 Survive" : "💀 Die"}
             </button>
 
             {!game.accountId && (
-              <div className="pm-connect-note">Connect wallet or play as guest to bet</div>
+              <div className="pm-connect-note">Connect a wallet or play as guest to bet</div>
             )}
           </div>
         )}

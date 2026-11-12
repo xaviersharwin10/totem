@@ -24,6 +24,7 @@ mod config;
 mod events;
 mod game;
 mod lineage;
+mod migrate;
 mod moon;
 mod nft;
 mod predict;

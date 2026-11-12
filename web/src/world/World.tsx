@@ -30,7 +30,8 @@ export interface WorldProps {
   hoard: number;
   dayFrac: number;
   look: PandaLook;
-  graves: { name: string; maxLevel: number }[];
+  graves: { name: string; maxLevel: number; generation?: number }[];
+  onGrave?: (generation: number) => void;
   follow: boolean;
   onGround: (p: THREE.Vector3) => void;
   onPet: () => void;
@@ -61,7 +62,7 @@ export function World(p: WorldProps) {
       <Bamboo />
       <TotemPole level={p.level} onInfo={() => p.onInfo("totem")} />
       <HoardChest hoard={p.hoard} rampage={p.mood === "rampage"} onInfo={() => p.onInfo("hoard")} />
-      <Graveyard graves={p.graves} />
+      <Graveyard graves={p.graves} onPick={p.onGrave} />
       <Butterflies />
       <Clouds />
       <Foods />

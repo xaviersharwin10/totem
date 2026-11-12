@@ -174,6 +174,17 @@ pub fn badge_minted(account: &AccountId, tier: &str) {
     emit("badge_minted", json!({ "account": account, "tier": tier }));
 }
 
+/// Standard NEP-141 mint event (only the demo-mode faucet mints after init).
+pub fn ft_mint(owner: &AccountId, amount: u128, memo: &str) {
+    let payload = json!({
+        "standard": "nep141",
+        "version": "1.0.0",
+        "event": "ft_mint",
+        "data": [{ "owner_id": owner, "amount": amount.to_string(), "memo": memo }],
+    });
+    env::log_str(&format!("EVENT_JSON:{}", payload));
+}
+
 /// Standard NEP-141 burn event.
 pub fn ft_burn(owner: &AccountId, amount: u128) {
     let payload = json!({

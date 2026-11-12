@@ -12,6 +12,7 @@ import { shortGuest } from "./chain/guest";
 import { GuestKeySheet } from "./GuestKey";
 import { useTribe } from "./chain/dao";
 import { HatchVote, TribePanel } from "./Tribe";
+import { HistoryPanel } from "./History";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -44,6 +45,8 @@ export default function App() {
   const chat = useMochi(game);
   const [chatOpen, setChatOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
+  // null = closed; 0 = open on the ledger; n = open on generation n's life
+  const [histGen, setHistGen] = useState<number | null>(null);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -241,6 +244,7 @@ export default function App() {
           dayFrac={dayFrac}
           look={look}
           graves={graves}
+          onGrave={game.mode === "live" ? (g) => setHistGen(g) : undefined}
           follow={follow}
           onGround={onGround}
           onPet={() => {
@@ -342,6 +346,9 @@ export default function App() {
         <div className="icon-row">
           {game.mode === "live" && (
             <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
+          )}
+          {game.mode === "live" && (
+            <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
           )}
           <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
           <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
@@ -454,6 +461,7 @@ export default function App() {
           onError={(m) => pushToast(friendly(m), "info")}
         />
       )}
+      {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (
         <RescueCard

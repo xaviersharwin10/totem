@@ -557,7 +557,13 @@ export function HoardChest({ hoard, rampage, onInfo }: { hoard: number; rampage:
 // the graveyard: one gravestone per past generation (the lineage)
 // ------------------------------------------------------------------------- //
 
-export function Graveyard({ graves }: { graves: { name: string; maxLevel: number }[] }) {
+export function Graveyard({
+  graves,
+  onPick,
+}: {
+  graves: { name: string; maxLevel: number; generation?: number }[];
+  onPick?: (generation: number) => void;
+}) {
   const [hover, setHover] = useState<number | null>(null);
   return (
     <group position={s3(-4.8, 0, 4.6)}>
@@ -575,6 +581,10 @@ export function Graveyard({ graves }: { graves: { name: string; maxLevel: number
               setHover(i);
             }}
             onPointerOut={() => setHover(null)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (g.generation && onPick) onPick(g.generation);
+            }}
           >
             <mesh position={s3(0, 0.42, 0)} castShadow>
               <boxGeometry args={[0.5, 0.7, 0.14]} />
@@ -602,6 +612,12 @@ export function Graveyard({ graves }: { graves: { name: string; maxLevel: number
                   🪦 <b>{g.name}</b>
                   <br />
                   reached Level {g.maxLevel} · starved
+                  {g.generation && onPick ? (
+                    <>
+                      <br />
+                      <i>tap for its life story</i>
+                    </>
+                  ) : null}
                 </div>
               </Html>
             )}

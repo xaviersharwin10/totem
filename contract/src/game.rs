@@ -108,6 +108,7 @@ impl Contract {
         }
         self.token
             .internal_deposit(&caller, self.cfg.faucet_amount.0);
+        crate::events::ft_mint(&caller, self.cfg.faucet_amount.0, "demo faucet");
         self.faucet_last.insert(caller, now);
     }
 

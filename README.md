@@ -51,13 +51,35 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 | Levels | L2/L3/L4/L5 at 1/3/6/10 Happy-days, then +5 each |
 | Blessings | 3.5-day periods from L3; `rate × Reserve` split pro-rata by points |
 | Badges | Bronze/Silver/Gold at 100/1,000/10,000 lifetime points (soulbound) |
-| Supply | 1,000,000,000 $TOTEM, 18 decimals, minted once at init |
+| Supply | 1,000,000,000 $TOTEM, 18 decimals, minted once at init. The only later mint is the **demo-mode faucet** (testnet, 1,000 per account per Totem-day), logged as a NEP-141 `ft_mint`; with `demo_mode = false` it does not exist |
 
 Full parameter list: [`RULES.md`](RULES.md). The live values are always readable on-chain via `get_config()`.
 
 ## Why fake accounts don't help
 
 Points, Badges and Blessings are all proportional to tokens actually spent, and half of every meal is burned. Splitting 100 tokens across 100 accounts earns exactly what one account earns with 100 tokens. There is nothing to farm — only to spend. (Proven by the `sybil_split_earns_identical_total` unit test.)
+
+## Selling the Totem: what moves, and what the seller can't keep
+
+The Totem NFT (`totem-<gen>`) is transferable, normally by DAO vote. Here is everything the token controls and what happens to each on a transfer. Every way a seller might try to keep value is listed with what stops it.
+
+| The token controls | On transfer |
+|---|---|
+| Naming, evolving, hatching (`rename`, `choose_evolution`, `hatch`) | Move to the new owner at once. Each call checks `predecessor == nft owner` at call time, so there is no cached owner to go stale |
+| The Reserve (the Totem-owned part of the Hoard) | Stays where it is: in the contract's own ledger account, attributed to the token. It can only leave by a bite or death burn, a poke tip, or a Blessing paid to feeders by points. **No method pays the owner** |
+| Its metadata (live state, later the gravestone) | Computed from chain state on every read, so the buyer sees exactly what the seller saw |
+
+| The seller tries to… | Why it fails |
+|---|---|
+| Rename, evolve or hatch after the sale | `assert_owner` panics: "only the Totem owner (DAO) may call this" (test `transferring_the_totem_moves_governance_with_it`) |
+| Empty the Reserve before the sale | No owner method moves Reserve tokens. Its only exits are listed above, and none goes to the owner |
+| Keep an approval and take the token back | NFT approvals (NEP-178) are not enabled (`NonFungibleToken::new(…, None)`), so there are no approvals to keep |
+| Sell during a payout and claim the buyer's share | Blessings are paid to feeders by points earned in the period, never to the owner. A sale mid-period changes nothing (`blessings_pay_at_l3_and_stay_claimable_after_death`) |
+| Take the stakes along | Stakes belong to their stakers. Only the staker can `unstake` or `withdraw` their own stake |
+| Sell a reputation badge | Caretaker, Hero and Founder badges are soulbound. `nft_transfer` and `nft_transfer_call` panic for them (`badges_are_soulbound_nfts`) |
+| Hatch the next egg for themselves after selling the gravestone | `hatch` mints the new Totem to the gravestone's current owner, so it goes to the buyer |
+
+What a buyer gets is the right to steer the Totem, not an income stream. That's deliberate: the treasury belongs to the creature and its feeders.
 
 ## Repository layout
 
@@ -79,7 +101,7 @@ Prerequisites: Rust via `rustup` (the contract's `rust-toolchain.toml` selects s
 ```bash
 # Contract: run the unit tests (settle, feed, rampage, death, sybil-neutrality)
 cd contract
-cargo test                              # expect: 30 passed
+cargo test                              # expect: 31 passed
 
 # Contract: build the deployable wasm + ABI
 cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
@@ -103,6 +125,8 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 - **Do:** open the link from the card (`/?rescue=1`) in a fresh browser with no wallet and tap **Rescue**. **See:** a free guest account is made, the faucet + feed go through as one gasless meta-transaction, the Rampage ends, a soulbound Hero NFT is minted to the guest, and Mochi thanks them by name.
 - **Do:** when the Totem dies, look at the gravestone card. **See:** the live hatch vote ("1 of 3 Keeper votes"), **Propose hatching Mochi VII** if none is open, **Vote yes / no** if you are a Keeper, and **Rally the Keepers** to share.
 - **Do:** open **🏛 Tribe**. **See:** open votes with tallies, the Keepers and why each qualifies (stake or badge, read from `get_keeper`), past decisions, and your own path: *Nominate me* when you qualify, *Re-stake* after a hatch releases your stake.
+- **Do:** open **🧾 On-chain history**. **See:** the supply ledger at the top (1,000,000,000 minted at launch, + demo faucet, − burned forever = supply now, all from `get_stats`), then every feed, burn, bite, death, hatch, stake, Blessing and badge as a row with its generation and a **tx ↗** link to the explorer. Filter by *Mints & burns*, *Life & death*, *Stakes* or *Rewards*. The rows come from the contract's own NEP-297 event logs (`web/server/history.ts`: NearBlocks lists the receipts, NEAR RPC returns their logs), and add up to the on-chain totals.
+- **Do:** tap a **gravestone** in the graveyard (or **🧾 → Lives**). **See:** that life's story: how long it lived, its best level, fed / burned / slashed / blessed, its top feeders (they seeded the next egg), its NFT id, and every event of that life.
 - **Do:** press 💬 (or T) and ask "Who feeds you the most?" or "Tell me about your ancestors". **See:** it answers in character with real account names and amounts from the chain. Each generation has its own personality, derived from its on-chain traits. Needs `NEAR_AI_API_KEY` in `web/.env` (see `web/.env.example`); without it, it answers from canned lines that still use the real numbers.
 - **Do:** pick 🎋 in the dock, tap the grass (or press Space). **See:** bamboo falls, the panda runs over and eats it, the belly bar rises, and the Hoard and Burned counters go up.
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.

@@ -918,3 +918,20 @@ fn the_hoard_counts_only_the_living_totem_never_released_stakes() {
     assert_eq!(v.released_stakes.0, 0);
     assert_eq!(v.hoard.0, v.reserve.0 + 300 * ONE);
 }
+
+#[test]
+fn the_demo_faucet_logs_a_standard_mint() {
+    set_ctx(&accounts(0), 0);
+    let mut c = Contract::new(accounts(0), accounts(1), true, None, Some("Grumbo".into()));
+    let bob = accounts(2);
+    set_ctx(&bob, 0);
+    let before = c.ft_total_supply().0;
+    c.faucet();
+    let minted = c.ft_total_supply().0 - before;
+    assert_eq!(minted, c.cfg.faucet_amount.0);
+    let logs = near_sdk::test_utils::get_logs();
+    assert!(
+        logs.iter().any(|l| l.contains("\"event\":\"ft_mint\"") && l.contains(&minted.to_string())),
+        "every mint is a NEP-141 ft_mint event: {logs:?}"
+    );
+}

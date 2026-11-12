@@ -22,7 +22,7 @@ export interface Game {
   liveStatus: "loading" | "ok" | "offline";
   view: TotemView | null;
   palette: number; // index into the panda looks (from on-chain traits when live)
-  graves: { name: string; maxLevel: number }[];
+  graves: { name: string; maxLevel: number; generation?: number }[];
   leaderboard: { who: string; points: number; unit: string }[];
   events: GameEvent[];
   accountId: string;
@@ -236,7 +236,7 @@ export function useGame(): Game {
     palette = live.t.traits.palette;
     graves = live.lineage
       .filter((l) => !l.alive)
-      .map((l) => ({ name: l.lineage_name, maxLevel: l.max_level }));
+      .map((l) => ({ name: l.lineage_name, maxLevel: l.max_level, generation: l.generation }));
     const cur = live.lineage.find((l) => l.generation === live.t.generation);
     leaderboard = (cur?.top_feeders ?? []).map(([who, amt]) => ({ who, points: toTokens(amt), unit: "fed" }));
     events = liveEvents.current;

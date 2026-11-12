@@ -4,10 +4,12 @@
 //   /api/guest  zero-balance guest accounts (no wallet, no NEAR needed)
 //   /api/relay  NEP-366 meta-transaction relayer: the game pays the gas
 //   /api/propose  open a hatch vote / Keeper nomination for players without NEAR
+//   /api/history  the contract's event log (every feed, burn, bite, life), from chain
 import type { Plugin } from "vite";
 import { rpcHandler } from "./rpc";
 import { mochiHandler } from "./mochi";
 import { guestHandler, proposeHandler, relayHandler } from "./relay";
+import { historyHandler } from "./history";
 
 export function totemServer(): Plugin {
   return {
@@ -18,6 +20,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/propose", proposeHandler);
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/mochi", mochiHandler);
+      s.middlewares.use("/api/history", historyHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -25,6 +28,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/propose", proposeHandler);
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/mochi", mochiHandler);
+      s.middlewares.use("/api/history", historyHandler);
     },
   };
 }

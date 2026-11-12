@@ -106,9 +106,9 @@ function CameraRig({ follow }: { follow: boolean }) {
       enableDamping
       dampingFactor={0.08}
       minDistance={7}
-      maxDistance={26}
+      maxDistance={30}
       minPolarAngle={0.35}
-      maxPolarAngle={1.32}
+      maxPolarAngle={1.7}
       rotateSpeed={0.6}
     />
   );

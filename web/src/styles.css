@@ -74,14 +74,20 @@ button { font-family: inherit; }
 @keyframes streak-glow { from { text-shadow: 0 0 4px #ffc94a80; } to { text-shadow: 0 0 12px #ffc94a, 0 0 24px #ff8a4d80; } }
 
 /* ---------- treasury (top-right) ---------- */
-.hud-tr { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 5; }
-.stat-card { padding: 10px 16px; min-width: 170px; text-align: right; cursor: pointer; transition: transform 0.15s ease; }
+.hud-tr { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 238px; z-index: 5; }
+.resource-bar { display: flex; gap: 8px; }
+.stat-card { flex: 1; padding: 9px 12px; min-width: 0; text-align: left; cursor: pointer; transition: transform 0.15s ease; }
 .stat-card:hover { transform: translateY(-2px) scale(1.02); }
-.stat-lbl { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
-.stat-val { font-family: var(--round); font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums; }
+.stat-lbl { font-size: 11.5px; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+.stat-val { font-family: var(--round); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
 .stat-val.gold { color: var(--gold); }
 .stat-val.ember { color: var(--ember); }
-.stat-sub { font-size: 10.5px; font-weight: 700; color: var(--ink-soft); margin-top: 1px; }
+.stat-sub { font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 1px; white-space: nowrap; }
+
+/* ---------- right rail: menu actions ---------- */
+.rail { position: absolute; right: 16px; top: 300px; bottom: 24px; display: flex; flex-direction: column;
+  justify-content: flex-end; gap: 9px; z-index: 5; overflow-y: auto; scrollbar-width: none; }
+.rail::-webkit-scrollbar { display: none; }
 .icon-row { display: flex; gap: 8px; }
 .icon-btn {
   width: 42px; height: 42px; border-radius: 14px; border: 1.5px solid var(--glass-line); cursor: pointer;
@@ -252,9 +258,13 @@ button { font-family: inherit; }
 @media (max-width: 760px) {
   .hud-tl { min-width: 0; left: 10px; right: 10px; top: 10px; padding: 10px 12px; }
   .shiny { font-size: 20px; }
-  .hud-tr { top: 150px; right: 10px; }
-  .stat-card { min-width: 120px; padding: 6px 10px; }
+  .hud-tr { top: 150px; right: 10px; left: 10px; width: auto; }
+  .stat-card { padding: 6px 10px; }
   .stat-val { font-size: 18px; }
+  .rail { position: absolute; right: 10px; left: 10px; top: auto; bottom: 150px; transform: none;
+    flex-direction: row; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail .icon-btn { flex: none; }
   .hud-hunger { left: 10px; right: 10px; width: auto; bottom: 96px; }
   .dock { bottom: 10px; gap: 5px; padding: 8px; max-width: calc(100vw - 20px); overflow-x: auto; }
   .dock-item { width: 44px; height: 44px; }

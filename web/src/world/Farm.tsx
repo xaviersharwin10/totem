@@ -25,6 +25,22 @@ function rand(seed: number) {
 
 export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => void; rampage: boolean }) {
   const grass = useRef<THREE.MeshStandardMaterial>(null!);
+  // one profile: a thin vertical lip at the top that curves gradually into a rocky point
+  const base = useMemo(() => {
+    const pts = [
+      [ISLAND_RADIUS, 0.0],
+      [ISLAND_RADIUS, -0.45], // thin disc lip
+      [ISLAND_RADIUS - 0.5, -0.9], // start easing inward
+      [ISLAND_RADIUS - 1.6, -1.7],
+      [ISLAND_RADIUS - 3.4, -2.7],
+      [ISLAND_RADIUS - 5.6, -3.7],
+      [ISLAND_RADIUS - 7.8, -4.7],
+      [ISLAND_RADIUS - 9.6, -5.5],
+      [0.6, -6.0],
+      [0.0, -6.2],
+    ].map(([r, y]) => new THREE.Vector2(r, y));
+    return new THREE.LatheGeometry(pts, 15);
+  }, []);
   useFrame((_, dt) => {
     const target = new THREE.Color(rampage ? "#a8b46a" : "#8fd16a");
     grass.current.color.lerp(target, Math.min(1, dt * 2));
@@ -51,16 +67,9 @@ export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => 
         <cylinderGeometry args={[ISLAND_RADIUS + 0.05, ISLAND_RADIUS, 0.18, 64, 1, true]} />
         <meshStandardMaterial color="#79bd55" roughness={1} side={THREE.DoubleSide} />
       </mesh>
-      {/* thin dirt rim just under the grass (no more inward "cup" taper) */}
-      <mesh position={s3(0, -0.6, 0)}>
-        <cylinderGeometry args={[ISLAND_RADIUS, ISLAND_RADIUS - 0.15, 1.2, 64, 1, true]} />
-        <meshStandardMaterial color="#b98a5e" roughness={1} side={THREE.DoubleSide} />
-      </mesh>
-      {/* underside: one faceted rocky mass tapering from the thin rim to a point
-          (top radius matches the rim so there's no shelf, low-seg for a rocky look) */}
-      <mesh position={s3(0, -3.7, 0)}>
-        <cylinderGeometry args={[ISLAND_RADIUS - 0.15, 0.8, 5.0, 13, 1, false]} />
-        <meshStandardMaterial color="#a07450" roughness={1} flatShading />
+      {/* thin dirt lip curving gradually into the faceted rocky underside (one piece) */}
+      <mesh geometry={base} castShadow>
+        <meshStandardMaterial color="#a8794f" roughness={1} flatShading side={THREE.DoubleSide} />
       </mesh>
       {/* rocky bumps studding the base + roots + drifting rocks */}
       <Underside />
@@ -85,21 +94,32 @@ function Underside() {
   const rocks = useMemo(() => {
     const r = rand(23);
     const out: { x: number; z: number; y: number; s: number; rot: number; dark: boolean }[] = [];
-    const n = 18;
-    const top = -1.2;
-    const topR = ISLAND_RADIUS - 0.15;
-    const botR = 0.8;
-    const H = 5.0;
+    const n = 16;
+    // profile matching the Island lathe: [y, radius] top -> tip
+    const prof: [number, number][] = [
+      [-0.45, ISLAND_RADIUS], [-0.9, ISLAND_RADIUS - 0.5], [-1.7, ISLAND_RADIUS - 1.6],
+      [-2.7, ISLAND_RADIUS - 3.4], [-3.7, ISLAND_RADIUS - 5.6], [-4.7, ISLAND_RADIUS - 7.8],
+      [-5.5, ISLAND_RADIUS - 9.6], [-6.0, 0.6],
+    ];
+    const radAt = (y: number) => {
+      for (let k = 1; k < prof.length; k++) {
+        if (y >= prof[k][0]) {
+          const [y0, r0] = prof[k - 1];
+          const [y1, r1] = prof[k];
+          return r0 + (r1 - r0) * ((y - y0) / (y1 - y0));
+        }
+      }
+      return prof[prof.length - 1][1];
+    };
     for (let i = 0; i < n; i++) {
       const ang = (i / n) * Math.PI * 2 + r() * 0.6;
-      const d = 0.5 + r() * (H - 1.0); // depth below the cliff bottom
-      const surfR = topR - (topR - botR) * (d / H); // cone radius at this depth
-      const s = 0.8 + r() * 1.4;
-      // sit the rock ON the cone surface so it looks like part of the base, not a loose chunk
-      out.push({ x: Math.cos(ang) * (surfR - 0.3), z: Math.sin(ang) * (surfR - 0.3), y: top - d, s, rot: r() * Math.PI, dark: i % 2 === 0 });
+      const y = -1.0 - r() * 4.2;
+      const s = 0.7 + r() * 1.2;
+      const surfR = radAt(y) - s * 0.45; // embed the bump into the surface
+      out.push({ x: Math.cos(ang) * surfR, z: Math.sin(ang) * surfR, y, s, rot: r() * Math.PI, dark: i % 2 === 0 });
     }
-    // a couple of chunks at the very tip
-    out.push({ x: 0, z: 0, y: top - H + 0.2, s: 1.4, rot: r() * Math.PI, dark: true });
+    // a chunk at the very tip
+    out.push({ x: 0, z: 0, y: -5.7, s: 1.2, rot: r() * Math.PI, dark: true });
     return out;
   }, []);
   return (
@@ -135,7 +155,7 @@ function Roots() {
   return (
     <group ref={g}>
       {vines.map((v, i) => (
-        <group key={i} position={s3(v.x, -1.0, v.z)}>
+        <group key={i} position={s3(v.x, -0.5, v.z)}>
           {/* a gentle drape: two angled segments */}
           <mesh position={s3(0, -v.len * 0.3, 0)}>
             <cylinderGeometry args={[0.05, 0.07, v.len * 0.6, 6]} />
@@ -163,11 +183,11 @@ function FloatingRocks() {
   const g = useRef<THREE.Group>(null!);
   const rocks = useMemo(() => {
     const r = rand(31);
-    return Array.from({ length: 3 }, () => ({
-      x: (r() - 0.5) * 16,
-      z: (r() - 0.5) * 16,
-      y: -5.5 - r() * 2.5,
-      s: 0.4 + r() * 0.5,
+    return Array.from({ length: 7 }, () => ({
+      x: (r() - 0.5) * 18,
+      z: (r() - 0.5) * 18,
+      y: -5.0 - r() * 3.5,
+      s: 0.35 + r() * 0.6,
       p: r() * 6,
       spin: 0.1 + r() * 0.2,
     }));
@@ -366,6 +386,12 @@ function Rocks() {
     [2.0, 9.5, 0.35],
     [-1.4, -9.6, 0.45],
     [-3.2, -3.4, 0.3],
+    [6.4, -8.2, 0.42],
+    [-7.8, 6.2, 0.36],
+    [4.2, 8.6, 0.3],
+    [-5.6, -7.4, 0.48],
+    [9.8, -1.2, 0.34],
+    [0.8, -6.6, 0.28],
   ];
   return (
     <group>
@@ -457,7 +483,7 @@ function Tree({ idx, x, z, sc, color, onShake }: { idx: number; x: number; z: nu
             <meshStandardMaterial color={color} roughness={0.9} flatShading />
           </mesh>
         ))}
-        {[[0.6, 2.6, 0.75], [-0.75, 2.4, 0.5], [0.3, 3.3, 0.6]].map(([ax, ay, az], i) => (
+        {[[0.6, 2.6, 0.75], [-0.75, 2.4, 0.5], [0.3, 3.3, 0.6], [-0.4, 2.9, -0.7], [0.85, 2.3, -0.3], [-0.9, 3.1, 0.2], [0.1, 2.2, 0.9], [0.5, 3.4, -0.4]].map(([ax, ay, az], i) => (
           <mesh key={i} position={s3(ax, ay, az)}>
             <sphereGeometry args={[0.13, 10, 8]} />
             <meshStandardMaterial color="#ff5a5a" roughness={0.5} />
@@ -1132,6 +1158,22 @@ function FoodItem({ f }: { f: Food }) {
 
 export function Ball() {
   const m = useRef<THREE.Mesh>(null!);
+  // segmented beach-ball texture: vertical blue / red / orange bands around the sphere
+  const tex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 96;
+    c.height = 48;
+    const x = c.getContext("2d")!;
+    const cols = ["#3f8ddb", "#e24d3b", "#f2a53c", "#3f8ddb", "#e24d3b", "#f2a53c"];
+    const seg = c.width / cols.length;
+    cols.forEach((col, i) => {
+      x.fillStyle = col;
+      x.fillRect(i * seg, 0, seg + 1, c.height);
+    });
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     const B = world.ball;
@@ -1194,15 +1236,7 @@ export function Ball() {
       onPointerOut={() => (document.body.style.cursor = "")}
     >
       <sphereGeometry args={[0.45, 24, 18]} />
-      <meshStandardMaterial color="#ff6b8a" roughness={0.45} />
-      <mesh>
-        <torusGeometry args={[0.452, 0.06, 8, 32]} />
-        <meshStandardMaterial color="#fff4b8" />
-      </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.452, 0.06, 8, 32]} />
-        <meshStandardMaterial color="#fff4b8" />
-      </mesh>
+      <meshStandardMaterial map={tex} roughness={0.45} />
     </mesh>
   );
 }
@@ -1363,12 +1397,12 @@ export function Moon({ lit, waxing, onInfo }: { lit: number; waxing: boolean; on
   }, [key]);
   const ref = useRef<THREE.Sprite>(null!);
   useFrame((state) => {
-    ref.current.position.y = -2.4 + Math.sin(state.clock.elapsedTime * 0.2) * 0.25;
+    ref.current.position.y = 8.5 + Math.sin(state.clock.elapsedTime * 0.2) * 0.25;
   });
   return (
     <sprite
       ref={ref}
-      position={[3.5, -2.4, -32]}
+      position={[3.5, 8.5, -32]}
       scale={[4.6, 4.6, 1]}
       onClick={(e) => {
         e.stopPropagation();

@@ -5,21 +5,24 @@
 // shares identical view calls for a moment (many tabs / StrictMode doubles).
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-const UPSTREAMS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
-const CACHE_MS = 1000;
+// Several providers, used round-robin: one server IP calling one provider gets
+// rate-limited quickly (every browser, the bot and the auto-hatcher go through here).
+const UPSTREAMS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"];
+const CACHE_MS = 2500; // the app polls every 3 s: open tabs share one upstream call
 const cache = new Map<string, { at: number; p: Promise<{ status: number; body: string }> }>();
 let next = 0;
 
 export async function rpcForward(body: string) {
   let last = { status: 502, body: JSON.stringify({ jsonrpc: "2.0", id: 0, error: { message: "all RPC upstreams failed" } }) };
+  const start = next;
+  next = (next + 1) % UPSTREAMS.length; // round-robin: spread the load
   for (let i = 0; i < UPSTREAMS.length; i++) {
-    const url = UPSTREAMS[(next + i) % UPSTREAMS.length];
+    const url = UPSTREAMS[(start + i) % UPSTREAMS.length];
     try {
       const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body });
       const text = await r.text();
       if (r.status === 429 || r.status >= 500) {
         last = { status: r.status, body: text };
-        next = (next + i + 1) % UPSTREAMS.length; // prefer the next one for a while
         continue;
       }
       return { status: r.status, body: text };

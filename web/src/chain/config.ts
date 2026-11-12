@@ -8,7 +8,7 @@ export const DAO_ID: string = import.meta.env.VITE_DAO_ID ?? "totem-tribe.sputni
 // served by the dev server and the hosted server alike), which rotates upstreams
 // from the server's IP; the public RPCs are only a fallback. The URL is absolute
 // because wallets run in a sandboxed iframe and are handed this same list.
-const PUBLIC_RPCS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
+const PUBLIC_RPCS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"];
 export const RPC_URLS: string[] = import.meta.env.VITE_RPC_URL
   ? [import.meta.env.VITE_RPC_URL]
   : [`${location.origin}/rpc`, ...PUBLIC_RPCS];

@@ -32,7 +32,7 @@ const RELAYER_ID = process.env.RELAYER_ACCOUNT_ID ?? "totem-grumbo-relay.testnet
 // Public testnet RPCs rate-limit per IP: fail over between them unless one is pinned.
 export const RPC_URLS = process.env.RELAYER_RPC_URL
   ? [process.env.RELAYER_RPC_URL]
-  : ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
+  : ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"];
 export const rpcProvider = () => new FailoverRpcProvider(RPC_URLS.map((url) => new JsonRpcProvider({ url })));
 // Zero-deposit game actions a guest may do for free.
 const ALLOWED = new Set(["faucet", "feed", "poke", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing"]);

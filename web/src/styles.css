@@ -437,11 +437,6 @@ button { font-family: inherit; }
   display: flex; flex-direction: column; gap: 14px;
 }
 .pm-head { display: flex; justify-content: space-between; align-items: center; }
-.predict-title {
-  font-family: var(--round); font-weight: 700; font-size: 22px;
-  background: linear-gradient(110deg, #9b7ad8 20%, #ff6b9a 50%, #ffc94a 75%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
 .pm-desc { margin: -4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.5; }
 
 /* ── active/live betting box (ember-beam style, matches rampage energy) ── */

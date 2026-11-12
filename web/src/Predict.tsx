@@ -177,8 +177,8 @@ export function PredictPanel({ game, onClose, toast }: Props) {
       <div className="predict-sheet glass">
         {/* ── Header ── */}
         <div className="pm-head">
-          <span className="predict-title">🔮 Prediction Market</span>
-          <button className="icon-btn" onClick={onClose}>✕</button>
+          <span className="tribe-title">🔮 Prediction Market</span>
+          <button className="dc-close" onClick={onClose}>✕</button>
         </div>
 
         <p className="pm-desc">

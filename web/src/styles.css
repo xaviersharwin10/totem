@@ -58,8 +58,8 @@ button { font-family: inherit; }
 .chip { font-size: 12px; font-weight: 700; color: var(--ink-soft); background: rgba(255,255,255,0.8); padding: 3px 9px; border-radius: 999px; text-transform: capitalize; }
 .chip.lvl { color: #fff; background: linear-gradient(135deg, #9b7ad8, #ff6b9a); }
 .lives { display: flex; align-items: center; gap: 2px; margin-top: 10px; flex-wrap: wrap; }
-.life { color: #ff4d6d; font-size: 18px; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.12)); animation: beat 1.4s ease-in-out infinite; }
-.life.lost { color: #d8d2db; animation: none; }
+.lives .life { color: #ff4d6d; font-size: 18px; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.12)); animation: beat 1.4s ease-in-out infinite; }
+.lives .life.lost { color: #d8d2db; animation: none; }
 .lives-lbl { margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
 @keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.22); } 30% { transform: scale(1); } }
 .xp { height: 6px; border-radius: 99px; background: rgba(43,34,48,0.1); margin-top: 10px; overflow: hidden; }

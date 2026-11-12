@@ -119,7 +119,12 @@ python3 -m venv .venv && .venv/bin/pip install matplotlib
 # Web app: the 3D farm (opens at http://localhost:5173)
 cd ../web
 npm install && npm run dev
+
+# Production (what's hosted): app + /api + Telegram bot on one port
+npm run build && npm start              # PORT=8080 by default
 ```
+
+**Live:** https://totem-zmwf.onrender.com (testnet, demo clock) · Telegram: [@Babao_panda_bot](https://t.me/Babao_panda_bot)
 
 ## The web app
 

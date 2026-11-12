@@ -1,6 +1,6 @@
 // Prediction market panel — bet $TOTEM on whether the Totem survives a Rampage.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fmt, PredictMarket, PredictBet } from "./engine";
 import { toTokens } from "./chain/config";
 import type { Game } from "./game";
@@ -11,10 +11,34 @@ interface Props {
   toast: (msg: string, kind?: string) => void;
 }
 
-function pct(a: number, b: number): string {
-  const total = a + b;
-  if (total === 0) return "50";
-  return ((a / total) * 100).toFixed(0);
+function survPct(survive: number, die: number): number {
+  const t = survive + die;
+  return t === 0 ? 50 : (survive / t) * 100;
+}
+
+function estimatePayout(myWin: number, winPool: number, losePool: number): number {
+  if (winPool === 0) return myWin;
+  return myWin + (losePool * 0.97 * myWin) / winPool;
+}
+
+function PoolBar({ survive, die }: { survive: number; die: number }) {
+  const sp = survPct(survive, die);
+  const total = survive + die;
+  return (
+    <div className="pm-bar-row">
+      <div className="pm-ratio">
+        <div className="pm-ratio-s" style={{ width: `${Math.max(4, sp)}%` }} />
+        <div className="pm-ratio-d" />
+      </div>
+      <div className="pm-ratio-labels">
+        <span className="surv">🛡 {fmt(survive)} · {sp.toFixed(0)}%</span>
+        <span className="died">💀 {fmt(die)} · {(100 - sp).toFixed(0)}%</span>
+      </div>
+      {total > 0 && (
+        <div className="pm-pot-line">pot: <b>{fmt(total)} $TOTEM</b></div>
+      )}
+    </div>
+  );
 }
 
 function MarketRow({
@@ -32,20 +56,33 @@ function MarketRow({
 }) {
   const survive = toTokens(m.total_survive);
   const die = toTokens(m.total_die);
-  const total = survive + die;
-  const survPct = pct(survive, die);
-  const diePct = pct(die, survive);
-
   const myS = myBet ? toTokens(myBet.survive) : 0;
   const myD = myBet ? toTokens(myBet.die) : 0;
-  const hasWinning =
+
+  const wonSurvive = m.resolved && m.outcome === true && myS > 0;
+  const wonDie = m.resolved && m.outcome === false && myD > 0;
+  const hasWinning = wonSurvive || wonDie;
+  const lostBet =
     m.resolved &&
-    ((m.outcome === true && myS > 0) || (m.outcome === false && myD > 0));
+    ((m.outcome === true && myD > 0 && myS === 0) ||
+      (m.outcome === false && myS > 0 && myD === 0));
+
+  const estimated = hasWinning
+    ? wonSurvive
+      ? estimatePayout(myS, survive, die)
+      : estimatePayout(myD, die, survive)
+    : null;
+
+  const rowClass = m.resolved
+    ? m.outcome
+      ? "pm-survived"
+      : "pm-died"
+    : "pm-open";
 
   return (
-    <div className={`pm-row glass ${m.resolved ? "pm-resolved" : "pm-open"}`}>
-      <div className="pm-header">
-        <span className="pm-id">Market #{m.market_id}</span>
+    <div className={`pm-row ${rowClass}`}>
+      <div className="pm-row-head">
+        <span className="pm-row-id">Market #{m.market_id}</span>
         {m.resolved ? (
           <span className={`pm-badge ${m.outcome ? "survived" : "died"}`}>
             {m.outcome ? "✅ survived" : "💀 died"}
@@ -54,52 +91,28 @@ function MarketRow({
           <span className="pm-badge open">🔥 live</span>
         )}
       </div>
-      <div className="pm-pools">
-        <div className="pm-side survive">
-          <span className="pm-emoji">🛡️</span>
-          <span className="pm-label">survive</span>
-          <span className="pm-amount">{fmt(survive)}</span>
-          <span className="pm-pct">{survPct}%</span>
-        </div>
-        <div className="pm-bar-wrap">
-          <div
-            className="pm-bar-fill survive"
-            style={{ width: `${survPct}%` }}
-          />
-        </div>
-        <div className="pm-side die">
-          <span className="pm-emoji">💀</span>
-          <span className="pm-label">die</span>
-          <span className="pm-amount">{fmt(die)}</span>
-          <span className="pm-pct">{diePct}%</span>
-        </div>
-      </div>
-      {total > 0 && (
-        <div className="pm-pot">pot: {fmt(total)} $TOTEM</div>
-      )}
+
+      <PoolBar survive={survive} die={die} />
+
       {(myS > 0 || myD > 0) && (
         <div className="pm-mybet">
-          your bet:{" "}
-          {myS > 0 && (
-            <span className="survive">
-              {fmt(myS)} on survive
-            </span>
+          <span>you bet</span>
+          {myS > 0 && <span className="s-tag">🛡 {fmt(myS)} survive</span>}
+          {myD > 0 && <span className="d-tag">💀 {fmt(myD)} die</span>}
+          {estimated !== null && (
+            <span className="pm-payout-hint">~{fmt(estimated)}</span>
           )}
-          {myS > 0 && myD > 0 && " · "}
-          {myD > 0 && (
-            <span className="die">
-              {fmt(myD)} on die
-            </span>
-          )}
+          {lostBet && <span className="pm-lost-tag">lost</span>}
         </div>
       )}
+
       {hasWinning && accountId && (
         <button
           className="press-btn pm-claim-btn"
           onClick={onClaim}
           disabled={busy}
         >
-          🏆 Claim winnings
+          🏆 Claim{estimated ? ` ~${fmt(estimated)} $TOTEM` : " winnings"}
         </button>
       )}
     </div>
@@ -109,9 +122,21 @@ function MarketRow({
 export function PredictPanel({ game, onClose, toast }: Props) {
   const [side, setSide] = useState<"survive" | "die">("survive");
   const [amount, setAmount] = useState(50);
+  // cache the last active-market bet so it's visible after resolution
+  const [cachedBet, setCachedBet] = useState<{ marketId: number; bet: PredictBet } | null>(null);
+
+  useEffect(() => {
+    if (game.activeMarket && game.myBet) {
+      setCachedBet({ marketId: game.activeMarket.market_id, bet: game.myBet });
+    }
+  }, [game.myBet, game.activeMarket]);
 
   const m = game.activeMarket;
   const inRampage = !!m && !m.resolved;
+
+  const survive = m ? toTokens(m.total_survive) : 0;
+  const die = m ? toTokens(m.total_die) : 0;
+  const sp = survPct(survive, die);
 
   const doBet = async () => {
     try {
@@ -131,102 +156,148 @@ export function PredictPanel({ game, onClose, toast }: Props) {
     }
   };
 
-  // collect all markets to show (active first, then recent resolved ones)
   const allMarkets: PredictMarket[] = [];
   if (m) allMarkets.push(m);
   for (const rm of game.recentMarkets) {
-    if (!allMarkets.find((x) => x.market_id === rm.market_id)) {
-      allMarkets.push(rm);
-    }
+    if (!allMarkets.find((x) => x.market_id === rm.market_id)) allMarkets.push(rm);
   }
+  const resolvedMarkets = allMarkets.filter((mk) => mk.resolved);
+
+  const betForMarket = (marketId: number): PredictBet | null => {
+    if (game.myBet && game.activeMarket?.market_id === marketId) return game.myBet;
+    if (cachedBet?.marketId === marketId) return cachedBet.bet;
+    return null;
+  };
 
   return (
-    <div className="sheet glass predict-sheet">
-      <div className="sheet-head">
-        <span>🔮 Prediction Market</span>
-        <button className="icon-btn" onClick={onClose}>
-          ✕
-        </button>
-      </div>
+    <div
+      className="sheet-bg"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="predict-sheet glass">
+        {/* ── Header ── */}
+        <div className="pm-head">
+          <span className="predict-title">🔮 Prediction Market</span>
+          <button className="icon-btn" onClick={onClose}>✕</button>
+        </div>
 
-      <p className="predict-desc">
-        Bet $TOTEM on whether the Totem survives the current Rampage. Winners
-        split the losers' pool (3% fee burned). Markets open each Rampage.
-      </p>
+        <p className="pm-desc">
+          Bet $TOTEM on whether the Totem survives the Rampage. Winners split
+          the losers' pool — 3% burned. A new market opens with every Rampage.
+        </p>
 
-      {game.mode !== "live" && (
-        <div className="pm-offline">Prediction markets are live-only. Switch to Live testnet.</div>
-      )}
-
-      {game.mode === "live" && inRampage && (
-        <div className="pm-bet-box glass">
-          <div className="pm-bet-title">🔥 Rampage in progress — place your bet</div>
-          <div className="pm-side-pick">
-            <button
-              className={`side-btn ${side === "survive" ? "active survive" : ""}`}
-              onClick={() => setSide("survive")}
-            >
-              🛡️ Survive
-            </button>
-            <button
-              className={`side-btn ${side === "die" ? "active die" : ""}`}
-              onClick={() => setSide("die")}
-            >
-              💀 Die
-            </button>
+        {/* ── Not live ── */}
+        {game.mode !== "live" && (
+          <div className="pm-offline">
+            Prediction markets are live only. Switch to Live testnet.
           </div>
-          <div className="pm-amount-row">
-            {[10, 50, 100, 500].map((a) => (
+        )}
+
+        {/* ── Empty state ── */}
+        {game.mode === "live" && allMarkets.length === 0 && (
+          <div className="pm-empty">
+            <span className="pm-empty-emoji">🧊</span>
+            <span className="pm-empty-text">
+              No market open yet.<br />
+              Markets appear when the Totem enters Rampage.
+            </span>
+          </div>
+        )}
+
+        {/* ── Live betting box ── */}
+        {game.mode === "live" && inRampage && (
+          <div className="pm-live-box">
+            <div className="pm-live-label">🔥 Rampage · Market #{m.market_id}</div>
+
+            <PoolBar survive={survive} die={die} />
+
+            {/* Side picker */}
+            <div className="pm-sides">
               <button
-                key={a}
-                className={`mini-btn ${amount === a ? "on" : ""}`}
-                onClick={() => setAmount(a)}
+                className={`side-card ${side === "survive" ? "active survive" : ""}`}
+                onClick={() => setSide("survive")}
               >
-                {a}
+                <span className="sc-emoji">🛡️</span>
+                <span className="sc-label">Survive</span>
+                <span className="sc-odds">{sp.toFixed(0)}% of pool</span>
               </button>
-            ))}
-            <input
-              className="pm-input"
-              type="number"
-              min={1}
-              value={amount}
-              onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
-            />
+              <button
+                className={`side-card ${side === "die" ? "active die" : ""}`}
+                onClick={() => setSide("die")}
+              >
+                <span className="sc-emoji">💀</span>
+                <span className="sc-label">Die</span>
+                <span className="sc-odds">{(100 - sp).toFixed(0)}% of pool</span>
+              </button>
+            </div>
+
+            {/* Amount row */}
+            <div className="pm-amounts">
+              {[10, 50, 100, 500].map((a) => (
+                <button
+                  key={a}
+                  className={`pm-chip ${amount === a ? "on" : ""}`}
+                  onClick={() => setAmount(a)}
+                >
+                  {a}
+                </button>
+              ))}
+              <input
+                className="pm-input"
+                type="number"
+                min={1}
+                value={amount}
+                onChange={(e) => setAmount(Math.max(1, Number(e.target.value)))}
+              />
+              <span className="pm-unit">$TOTEM</span>
+            </div>
+
+            {/* Current bet status */}
+            {game.myBet && (toTokens(game.myBet.survive) > 0 || toTokens(game.myBet.die) > 0) && (
+              <div className="pm-mybet">
+                <span>placed:</span>
+                {toTokens(game.myBet.survive) > 0 && (
+                  <span className="s-tag">🛡 {fmt(toTokens(game.myBet.survive))} survive</span>
+                )}
+                {toTokens(game.myBet.die) > 0 && (
+                  <span className="d-tag">💀 {fmt(toTokens(game.myBet.die))} die</span>
+                )}
+              </div>
+            )}
+
+            {/* Bet button */}
+            <button
+              className={`press-btn ${side === "survive" ? "survive-btn" : "danger-btn"}`}
+              onClick={doBet}
+              disabled={game.busy || !game.accountId}
+            >
+              Bet {amount} on "{side}"
+            </button>
+
+            {!game.accountId && (
+              <div className="pm-connect-note">Connect wallet or play as guest to bet</div>
+            )}
           </div>
-          <button
-            className={`press-btn ${side === "survive" ? "survive-btn" : "danger-btn"}`}
-            onClick={doBet}
-            disabled={game.busy || !game.accountId}
-          >
-            Bet {amount} $TOTEM on "{side}"
-          </button>
-          {!game.accountId && (
-            <div className="pm-note">Connect wallet or play as guest to bet</div>
-          )}
-        </div>
-      )}
+        )}
 
-      {game.mode === "live" && !inRampage && allMarkets.length === 0 && (
-        <div className="pm-empty">
-          No active market. Markets open when the Totem enters Rampage.
-        </div>
-      )}
-
-      <div className="pm-list">
-        {allMarkets.map((market) => (
-          <MarketRow
-            key={market.market_id}
-            m={market}
-            myBet={
-              game.myBet && m && market.market_id === m.market_id
-                ? game.myBet
-                : null
-            }
-            accountId={game.accountId}
-            onClaim={() => doClaim(market.market_id)}
-            busy={game.busy}
-          />
-        ))}
+        {/* ── Past markets ── */}
+        {resolvedMarkets.length > 0 && (
+          <>
+            <div className="pm-section-title">Past markets</div>
+            <div className="pm-list">
+              {resolvedMarkets.map((market) => (
+                <MarketRow
+                  key={market.market_id}
+                  m={market}
+                  myBet={betForMarket(market.market_id)}
+                  accountId={game.accountId}
+                  onClaim={() => doClaim(market.market_id)}
+                  busy={game.busy}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

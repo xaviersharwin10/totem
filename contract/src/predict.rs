@@ -97,6 +97,18 @@ impl Contract {
 
 #[near]
 impl Contract {
+    /// Owner-only: manually open a prediction market for the current Rampage.
+    /// Use when a Rampage was already in progress before prediction support was
+    /// deployed and `open_predict_market` was never triggered automatically.
+    pub fn admin_open_predict_market(&mut self) {
+        self.assert_owner();
+        near_sdk::require!(
+            self.rampage_started_at.is_some(),
+            "Totem is not in Rampage"
+        );
+        self.open_predict_market(near_sdk::env::block_timestamp());
+    }
+
     /// Bet $TOTEM on the outcome of the current Rampage.
     /// `side`: "survive" or "die". Can bet on either or both sides.
     /// Only callable while the Totem is in Rampage and the market is open.

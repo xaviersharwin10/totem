@@ -257,9 +257,9 @@ function Fence() {
     const cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
     const ctx = cv.getContext("2d")!;
-    ctx.fillStyle = "#6b3520";
+    ctx.fillStyle = "#9b5a32";
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "#3e1c0c";
+    ctx.strokeStyle = "#5a2e12";
     ctx.lineWidth = 1.8;
     for (let g = 0; g < 5; g++) {
       const xb = 5 + g * 13;
@@ -287,9 +287,9 @@ function Fence() {
     const cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
     const ctx = cv.getContext("2d")!;
-    ctx.fillStyle = "#5a2e18";
+    ctx.fillStyle = "#7a4228";
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "#3a1c0a";
+    ctx.strokeStyle = "#4e2412";
     ctx.lineWidth = 1.2;
     for (let g = 0; g < 4; g++) {
       const yb = 4 + g * 8;

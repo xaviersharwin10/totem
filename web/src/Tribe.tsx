@@ -260,9 +260,8 @@ export function TribePanel({
               {" "}· <a href={`https://trezu.app/${DAO_ID}`} target="_blank" rel="noreferrer">open in Trezu</a>
             </>
           ) : (
-            " (on mainnet that includes Trezu)"
+            <> · this is a plain <a href="https://github.com/near-daos/sputnik-dao-contract" target="_blank" rel="noreferrer">Sputnik DAO</a> — the same contract <a href="https://trezu.org" target="_blank" rel="noreferrer">Trezu</a> is built on. On mainnet (<code>totem-tribe.sputnik-dao.near</code>) this panel links directly to Trezu.</>
           )}
-          .
         </div>
       </div>
     </div>

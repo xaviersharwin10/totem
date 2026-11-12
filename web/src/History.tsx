@@ -8,6 +8,82 @@ import { EXPLORER, toTokens } from "./chain/config";
 import { shortGuest } from "./chain/guest";
 import { fmt, fmtTime } from "./engine";
 
+/** SVG sparkline of cumulative burned supply over time. */
+function BurnChart({ events }: { events: HistoryEvent[] }) {
+  const points = useMemo(() => {
+    // collect ft_burn events sorted oldest→newest
+    const burns = events
+      .filter((e) => e.kind === "ft_burn" && e.ts > 0)
+      .sort((a, b) => a.ts - b.ts);
+    if (burns.length < 2) return [];
+    let cum = 0;
+    return burns.map((e) => {
+      cum += toTokens(String(e.data.amount ?? "0"));
+      return { ts: e.ts, cum };
+    });
+  }, [events]);
+
+  if (points.length < 2) return (
+    <div className="burn-chart-empty">Not enough burn events yet — feed BaoBao to grow this chart.</div>
+  );
+
+  const W = 560, H = 140, PAD = { t: 12, r: 16, b: 28, l: 52 };
+  const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
+  const tsMin = points[0].ts, tsMax = points[points.length - 1].ts;
+  const cumMax = points[points.length - 1].cum;
+
+  const px = (ts: number) => PAD.l + ((ts - tsMin) / Math.max(1, tsMax - tsMin)) * iw;
+  const py = (v: number) => PAD.t + ih - (v / cumMax) * ih;
+
+  // build polyline path
+  const fill = points.map((p, i) => `${i === 0 ? "M" : "L"}${px(p.ts).toFixed(1)},${py(p.cum).toFixed(1)}`).join(" ")
+    + ` L${px(tsMax).toFixed(1)},${(PAD.t + ih).toFixed(1)} L${PAD.l},${(PAD.t + ih).toFixed(1)} Z`;
+
+  // y-axis labels (3 ticks)
+  const yTicks = [0, 0.5, 1].map((f) => ({ v: cumMax * f, y: py(cumMax * f) }));
+
+  // x-axis labels (first + last)
+  const xLabels = [
+    { ts: tsMin, x: px(tsMin) },
+    { ts: tsMax, x: px(tsMax) },
+  ];
+  const fmtDate = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="burn-chart-wrap">
+      <div className="burn-chart-title">🔥 Cumulative $TOTEM burned — {fmt(cumMax)} total</div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="burn-chart-svg" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="burnGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ff6b4a" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#ff6b4a" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {/* grid lines */}
+        {yTicks.map((t, i) => (
+          <line key={i} x1={PAD.l} y1={t.y} x2={PAD.l + iw} y2={t.y} stroke="rgba(0,0,0,0.07)" strokeWidth="1" />
+        ))}
+        {/* filled area */}
+        <path d={fill} fill="url(#burnGrad)" />
+        {/* line */}
+        <polyline points={points.map((p) => `${px(p.ts).toFixed(1)},${py(p.cum).toFixed(1)}`).join(" ")} fill="none" stroke="#ff5533" strokeWidth="2" strokeLinejoin="round" />
+        {/* y labels */}
+        {yTicks.map((t, i) => (
+          <text key={i} x={PAD.l - 6} y={t.y + 4} textAnchor="end" fontSize="9" fill="rgba(43,34,48,0.55)">{fmt(t.v)}</text>
+        ))}
+        {/* x labels */}
+        {xLabels.map((l, i) => (
+          <text key={i} x={l.x} y={H - 6} textAnchor={i === 0 ? "start" : "end"} fontSize="9" fill="rgba(43,34,48,0.55)">{fmtDate(l.ts)}</text>
+        ))}
+      </svg>
+      <div className="burn-chart-sub">Each spike = a feed or a Rampage bite. Supply only ever goes down.</div>
+    </div>
+  );
+}
+
 export interface HistoryEvent {
   id: string;
   tx: string;
@@ -263,7 +339,7 @@ function LifeCard({ l, events, open, onToggle }: { l: Life; events: HistoryEvent
 
 export function HistoryPanel({ onClose, focusGeneration }: { onClose: () => void; focusGeneration: number | null }) {
   const { events, lives, stats, err } = useHistoryData(true);
-  const [tab, setTab] = useState<"ledger" | "lives">(focusGeneration ? "lives" : "ledger");
+  const [tab, setTab] = useState<"ledger" | "supply" | "lives">(focusGeneration ? "lives" : "ledger");
   const [filter, setFilter] = useState<Filter>("all");
   const [openGen, setOpenGen] = useState<number | null>(focusGeneration);
   const shown = useMemo(() => (events ?? []).filter((e) => filter === "all" || GROUP[e.kind] === filter), [events, filter]);
@@ -287,6 +363,7 @@ export function HistoryPanel({ onClose, focusGeneration }: { onClose: () => void
         )}
         <div className="tabs">
           <button className={tab === "ledger" ? "on" : ""} onClick={() => setTab("ledger")}>Ledger</button>
+          <button className={tab === "supply" ? "on" : ""} onClick={() => setTab("supply")}>🔥 Burn chart</button>
           <button className={tab === "lives" ? "on" : ""} onClick={() => setTab("lives")}>Lives ({lives.length})</button>
         </div>
 
@@ -309,6 +386,13 @@ export function HistoryPanel({ onClose, focusGeneration }: { onClose: () => void
             {!err && !events && <div className="tribe-empty">Reading the contract's events…</div>}
             {events && <Rows events={shown} />}
           </>
+        )}
+
+        {tab === "supply" && (
+          <div className="plist">
+            {!events && <div className="tribe-empty">Reading events…</div>}
+            {events && <BurnChart events={events} />}
+          </div>
         )}
 
         {tab === "lives" && (

@@ -12,7 +12,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { rpcForward } from "./rpc";
 
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
 const NEAR_AI_URL = process.env.NEAR_AI_URL ?? "https://cloud-api.near.ai/v1/chat/completions";
 const MODEL = process.env.NEAR_AI_MODEL ?? "anthropic/claude-haiku-5-5";
 const ONE = 10n ** 18n;

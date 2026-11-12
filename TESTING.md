@@ -9,9 +9,9 @@ Most of it runs against the **hosted app**, so no setup is needed. For what is d
 | **Rescue link** | https://totem-x2kg.onrender.com/?rescue=1 |
 | **Tribe link** | https://totem-x2kg.onrender.com/?tribe=1 |
 | **Telegram bot** | [@Babao_panda_bot](https://t.me/Babao_panda_bot) |
-| **Contract** | [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) (token, NFTs, game) |
+| **Contract** | [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet) (token, NFTs, game) |
 | **DAO** | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
-| **Treasury** | `totem-<generation>.totem-grumbo.testnet` (one keyless account per life) |
+| **Treasury** | `totem-<generation>.totem-baobao.testnet` (one keyless account per life) |
 
 ---
 
@@ -92,7 +92,7 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 - [ ] Shake a tree. **See:** apples fall and a toast explains that apples are free, but only $TOTEM bamboo fills the belly.
 - [ ] Tap the 💰 chest or the Treasury card. **See:** an explanation and a link to the treasury account.
 - [ ] Tap the totem pole. **See:** one carved block per level, explained.
-- [ ] **contract on explorer ↗** opens `totem-grumbo.testnet` on testnet.nearblocks.io.
+- [ ] **contract on explorer ↗** opens `totem-baobao.testnet` on testnet.nearblocks.io.
 
 ### 2. Play free as a guest
 
@@ -135,7 +135,7 @@ Hatch first, feed once, then stop feeding.
 - [ ] One transaction did all of it: create the guest, faucet and feed. Check that the guest has **0 NEAR** and owns the Hero NFT:
   ```bash
   near account view-account-summary g<hex>.totem-grumbo-relay.testnet network-config testnet now
-  near contract call-function as-read-only totem-grumbo.testnet nft_tokens_for_owner \
+  near contract call-function as-read-only totem-baobao.testnet nft_tokens_for_owner \
     json-args '{"account_id":"g<hex>.totem-grumbo-relay.testnet"}' network-config testnet now   # token id hero-<gen>-<n>
   ```
 
@@ -149,10 +149,10 @@ Let a Totem starve all the way (Level 1: one bite after the Rampage starts).
 - [ ] Hover a gravestone to see its name. Tap it. **See:** the 🧾 panel opens on **Lives** with that life expanded: stats, top feeders, the NFT id and its events.
 - [ ] The Totem NFT became a gravestone:
   ```bash
-  near contract call-function as-read-only totem-grumbo.testnet nft_token json-args '{"token_id":"totem-<gen>"}' network-config testnet now
+  near contract call-function as-read-only totem-baobao.testnet nft_token json-args '{"token_id":"totem-<gen>"}' network-config testnet now
   # metadata.extra contains "gravestone"
   ```
-- [ ] The treasury burned: `ft_balance_of totem-<gen>.totem-grumbo.testnet` is 0.
+- [ ] The treasury burned: `ft_balance_of totem-<gen>.totem-baobao.testnet` is 0.
 
 ### 7. Hatch by DAO vote
 
@@ -161,7 +161,7 @@ Keepers: `totem-grumbo-keeper`, `keeper2`, `keeper3` and one guest (4 Keepers; 3
 - [ ] With the Totem dead, press **🥚 Propose hatching …** on the death card. Anyone can do this, guests included; the game pays the bond. **See:** "Hatch vote is open · 0 of N Keeper votes".
 - [ ] As a Keeper, press **Vote yes**. **See:** the tally moves and "You voted yes ✅". A non-Keeper gets "Only Keepers can vote on that…".
 - [ ] Finish from the CLI if needed: `scripts/dao-propose.sh hatch` (it reuses the open vote). Auto-hatch also finishes any open hatch vote 90 s after the death. **See:** within seconds the app shows the new egg: name +1, new colours (from its on-chain traits), Level 1, full belly, and the death card is gone.
-- [ ] The new generation has a new treasury account `totem-<gen+1>.totem-grumbo.testnet` with **no access keys** (check on the explorer).
+- [ ] The new generation has a new treasury account `totem-<gen+1>.totem-baobao.testnet` with **no access keys** (check on the explorer).
 - [ ] **🏛 Tribe** panel: the **Votes** tab shows open proposals with tallies, **Decided** shows past ones, **Keepers** lists each Keeper and why they qualify, ending with "No council, no admin…".
 - [ ] With 1,000+ staked: **Nominate me** in Keepers opens an `AddMemberToRole` proposal.
 - [ ] Rename (Keepers): `scripts/dao-propose.sh rename <Name>`. The next generation hatches with that name.
@@ -191,17 +191,17 @@ Use a guest (gasless) with 1,000+ $TOTEM.
 - [ ] Press **🧾** (history). **See:** four boxes: launch supply **1,000,000,000**, faucet mints, burned and supply now. **launch + faucet − burned = supply now**, exactly.
 - [ ] Check supply now against the chain:
   ```bash
-  near contract call-function as-read-only totem-grumbo.testnet ft_total_supply json-args '{}' network-config testnet now
+  near contract call-function as-read-only totem-baobao.testnet ft_total_supply json-args '{}' network-config testnet now
   ```
 - [ ] **Ledger** tab: events newest first, each with `gen N · time ago · tx ↗`. Open a **tx ↗**. The explorer shows the same `EVENT_JSON` logs (standard NEP-141 `ft_mint`, `ft_burn`, `ft_transfer`).
 - [ ] Feed 10, wait about 15 s, reopen. **See:** "*you* fed 10 · 🔥 5 burned · 5 to the Reserve".
 - [ ] Filters: **Mints & burns** shows only feeds, faucet mints and burns. **Life & death** shows bites, deaths and hatches.
-- [ ] Treasury: tap the 💰 chest → the treasury link. On the explorer, `totem-<gen>.totem-grumbo.testnet` has **no access keys**, and its $TOTEM balance equals `get_totem.reserve`.
+- [ ] Treasury: tap the 💰 chest → the treasury link. On the explorer, `totem-<gen>.totem-baobao.testnet` has **no access keys**, and its $TOTEM balance equals `get_totem.reserve`.
 
 ### 11. The NFTs on chain
 
 ```bash
-C=totem-grumbo.testnet; N="network-config testnet now"
+C=totem-baobao.testnet; N="network-config testnet now"
 near contract call-function as-read-only $C nft_metadata json-args '{}' $N
 near contract call-function as-read-only $C nft_total_supply json-args '{}' $N
 near contract call-function as-read-only $C nft_tokens json-args '{"limit":50}' $N
@@ -276,15 +276,15 @@ Each of these must be **refused**. Use your own testnet account for the CLI ones
 
 - [ ] **Nobody but the DAO governs:** `rename`, `hatch` or `choose_evolution` from any normal account fails.
   ```bash
-  near contract call-function as-transaction totem-grumbo.testnet rename json-args '{"name":"Hacked"}' \
+  near contract call-function as-transaction totem-baobao.testnet rename json-args '{"name":"Hacked"}' \
     prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as you.testnet network-config testnet sign-with-keychain send
   ```
 - [ ] **No council:** a vote from a founder account (`totem-grumbo-tribe.testnet`) fails with `ERR_PERMISSION_DENIED`. `get_policy` on the DAO lists only the roles `all` and `keepers`.
 - [ ] **Hatching a living Totem** is refused.
-- [ ] **The treasury can't be paid or drained by hand:** `ft_transfer` to `totem-<gen>.totem-grumbo.testnet` or to the contract itself fails, and the treasury has no keys to sign with.
+- [ ] **The treasury can't be paid or drained by hand:** `ft_transfer` to `totem-<gen>.totem-baobao.testnet` or to the contract itself fails, and the treasury has no keys to sign with.
   ```bash
-  near contract call-function as-transaction totem-grumbo.testnet ft_transfer \
-    json-args '{"receiver_id":"totem-<gen>.totem-grumbo.testnet","amount":"1000000000000000000"}' \
+  near contract call-function as-transaction totem-baobao.testnet ft_transfer \
+    json-args '{"receiver_id":"totem-<gen>.totem-baobao.testnet","amount":"1000000000000000000"}' \
     prepaid-gas '30 Tgas' attached-deposit '1 yoctoNEAR' sign-as you.testnet network-config testnet sign-with-keychain send
   ```
 - [ ] **Soulbound badges:** `nft_transfer` of a `hero-`, `badge-` or `founder-` token fails with "badges are soulbound and cannot be transferred".
@@ -397,12 +397,12 @@ cargo test                    # expect: 40 unit tests + 2 sandbox — all pass
 
 ### 20. BaoBao follows the real moon
 
-The contract computes tonight's moon from the block time ([`contract/src/moon.rs`](contract/src/moon.rs)). **Testnet status:** the app and the moon in the sky are live; the moon's effect on hunger and burning needs the contract redeployed (until then the 🌙 sheet says so).
+The contract computes tonight's moon from the block time ([`contract/src/moon.rs`](contract/src/moon.rs)). Live on testnet: the hunger, burn and Moonlit badge effects are in the deployed contract.
 
 - [ ] Look at the sky above the totem pole. **See:** the moon with tonight's real phase (a waxing crescent lit on the right in mid-November 2026; full moon on 24 November). Compare it with the real sky or any moon-phase site.
 - [ ] Top-left: the 🌙 chip shows how lit it is (e.g. "🌒 7%"). Tap it or the moon. **See:** tonight's phase, the hunger multiplier, this meal's burn share, and the next full moon date.
 - [ ] **Practice:** switch to 🧪 Practice, open the 🌙 sheet and drag **Preview a moon** to 100%. **See:** the chip reads "hunger ×1.50", the belly drains visibly faster, and a feed of 50 burns 35 (70%) instead of 25. Drag back to 0% (or tap "back to tonight's moon").
-- [ ] **On chain** (after the redeploy): `get_totem` returns `moon_bp`, `moon_phase`, `hunger_bp`, `burn_share_bp` and `moonlit_now`; `get_config` returns `moon_hunger_bp` (5000), `moon_burn_bp` (2000) and `moonlit_min_bp` (9000).
+- [ ] **On chain:** `get_totem` returns `moon_bp`, `moon_phase`, `hunger_bp`, `burn_share_bp` and `moonlit_now`; `get_config` returns `moon_hunger_bp` (5000), `moon_burn_bp` (2000) and `moonlit_min_bp` (9000).
 - [ ] **Moonlit badge** (from 22 to 27 November, when the moon is at least 90% lit): feed once. **See:** a "🌕 Moonlit night" line on the card, then a soulbound `moonlit-<cycle>-<you>` NFT. A second feed the same night mints nothing more.
 - [ ] Unit tests: `cargo test moon` (the maths against known dates, the 70% burn and ×1.5 hunger at full moon, the settled drain matching the view's prediction, one Moonlit badge per cycle).
 
@@ -427,7 +427,7 @@ Holders of a Hero, Founder, Moonlit, Welcome Back or Caretaker badge NFT can ope
   ```
   A NEAR account gets a one-time t.me link that works once; signatures over another account or the Den's message are refused; a 0x account links with personal_sign; an Ethereum key can't claim someone else's 0x account.
 
-### 22. Welcome back (needs the contract redeploy)
+### 22. Welcome back
 
 - [ ] Feed from an account, then don't feed from it for 3 Totem-days (6 minutes on testnet) while someone else keeps BaoBao alive. Feed again. **See:** +50% points on that feed (at most +100), a soulbound **🤗 Welcome Back** badge (once per life) that also opens the Den, and in Telegram "🤗 Welcome back, *who*!".
 - [ ] `cargo test welcome` (4 tests): the bonus and badge, no bonus after a short break, no bonus on a first-ever feed, and the cap.

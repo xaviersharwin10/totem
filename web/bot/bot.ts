@@ -31,7 +31,7 @@ import { redeemLinkCode } from "../server/link";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const DRY = process.argv.includes("--dry-run") || !TOKEN;
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
 const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
 const APP_URL = (process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://127.0.0.1:5174").replace(/\/$/, "");
 const EXPLORER = "https://testnet.nearblocks.io";

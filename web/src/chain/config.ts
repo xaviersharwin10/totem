@@ -1,6 +1,6 @@
 // Where the live game lives. Override with VITE_CONTRACT_ID / VITE_DAO_ID in web/.env.
 export const NETWORK = "testnet" as const;
-export const CONTRACT_ID: string = import.meta.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
+export const CONTRACT_ID: string = import.meta.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
 export const DAO_ID: string = import.meta.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
 // Public testnet RPCs rate-limit per IP; a throttled (429) reply has no CORS
 // header, so the browser (and the wallet's transaction page) only says "Failed

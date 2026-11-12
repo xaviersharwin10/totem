@@ -15,7 +15,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Account, KeyPairString, actions } from "near-api-js";
 import { getRelayer, relayerConfigured, rpcProvider } from "./relay";
 
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
 const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
 const DELAY_MS = Number(process.env.AUTO_HATCH_DELAY_S ?? 90) * 1000;
 const POLL_MS = 15_000;

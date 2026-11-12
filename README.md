@@ -16,11 +16,26 @@ The panda is called **BaoBao**. The tribe chose the name by DAO vote ([proposal 
 
 Most memecoins have no mechanic and most community treasuries have no reason to exist. TOTEM fuses the two: caring for a shared treasury becomes a daily ritual with real stakes, where caretakers are rewarded and free-riders are not.
 
+## Try it in 5 minutes (no wallet needed)
+
+1. Open **https://totem-x2kg.onrender.com** — the 3D island loads in a few seconds.
+2. Click **⚡ Play free, no wallet** — a zero-balance guest account is created in your browser.
+3. Click **FEED** (or press `Space`) and pick an amount → watch 🔥 Burned go up and the treasury fill.
+4. If the screen is red (**RAMPAGE**), tap **RESCUE** to save BaoBao and earn a Hero badge.
+5. Tap the panda or press 💬 to talk to BaoBao — it answers in character, grounded in live chain state.
+6. Press 🏛 (Tribe) → see open DAO proposals, Keeper standings, and the governance board.
+7. Press 🧾 (History) → see the live supply reconciliation: launch + faucet − burned = `ft_total_supply`.
+8. Tap any gravestone on the island → see that generation's full life record.
+
+To use a real wallet: click **Connect wallet** (top right) and choose Meteor, Intear or MetaMask (0x accounts work via EIP-191).  
+To get testnet $TOTEM: press the faucet button (🪣 in the right rail) — 1,000 tokens per Totem-day, no gas.
+
 ## Tracks
 
-- **memecoins** — "supply that reacts to the community, treasuries with rules, onchain rituals." Feeding is the ritual, it burns supply, the treasury has hard rules, every parameter is fixed at launch with no admin key.
+- **memecoins** — "supply that reacts to the community, treasuries with rules, onchain rituals." Feeding is the ritual, it burns supply, the treasury has hard rules, every parameter is fixed at launch with no admin key. $TOTEM's burn mechanic is purpose-built for platforms like [meme.cooking](https://meme.cooking) — each feed is an onchain ritual that visibly shrinks supply.
 - **nfts** — "NFTs as accounts: assets that own money ... ownership with behavior." The Totem is a living NFT that owns a treasury **sub-account** (`totem-<gen>.<contract>`, keyless); its level and art change over time; Caretaker Badges are credential NFTs.
 - **social** — "shared budgets, programmable rewards, reputation-based access on Sputnik DAO." The tribe's Sputnik DAO owns the Totem and votes on its name, evolution and rebirth; Blessings are programmable rewards; Badges are reputation.
+- **games** — "game loop with real economy, agent NPC, players never notice the chain." BaoBao is an AI character whose personality is derived from on-chain traits. The treasury IS the economy. Gasless guest accounts hide every chain interaction. Practice mode is the fast-forward simulator.
 
 ## Track checklist (the official prompts, point by point)
 
@@ -56,6 +71,15 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 | Reputation tied to named accounts, every point traceable | Points come only from feeds (each a logged event); Keeper eligibility is `get_keeper` (stake or Silver/Gold badge) | 🏛 Tribe → Keepers |
 | Tiered approvals | Majority of Keepers for Totem calls and membership; two thirds for the constitution; no council, no founder vote | 🏛 Tribe; proposal 13 |
 | A public board | 🏛 Tribe: open votes with tallies, decided proposals, Keepers and why they qualify; Telegram bot posts every vote | App → 🏛, [@Babao_panda_bot](https://t.me/Babao_panda_bot) |
+
+**Games With Real Economies** ([09-games](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md))
+
+| The prompt asks for | TOTEM | Check it |
+|---|---|---|
+| A game loop with a real economy that evolves without a dev patch | The treasury fills and drains by player actions alone; bite rules, Blessing rates and burn share are all fixed at launch — no dev can patch the economy | `get_config` on-chain |
+| An agent NPC with its own wallet / personality | BaoBao is an AI character on NEAR AI Cloud; its personality is derived from the top-3 feeders' account hashes (on-chain traits); it knows its feeders, ancestors and live chain state by name | App → tap panda or press 💬 |
+| Players never notice the chain | Guest accounts (`g<hex>.totem-grumbo-relay.testnet`) are created silently; NEP-366 meta-transactions relay every action; no seed phrase, no gas prompt, no wallet popup in the normal loop | App → ⚡ Play free |
+| Fast-forward / simulate mode | **Practice mode** (top-right toggle): a full client-side simulation of the game rules, moon phases and Blessings; play at any hunger level without touching the chain | App → toggle Practice |
 
 ## How NEAR is used
 

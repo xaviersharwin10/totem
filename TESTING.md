@@ -414,7 +414,7 @@ Holders of a Hero, Founder, Moonlit, Welcome Back or Caretaker badge NFT can ope
 - [ ] Earn one: rescue BaoBao from a Rampage as a guest (scenario 5) to get a Hero badge, then press 🗝. **See:** your badges, then **Enter the Den**. Press it. A guest signs with its own key (no popup); a NEAR wallet asks you to sign a message (free, nothing is sent to the chain).
 - [ ] **See:** BaoBao's secret diary (a short private entry from its AI voice) and the holders' wall. Post a message; it appears at the top. One post every 20 seconds.
 - [ ] Close and reopen 🗝. **See:** you go straight in (a 12-hour session), and the server re-checks your badges on every request.
-- [ ] **Security checks** (needs the testnet keys of `totem-grumbo-keeper`, a Founder holder, and `keeper2`, who holds none):
+- [ ] **Security checks** (needs the testnet keys of `totem-grumbo-keeper`, which holds a Welcome Back badge, and `keeper2`, who holds none):
   ```bash
   cd web
   RUN_BOT=0 AUTO_HATCH=0 PORT=8096 npx tsx server/prod.ts &

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, ThreeEvent } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 import { Mood } from "../engine";
 import { addBurst, bump, dropFood, ISLAND_RADIUS, OBSTACLES, useWorld, world, Food } from "./store";
@@ -46,19 +46,27 @@ export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => 
         <circleGeometry args={[ISLAND_RADIUS, 64]} />
         <meshStandardMaterial ref={grass} color="#8fd16a" roughness={1} />
       </mesh>
-      {/* dirt cliff */}
-      <mesh position={s3(0, -1.4, 0)}>
-        <cylinderGeometry args={[ISLAND_RADIUS, ISLAND_RADIUS - 1.8, 2.8, 64, 1, true]} />
-        <meshStandardMaterial color="#b98a5e" roughness={1} side={THREE.DoubleSide} />
-      </mesh>
+      {/* grassy lip just under the rim */}
       <mesh position={s3(0, -0.08, 0)}>
         <cylinderGeometry args={[ISLAND_RADIUS + 0.05, ISLAND_RADIUS, 0.18, 64, 1, true]} />
         <meshStandardMaterial color="#79bd55" roughness={1} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={s3(0, -3.4, 0)}>
-        <coneGeometry args={[ISLAND_RADIUS - 1.8, 3.2, 48]} />
-        <meshStandardMaterial color="#a07450" roughness={1} />
+      {/* thin dirt rim just under the grass (no more inward "cup" taper) */}
+      <mesh position={s3(0, -0.6, 0)}>
+        <cylinderGeometry args={[ISLAND_RADIUS, ISLAND_RADIUS - 0.15, 1.2, 64, 1, true]} />
+        <meshStandardMaterial color="#b98a5e" roughness={1} side={THREE.DoubleSide} />
       </mesh>
+      {/* underside: one faceted rocky mass tapering from the thin rim to a point
+          (top radius matches the rim so there's no shelf, low-seg for a rocky look) */}
+      <mesh position={s3(0, -3.7, 0)}>
+        <cylinderGeometry args={[ISLAND_RADIUS - 0.15, 0.8, 5.0, 13, 1, false]} />
+        <meshStandardMaterial color="#a07450" roughness={1} flatShading />
+      </mesh>
+      {/* rocky bumps studding the base + roots + drifting rocks */}
+      <Underside />
+      <Roots />
+      <FloatingRocks />
+      <BaseClouds />
       {/* dirt path */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={s3(0, 0.01, -3)}>
         <ringGeometry args={[3.3, 4.3, 48, 1, Math.PI * 0.15, Math.PI * 0.7]} />
@@ -66,7 +74,159 @@ export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => 
       </mesh>
       <Fence />
       <Flowers />
+      <Bushes />
+      <Crystals />
       <Rocks />
+    </group>
+  );
+}
+
+/** Rocky bumps studded over the tapering base so it reads as one jagged mass of land. */
+function Underside() {
+  const rocks = useMemo(() => {
+    const r = rand(23);
+    const out: { x: number; z: number; y: number; s: number; rot: number; dark: boolean }[] = [];
+    const n = 18;
+    const top = -1.2;
+    const topR = ISLAND_RADIUS - 0.15;
+    const botR = 0.8;
+    const H = 5.0;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + r() * 0.6;
+      const d = 0.5 + r() * (H - 1.0); // depth below the cliff bottom
+      const surfR = topR - (topR - botR) * (d / H); // cone radius at this depth
+      const s = 0.8 + r() * 1.4;
+      // sit the rock ON the cone surface so it looks like part of the base, not a loose chunk
+      out.push({ x: Math.cos(ang) * (surfR - 0.3), z: Math.sin(ang) * (surfR - 0.3), y: top - d, s, rot: r() * Math.PI, dark: i % 2 === 0 });
+    }
+    // a couple of chunks at the very tip
+    out.push({ x: 0, z: 0, y: top - H + 0.2, s: 1.4, rot: r() * Math.PI, dark: true });
+    return out;
+  }, []);
+  return (
+    <group>
+      {rocks.map((rk, i) => (
+        <mesh key={i} position={s3(rk.x, rk.y, rk.z)} rotation={[rk.rot, rk.rot * 1.7, rk.rot * 0.5]} scale={s3(1, 1.2, 1)} castShadow>
+          <icosahedronGeometry args={[rk.s, 0]} />
+          <meshStandardMaterial color={rk.dark ? "#8a6244" : "#9c7450"} roughness={1} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Green vines draping from the rim, swaying gently (bamboo-sway pattern). */
+function Roots() {
+  const g = useRef<THREE.Group>(null!);
+  const vines = useMemo(() => {
+    const r = rand(29);
+    return Array.from({ length: 9 }, () => {
+      const ang = r() * Math.PI * 2;
+      const rad = ISLAND_RADIUS - 0.5 - r() * 1.2;
+      return { x: Math.cos(ang) * rad, z: Math.sin(ang) * rad, len: 1.6 + r() * 2.4, p: r() * 6, tilt: (r() - 0.5) * 0.25, dark: r() > 0.5 };
+    });
+  }, []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    g.current.children.forEach((c, i) => {
+      c.rotation.z = vines[i].tilt + Math.sin(t * 0.8 + vines[i].p) * 0.12;
+      c.rotation.x = Math.cos(t * 0.7 + vines[i].p) * 0.08;
+    });
+  });
+  return (
+    <group ref={g}>
+      {vines.map((v, i) => (
+        <group key={i} position={s3(v.x, -1.0, v.z)}>
+          {/* a gentle drape: two angled segments */}
+          <mesh position={s3(0, -v.len * 0.3, 0)}>
+            <cylinderGeometry args={[0.05, 0.07, v.len * 0.6, 6]} />
+            <meshStandardMaterial color={v.dark ? "#4e7a33" : "#5c8f3c"} roughness={1} />
+          </mesh>
+          <group position={s3(0, -v.len * 0.6, 0)} rotation={[0.35, 0, 0.15]}>
+            <mesh position={s3(0, -v.len * 0.22, 0)}>
+              <cylinderGeometry args={[0.03, 0.05, v.len * 0.45, 6]} />
+              <meshStandardMaterial color={v.dark ? "#4e7a33" : "#5c8f3c"} roughness={1} />
+            </mesh>
+            {/* leaf at the tip */}
+            <mesh position={s3(0, -v.len * 0.46, 0)} rotation={[0, 0, 0.6]} scale={s3(0.5, 1.2, 0.1)}>
+              <icosahedronGeometry args={[0.18, 0]} />
+              <meshStandardMaterial color="#7dcd5a" roughness={0.9} flatShading />
+            </mesh>
+          </group>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** A couple of small rocks drifting below the island. */
+function FloatingRocks() {
+  const g = useRef<THREE.Group>(null!);
+  const rocks = useMemo(() => {
+    const r = rand(31);
+    return Array.from({ length: 3 }, () => ({
+      x: (r() - 0.5) * 16,
+      z: (r() - 0.5) * 16,
+      y: -5.5 - r() * 2.5,
+      s: 0.4 + r() * 0.5,
+      p: r() * 6,
+      spin: 0.1 + r() * 0.2,
+    }));
+  }, []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    g.current.children.forEach((c, i) => {
+      c.position.y = rocks[i].y + Math.sin(t * 0.5 + rocks[i].p) * 0.4;
+      c.rotation.y = t * rocks[i].spin;
+      c.rotation.x = t * rocks[i].spin * 0.5;
+    });
+  });
+  return (
+    <group ref={g}>
+      {rocks.map((rk, i) => (
+        <mesh key={i} position={s3(rk.x, rk.y, rk.z)} scale={rk.s}>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshStandardMaterial color="#8a6845" roughness={1} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A soft cloud layer below the island, so it reads as floating high above the clouds. */
+function BaseClouds() {
+  const g = useRef<THREE.Group>(null!);
+  const puffs = useMemo(() => {
+    const r = rand(41);
+    const out: { x: number; y: number; z: number; s: number; p: number }[] = [];
+    const n = 6;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + r() * 0.6;
+      const rad = ISLAND_RADIUS - 3 + r() * 5;
+      // well below the rocky tip (~-8.7), spread out, so they're a layer the island sits above
+      out.push({ x: Math.cos(ang) * rad, y: -10 - r() * 2.5, z: Math.sin(ang) * rad, s: 2 + r() * 1.8, p: r() * 6 });
+    }
+    return out;
+  }, []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    g.current.children.forEach((c, i) => {
+      c.position.x = puffs[i].x + Math.sin(t * 0.12 + puffs[i].p) * 0.6; // slow drift
+    });
+  });
+  return (
+    <group ref={g}>
+      {puffs.map((p, i) => (
+        <group key={i} position={s3(p.x, p.y, p.z)} scale={p.s}>
+          {/* overlapping rounded blobs read as one soft cloud */}
+          {[[0, 0, 0, 1], [0.9, -0.05, 0.2, 0.72], [-0.8, -0.05, -0.1, 0.68], [0.25, 0.1, -0.6, 0.6], [-0.3, 0.05, 0.6, 0.58]].map(([bx, by, bz, br], j) => (
+            <mesh key={j} position={s3(bx, by, bz)} scale={br as number}>
+              <sphereGeometry args={[0.7, 12, 10]} />
+              <meshStandardMaterial color="#ffffff" roughness={1} transparent opacity={0.72} depthWrite={false} />
+            </mesh>
+          ))}
+        </group>
+      ))}
     </group>
   );
 }
@@ -103,6 +263,86 @@ function Fence() {
   );
 }
 
+/** Rounded leafy bushes dotted around the grass (low-poly, like the reference). */
+function Bushes() {
+  const spots = useMemo<[number, number, number][]>(
+    () => [
+      [-2.4, 5.6, 1.0], [6.2, -0.4, 0.9], [-6.4, 2.2, 1.05], [0.6, 5.2, 0.8],
+      [3.6, -5.2, 0.95], [-4.2, -6.2, 0.85], [8.4, -2.8, 0.8], [-8.2, -1.2, 0.9],
+      [2.2, 4.2, 0.7],
+    ],
+    [],
+  );
+  return (
+    <group>
+      {spots.map(([x, z, s], i) => {
+        const r = rand(100 + i);
+        const blobs: [number, number, number, number][] = [
+          [0, 0.35, 0, 0.55], [0.4, 0.3, 0.1, 0.4], [-0.35, 0.28, -0.1, 0.42], [0.1, 0.5, -0.3, 0.36],
+        ];
+        const col = r() > 0.5 ? "#5fae44" : "#6cc04a";
+        return (
+          <group key={i} position={s3(x, 0, z)} scale={s}>
+            {blobs.map(([bx, by, bz, br], j) => (
+              <mesh key={j} position={s3(bx, by, bz)} castShadow>
+                <icosahedronGeometry args={[br, 0]} />
+                <meshStandardMaterial color={col} roughness={0.9} flatShading />
+              </mesh>
+            ))}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Glowing crystal clusters (amethyst / aqua), gently pulsing — from the reference. */
+function Crystals() {
+  const g = useRef<THREE.Group>(null!);
+  const clusters = useMemo(() => {
+    const r = rand(53);
+    const spots: [number, number, number][] = [
+      [-3.4, 3.8, 0], [3.2, 2.6, 1], [-5.6, 0.6, 0], [1.4, -1.8, 1], [4.8, 0.4, 0], [-1.6, 6.2, 1],
+    ];
+    return spots.map(([x, z, kind]) => ({
+      x, z,
+      color: kind ? "#7fe3ff" : "#b06cff",
+      emissive: kind ? "#3fb8ff" : "#8a3cff",
+      shards: Array.from({ length: 3 }, () => ({
+        dx: (r() - 0.5) * 0.5,
+        dz: (r() - 0.5) * 0.5,
+        h: 0.5 + r() * 0.7,
+        rot: r() * Math.PI,
+        tilt: (r() - 0.5) * 0.3,
+      })),
+      p: r() * 6,
+    }));
+  }, []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    g.current.children.forEach((c, i) => {
+      c.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+        if (m && m.emissiveIntensity !== undefined) m.emissiveIntensity = 0.5 + Math.sin(t * 1.6 + clusters[i].p) * 0.3;
+      });
+    });
+  });
+  return (
+    <group ref={g}>
+      {clusters.map((cl, i) => (
+        <group key={i} position={s3(cl.x, 0, cl.z)}>
+          {cl.shards.map((sh, j) => (
+            <mesh key={j} position={s3(sh.dx, sh.h / 2, sh.dz)} rotation={[sh.tilt, sh.rot, sh.tilt]}>
+              <coneGeometry args={[0.12, sh.h, 5]} />
+              <meshStandardMaterial color={cl.color} emissive={cl.emissive} emissiveIntensity={0.5} roughness={0.2} metalness={0.1} flatShading />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function Flowers() {
   const ref = useRef<THREE.InstancedMesh>(null!);
   const stems = useRef<THREE.InstancedMesh>(null!);
@@ -110,14 +350,14 @@ function Flowers() {
   const data = useMemo(() => {
     const r = rand(7);
     const cols = ["#ff8fb0", "#ffd966", "#ffffff", "#b79cff", "#ff9f6b"];
-    const out: { x: number; z: number; c: string; s: number }[] = [];
+    const out: { x: number; z: number; c: string; s: number; p: number }[] = [];
     while (out.length < N) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r()) * (ISLAND_RADIUS - 1.2);
       const x = Math.cos(a) * d;
       const z = Math.sin(a) * d;
       if (OBSTACLES.some(([ox, oz, or]) => Math.hypot(x - ox, z - oz) < or + 0.3)) continue;
-      out.push({ x, z, c: cols[Math.floor(r() * cols.length)], s: 0.7 + r() * 0.6 });
+      out.push({ x, z, c: cols[Math.floor(r() * cols.length)], s: 0.7 + r() * 0.6, p: r() * 6.28 });
     }
     return out;
   }, []);
@@ -135,6 +375,24 @@ function Flowers() {
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
     stems.current.instanceMatrix.needsUpdate = true;
   }, [data]);
+  // gentle nodding — shift each flower head a touch on a per-flower phase
+  const m = useMemo(() => new THREE.Matrix4(), []);
+  const q = useMemo(() => new THREE.Quaternion(), []);
+  const v = useMemo(() => new THREE.Vector3(), []);
+  const sc = useMemo(() => new THREE.Vector3(), []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < data.length; i++) {
+      const f = data[i];
+      const dx = Math.sin(t * 1.6 + f.p) * 0.035 * f.s;
+      const dz = Math.cos(t * 1.3 + f.p) * 0.035 * f.s;
+      v.set(f.x + dx, 0.22 * f.s, f.z + dz);
+      sc.set(f.s, f.s * 0.6, f.s);
+      m.compose(v, q, sc);
+      ref.current.setMatrixAt(i, m);
+    }
+    ref.current.instanceMatrix.needsUpdate = true;
+  });
   return (
     <group>
       <instancedMesh ref={stems} args={[undefined, undefined, N]}>
@@ -263,16 +521,53 @@ function Tree({ idx, x, z, sc, color, onShake }: { idx: number; x: number; z: nu
 // ------------------------------------------------------------------------- //
 
 export function Barn() {
+  const body = useRef<THREE.Group>(null!);
+  const blades = useRef<THREE.Group>(null!);
+  const smoke = useRef<THREE.Group>(null!);
+  // shallow triangular gable end (base 2.6 wide along z, apex 1.03 up)
+  const gable = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, -1.3, 0, 0, 1.3, 0, 1.03, 0], 3));
+    g.computeVertexNormals();
+    return g;
+  }, []);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const b = 1 + Math.sin(t * 1.4) * 0.012; // slow breathing
+    body.current.scale.set(b, b, b);
+    blades.current.rotation.z = t * 0.9; // spinning windmill
+    // rising, fading chimney smoke
+    smoke.current.children.forEach((c, i) => {
+      const k = (t * 0.45 + i / smoke.current.children.length) % 1;
+      c.position.set(Math.sin(k * 6) * 0.12, 3.9 + k * 1.5, 0);
+      c.scale.setScalar(0.18 + k * 0.3);
+      ((c as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.45 * (1 - k);
+    });
+  });
   return (
-    <group position={s3(-6.2, 0, -5.2)} rotation={[0, 0.7, 0]}>
+    <group ref={body} position={s3(-6.2, 0, -5.2)} rotation={[0, 0.7, 0]}>
       <mesh position={s3(0, 1.1, 0)} castShadow receiveShadow>
         <boxGeometry args={[3.2, 2.2, 2.6]} />
         <meshStandardMaterial color="#e2574c" roughness={0.9} />
       </mesh>
-      <mesh position={s3(0, 2.75, 0)} rotation={[0, 0, Math.PI / 4]} scale={s3(1, 1, 1)} castShadow>
-        <boxGeometry args={[1.95, 1.95, 2.8]} />
-        <meshStandardMaterial color="#8a4b3c" roughness={0.9} />
+      {/* pitched gable roof */}
+      {([1, -1] as const).map((side) => (
+        <mesh key={side} position={s3(0, 2.73, side * 0.68)} rotation={[side * 0.62, 0, 0]} castShadow>
+          <boxGeometry args={[3.5, 0.16, 1.8]} />
+          <meshStandardMaterial color="#8a4b3c" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* ridge beam */}
+      <mesh position={s3(0, 3.24, 0)} castShadow>
+        <boxGeometry args={[3.55, 0.14, 0.16]} />
+        <meshStandardMaterial color="#6f4a2e" roughness={0.9} />
       </mesh>
+      {/* gable end walls fill the triangular gaps */}
+      {([1, -1] as const).map((side) => (
+        <mesh key={side} geometry={gable} position={s3(side * 1.58, 2.2, 0)}>
+          <meshStandardMaterial color="#d6504a" roughness={0.9} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
       {/* door */}
       <mesh position={s3(0, 0.75, 1.31)}>
         <boxGeometry args={[1.2, 1.5, 0.05]} />
@@ -286,6 +581,54 @@ export function Barn() {
         <boxGeometry args={[1.7, 0.1, 0.03]} />
         <meshStandardMaterial color="#e2574c" />
       </mesh>
+      {/* round window with a gold glow */}
+      <mesh position={s3(0, 1.7, 1.32)}>
+        <cylinderGeometry args={[0.32, 0.32, 0.06, 16]} />
+        <meshStandardMaterial color="#ffe9a8" emissive="#ffcf5a" emissiveIntensity={0.5} roughness={0.4} />
+      </mesh>
+      <mesh position={s3(0, 1.7, 1.3)} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.34, 0.04, 8, 20]} />
+        <meshStandardMaterial color="#8a4b3c" roughness={0.8} />
+      </mesh>
+      {/* chimney + smoke */}
+      <mesh position={s3(1.0, 3.3, 0)} castShadow>
+        <boxGeometry args={[0.4, 0.9, 0.4]} />
+        <meshStandardMaterial color="#8a4b3c" roughness={0.9} />
+      </mesh>
+      <group ref={smoke} position={s3(1.0, 0, 0)}>
+        {[0, 1, 2, 3].map((i) => (
+          <mesh key={i}>
+            <icosahedronGeometry args={[0.5, 0]} />
+            <meshStandardMaterial color="#d7d0c4" roughness={1} flatShading transparent opacity={0.4} depthWrite={false} />
+          </mesh>
+        ))}
+      </group>
+      {/* windmill wheel on the front gable */}
+      <group position={s3(0.9, 2.02, 1.42)}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.08, 0.08, 0.24, 8]} />
+          <meshStandardMaterial color="#6f4a2e" roughness={0.9} />
+        </mesh>
+        <group ref={blades} position={s3(0, 0, 0.14)}>
+          {[0, 1, 2, 3].map((i) => (
+            <group key={i} rotation={[0, 0, (i * Math.PI) / 2]}>
+              <mesh position={s3(0, 0.38, 0)}>
+                <boxGeometry args={[0.16, 0.74, 0.03]} />
+                <meshStandardMaterial color="#fff4e4" roughness={0.7} />
+              </mesh>
+              {/* sail frame */}
+              <mesh position={s3(0, 0.38, 0.02)}>
+                <boxGeometry args={[0.03, 0.74, 0.04]} />
+                <meshStandardMaterial color="#8a4b3c" roughness={0.8} />
+              </mesh>
+            </group>
+          ))}
+          <mesh>
+            <sphereGeometry args={[0.11, 10, 8]} />
+            <meshStandardMaterial color="#6f4a2e" roughness={0.7} />
+          </mesh>
+        </group>
+      </group>
       {/* hay bales */}
       {[[2.2, 0.35, 1.0], [2.0, 0.35, 1.8], [2.1, 0.95, 1.4]].map(([x, y, z], i) => (
         <mesh key={i} position={s3(x, y, z)} rotation={[0, 0, Math.PI / 2]} castShadow>
@@ -300,11 +643,19 @@ export function Barn() {
 export function Pond() {
   const water = useRef<THREE.MeshStandardMaterial>(null!);
   const duck = useRef<THREE.Group>(null!);
+  const ripples = useRef<THREE.Group>(null!);
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     water.current.emissiveIntensity = 0.12 + Math.sin(t * 2) * 0.04;
     duck.current.position.set(5.2 + Math.cos(t * 0.4) * 1.3, 0.12 + Math.sin(t * 3) * 0.02, -4.2 + Math.sin(t * 0.4) * 1.1);
     duck.current.rotation.y = -t * 0.4;
+    // expanding ripple rings around the duck
+    ripples.current.children.forEach((c, i) => {
+      const k = (t * 0.4 + i / ripples.current.children.length) % 1;
+      c.scale.setScalar(0.3 + k * 1.6);
+      ((c as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity = 0.5 * (1 - k);
+      c.position.set(duck.current.position.x, 0.04, duck.current.position.z);
+    });
   });
   return (
     <group>
@@ -316,6 +667,15 @@ export function Pond() {
         <ringGeometry args={[2.15, 2.45, 40]} />
         <meshStandardMaterial color="#d7c9a7" />
       </mesh>
+      {/* ripples */}
+      <group ref={ripples}>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.5, 0.6, 24]} />
+            <meshStandardMaterial color="#ffffff" transparent opacity={0.4} depthWrite={false} />
+          </mesh>
+        ))}
+      </group>
       {[[4.3, -3.4], [6.1, -5.0], [5.8, -3.3]].map(([x, z], i) => (
         <mesh key={i} rotation={[-Math.PI / 2, 0, i]} position={s3(x, 0.05, z)}>
           <circleGeometry args={[0.32, 12, 0, Math.PI * 1.75]} />
@@ -343,12 +703,17 @@ export function Pond() {
 export function Bamboo() {
   const stalks = useMemo(() => {
     const r = rand(3);
-    return Array.from({ length: 9 }, () => ({
-      x: 7.2 + (r() - 0.5) * 2,
-      z: 2.8 + (r() - 0.5) * 2,
-      h: 2.2 + r() * 1.6,
-      p: r() * 6,
-    }));
+    // several groves around the island (kept clear of the barn, pond and graveyard)
+    const clusters: [number, number, number][] = [
+      [7.2, 2.8, 10], [-2.0, 7.6, 7], [8.6, 5.2, 6], [-8.8, -4.4, 6],
+    ];
+    const out: { x: number; z: number; h: number; p: number }[] = [];
+    for (const [cx, cz, count] of clusters) {
+      for (let i = 0; i < count; i++) {
+        out.push({ x: cx + (r() - 0.5) * 2.4, z: cz + (r() - 0.5) * 2.4, h: 2.0 + r() * 1.8, p: r() * 6 });
+      }
+    }
+    return out;
   }, []);
   const g = useRef<THREE.Group>(null!);
   useFrame((state) => {
@@ -503,10 +868,13 @@ export function HoardChest({ hoard, rampage, onInfo }: { hoard: number; rampage:
   const coins = Math.min(60, Math.floor(Math.log10(hoard + 1) * 14));
   const lid = useRef<THREE.Group>(null!);
   const chest = useRef<THREE.Group>(null!);
+  const lock = useRef<THREE.MeshStandardMaterial>(null!);
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    lid.current.rotation.x = -0.9 - Math.sin(t * 2) * 0.05 - (rampage ? Math.abs(Math.sin(t * 16)) * 0.3 : 0);
+    lid.current.rotation.x = -0.6 - Math.sin(t * 2) * 0.04 - (rampage ? Math.abs(Math.sin(t * 16)) * 0.25 : 0);
     chest.current.position.x = rampage ? Math.sin(t * 40) * 0.04 : 0;
+    chest.current.position.y = Math.sin(t * 1.6) * 0.04; // gentle bob
+    if (lock.current) lock.current.emissiveIntensity = 0.4 + Math.sin(t * 3) * 0.2;
   });
   const pile = useMemo(() => {
     const r = rand(11);
@@ -533,17 +901,45 @@ export function HoardChest({ hoard, rampage, onInfo }: { hoard: number; rampage:
           <boxGeometry args={[1.4, 0.7, 0.95]} />
           <meshStandardMaterial color="#9c5d32" roughness={0.8} />
         </mesh>
+        {/* gold corner straps */}
         {[-0.5, 0.5].map((x) => (
           <mesh key={x} position={s3(x, 0.35, 0)}>
             <boxGeometry args={[0.12, 0.72, 0.97]} />
             <meshStandardMaterial color="#f2c14e" metalness={0.6} roughness={0.3} />
           </mesh>
         ))}
+        {/* iron band around the body */}
+        <mesh position={s3(0, 0.18, 0)}>
+          <boxGeometry args={[1.43, 0.12, 0.98]} />
+          <meshStandardMaterial color="#8a6a2e" metalness={0.5} roughness={0.4} />
+        </mesh>
+        {/* lock plate + glowing keyhole */}
+        <mesh position={s3(0, 0.5, 0.49)}>
+          <boxGeometry args={[0.26, 0.3, 0.06]} />
+          <meshStandardMaterial color="#f2c14e" metalness={0.7} roughness={0.25} />
+        </mesh>
+        <mesh position={s3(0, 0.47, 0.53)}>
+          <sphereGeometry args={[0.055, 10, 8]} />
+          <meshStandardMaterial ref={lock} color="#3a2a14" emissive="#ffcf5a" emissiveIntensity={0.4} />
+        </mesh>
         <group ref={lid} position={s3(0, 0.7, -0.47)}>
-          <mesh position={s3(0, 0, 0.47)} rotation={[0, 0, Math.PI / 2]} castShadow>
-            <cylinderGeometry args={[0.47, 0.47, 1.4, 16, 1, false, 0, Math.PI]} />
+          {/* flat box lid, hinged at the back edge */}
+          <mesh position={s3(0, 0.08, 0.47)} castShadow>
+            <boxGeometry args={[1.44, 0.16, 0.95]} />
             <meshStandardMaterial color="#a8653a" roughness={0.8} />
           </mesh>
+          {/* gold trim along the lid's front lip */}
+          <mesh position={s3(0, 0.08, 0.93)}>
+            <boxGeometry args={[1.47, 0.2, 0.08]} />
+            <meshStandardMaterial color="#f2c14e" metalness={0.6} roughness={0.3} />
+          </mesh>
+          {/* side gold straps on the lid */}
+          {[-0.5, 0.5].map((x) => (
+            <mesh key={x} position={s3(x, 0.09, 0.47)}>
+              <boxGeometry args={[0.12, 0.19, 0.97]} />
+              <meshStandardMaterial color="#f2c14e" metalness={0.6} roughness={0.3} />
+            </mesh>
+          ))}
         </group>
         {pile.slice(0, coins).map((c, i) => (
           <mesh key={i} position={s3(c.x, c.y, c.z)} rotation={[c.r, c.r * 2, 0]}>
@@ -551,6 +947,10 @@ export function HoardChest({ hoard, rampage, onInfo }: { hoard: number; rampage:
             <meshStandardMaterial color="#ffd54a" emissive="#ffb300" emissiveIntensity={0.25} metalness={0.7} roughness={0.25} />
           </mesh>
         ))}
+        {/* treasure shimmer, denser the richer the hoard */}
+        {hoard > 0 && (
+          <Sparkles count={Math.max(6, Math.min(34, coins))} scale={[1.3, 0.9, 0.9]} position={s3(0, 1.0, 0)} size={4} speed={0.5} color="#ffdf7a" />
+        )}
       </group>
     </group>
   );

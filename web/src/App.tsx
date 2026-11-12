@@ -353,14 +353,16 @@ export default function App() {
 
       {/* ---------- top-right: treasury ---------- */}
       <div className="hud-tr">
-        <div className="stat-card glass" onClick={() => setInfo("hoard")}>
-          <div className="stat-lbl">💰 Treasury</div>
-          <div className="stat-val gold"><Ticker value={view.hoard} /></div>
-          {(view.releasedStakes ?? 0) >= 1 && <div className="stat-sub">+{fmt(view.releasedStakes ?? 0)} stakes to withdraw</div>}
-        </div>
-        <div className="stat-card glass">
-          <div className="stat-lbl">🔥 Burned forever</div>
-          <div className="stat-val ember"><Ticker value={view.totalBurned} /></div>
+        <div className="resource-bar">
+          <div className="stat-card glass" onClick={() => setInfo("hoard")}>
+            <div className="stat-lbl">💰 Treasury</div>
+            <div className="stat-val gold"><Ticker value={view.hoard} /></div>
+            {(view.releasedStakes ?? 0) >= 1 && <div className="stat-sub">+{fmt(view.releasedStakes ?? 0)} stakes</div>}
+          </div>
+          <div className="stat-card glass">
+            <div className="stat-lbl">🔥 Burned</div>
+            <div className="stat-val ember"><Ticker value={view.totalBurned} /></div>
+          </div>
         </div>
         <div className="wallet glass">
           <div className="mode-switch">
@@ -405,29 +407,31 @@ export default function App() {
             <a className="explorer-link" href={game.explorer} target="_blank" rel="noreferrer">contract on explorer ↗</a>
           )}
         </div>
-        <div className="icon-row">
-          {game.mode === "live" && (
-            <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
-          )}
-          {game.mode === "live" && (
-            <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
-          )}
-          {game.mode === "live" && (
-            <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
-          )}
-          {game.mode === "live" && (
-            <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => setAlertsOpen((o) => !o)} title="Get BaoBao's alerts on Telegram">🔔</button>
-          )}
-          {game.mode === "live" && (
-            <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
-          )}
-          <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
-          <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
-          <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
-          <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
-          <button className="icon-btn" onClick={toggleMute} title="Sound">{muted ? "🔇" : "🔊"}</button>
-        </div>
       </div>
+
+      {/* ---------- right rail: menu actions ---------- */}
+      <nav className="rail">
+        {game.mode === "live" && (
+          <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => setAlertsOpen((o) => !o)} title="Get BaoBao's alerts on Telegram">🔔</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
+        )}
+        <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
+        <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
+        <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
+        <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
+        <button className="icon-btn" onClick={toggleMute} title="Sound">{muted ? "🔇" : "🔊"}</button>
+      </nav>
 
       {/* ---------- hunger ---------- */}
       <div className="hud-hunger glass">

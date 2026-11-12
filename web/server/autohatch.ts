@@ -1,0 +1,164 @@
+// Development auto-hatch. On the demo clock an unfed Totem dies ~2.5 minutes
+// after hatching, so the hosted app would almost always show a gravestone.
+// While the team is building, this loop brings it back the way the tribe
+// would: AUTO_HATCH_DELAY_S after a death it opens a hatch vote on the DAO (the
+// relayer proposes and pays the refundable bond) and the Keepers whose keys
+// this server holds vote yes. The deciding vote runs `hatch`. Nothing here
+// bypasses governance: it is the same proposal + votes as scripts/dao-propose.sh.
+//
+//   KEEPER_KEYS="totem-grumbo-keeper.testnet=ed25519:…,totem-grumbo-keeper2.testnet=ed25519:…"
+//   AUTO_HATCH=0            turn it off (e.g. for judging)
+//   AUTO_HATCH_DELAY_S=90   how long the gravestone stays before the vote opens
+//
+// Status for the app: GET /api/autohatch -> { enabled, delayS, hatchAt, busy, last }
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { Account, KeyPairString, actions } from "near-api-js";
+import { getRelayer, relayerConfigured, rpcProvider } from "./relay";
+
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
+const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
+const DELAY_MS = Number(process.env.AUTO_HATCH_DELAY_S ?? 90) * 1000;
+const POLL_MS = 15_000;
+
+const provider = rpcProvider();
+
+function keepers(): Account[] {
+  return (process.env.KEEPER_KEYS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const i = pair.indexOf("=");
+      return new Account(pair.slice(0, i), provider, pair.slice(i + 1) as KeyPairString);
+    });
+}
+
+const KEEPERS = keepers();
+const ENABLED = process.env.AUTO_HATCH !== "0" && KEEPERS.length > 0 && relayerConfigured();
+
+let running = false;
+const state = {
+  deadSince: null as number | null,
+  generation: 0,
+  busy: false,
+  retryAt: 0,
+  last: "" as string,
+};
+
+const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
+  provider.callFunction({ contractId, method, args }) as Promise<T>;
+
+interface Proposal {
+  id: number;
+  status: string;
+  submission_time: string;
+  votes: Record<string, string>;
+  kind: { FunctionCall?: { receiver_id: string; actions: { method_name: string }[] } } & Record<string, unknown>;
+}
+
+async function openHatchVote(): Promise<Proposal | null> {
+  const policy = await view<{ proposal_period: string }>(DAO_ID, "get_policy");
+  const last = await view<number>(DAO_ID, "get_last_proposal_id");
+  const list = await view<Proposal[]>(DAO_ID, "get_proposals", { from_index: Math.max(0, last - 30), limit: 30 });
+  const now = BigInt(Date.now()) * 1_000_000n;
+  return (
+    list
+      .reverse()
+      .find(
+        (p) =>
+          p.status === "InProgress" &&
+          BigInt(p.submission_time) + BigInt(policy.proposal_period) > now &&
+          p.kind.FunctionCall?.receiver_id === CONTRACT_ID &&
+          p.kind.FunctionCall.actions.some((a) => a.method_name === "hatch")
+      ) ?? null
+  );
+}
+
+async function hatchNow(generation: number) {
+  let p = await openHatchVote();
+  if (!p) {
+    const r = getRelayer();
+    const { proposal_bond } = await view<{ proposal_bond: string }>(DAO_ID, "get_policy");
+    const proposal = {
+      description: `Hatch generation ${generation + 1} (dev auto-hatch: the Keepers bring the Totem back while the team builds)`,
+      kind: {
+        FunctionCall: {
+          receiver_id: CONTRACT_ID,
+          actions: [{ method_name: "hatch", args: Buffer.from("{}").toString("base64"), deposit: "0", gas: "150000000000000" }],
+        },
+      },
+    };
+    await r.signAndSendTransaction({
+      receiverId: DAO_ID,
+      actions: [actions.functionCall("add_proposal", { proposal }, 50_000_000_000_000n, BigInt(proposal_bond))],
+    });
+    p = await openHatchVote();
+    if (!p) throw new Error("opened a hatch vote but can't find it");
+    console.log(`auto-hatch: opened vote #${p.id}`);
+  }
+  for (const k of KEEPERS) {
+    const cur = await view<Proposal>(DAO_ID, "get_proposal", { id: p.id });
+    if (cur.status !== "InProgress") break;
+    if (cur.votes[k.accountId]) continue;
+    await k.signAndSendTransaction({
+      receiverId: DAO_ID,
+      actions: [actions.functionCall("act_proposal", { id: p.id, action: "VoteApprove", proposal: cur.kind }, 300_000_000_000_000n, 0n)],
+    });
+    console.log(`auto-hatch: ${k.accountId} voted yes on #${p.id}`);
+  }
+  const done = await view<Proposal>(DAO_ID, "get_proposal", { id: p.id });
+  const t = await view<{ alive: boolean; generation: number; lineage_name: string }>(CONTRACT_ID, "get_totem");
+  state.last = `vote #${p.id} ${done.status}; ${t.alive ? `${t.lineage_name} hatched` : "still dead"}`;
+  console.log(`auto-hatch: ${state.last}`);
+  if (!t.alive) throw new Error(state.last);
+}
+
+async function tick() {
+  const t = await view<{ alive: boolean; generation: number }>(CONTRACT_ID, "get_totem");
+  if (t.alive) {
+    state.deadSince = null;
+    return;
+  }
+  if (state.deadSince === null || state.generation !== t.generation) {
+    state.deadSince = Date.now();
+    state.generation = t.generation;
+  }
+  if (state.busy || Date.now() < state.deadSince + DELAY_MS || Date.now() < state.retryAt) return;
+  state.busy = true;
+  try {
+    await hatchNow(t.generation);
+  } catch (e) {
+    state.last = `failed: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200);
+    console.error("auto-hatch:", state.last);
+    state.retryAt = Date.now() + 60_000;
+  } finally {
+    state.busy = false;
+  }
+}
+
+export function startAutoHatch() {
+  if (!ENABLED) {
+    console.log("auto-hatch: off" + (process.env.AUTO_HATCH === "0" ? "" : " (needs KEEPER_KEYS and the relayer key)"));
+    return;
+  }
+  running = true;
+  console.log(`auto-hatch: on, ${DELAY_MS / 1000}s after a death, Keepers ${KEEPERS.map((k) => k.accountId).join(", ")}`);
+  const loop = () =>
+    tick()
+      .catch((e) => console.error("auto-hatch tick:", e instanceof Error ? e.message : e))
+      .finally(() => setTimeout(loop, POLL_MS));
+  loop();
+}
+
+export function autoHatchHandler(_req: IncomingMessage, res: ServerResponse) {
+  res.setHeader("content-type", "application/json");
+  res.end(
+    JSON.stringify({
+      enabled: running,
+      delayS: DELAY_MS / 1000,
+      hatchAt: running && state.deadSince !== null ? state.deadSince + DELAY_MS : null,
+      busy: state.busy,
+      last: state.last,
+    })
+  );
+}

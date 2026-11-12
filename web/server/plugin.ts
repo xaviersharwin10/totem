@@ -10,6 +10,7 @@ import { rpcHandler } from "./rpc";
 import { voiceHandler } from "./voice";
 import { guestHandler, proposeHandler, relayHandler } from "./relay";
 import { historyHandler } from "./history";
+import { autoHatchHandler } from "./autohatch";
 
 export function totemServer(): Plugin {
   return {
@@ -21,6 +22,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/voice", voiceHandler);
       s.middlewares.use("/api/history", historyHandler);
+      s.middlewares.use("/api/autohatch", autoHatchHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -29,6 +31,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/rpc", rpcHandler);
       s.middlewares.use("/api/voice", voiceHandler);
       s.middlewares.use("/api/history", historyHandler);
+      s.middlewares.use("/api/autohatch", autoHatchHandler);
     },
   };
 }

@@ -85,6 +85,7 @@ export default function App() {
   const graves = game.graves;
   const dayFrac = (((now - start.current) / DAY_MS + 0.08) % 1 + 1) % 1;
   const tribe = useTribe(game.mode === "live" && (tribeOpen || (!loading && !view.alive)));
+  const autoHatch = useAutoHatch(game.mode === "live" && !loading && !view.alive);
   const belly = useBelly(game.mode === "live");
   const nextName = `${view.name.replace(/\s+[IVXLCDM]+$/, "")} ${roman(view.generation + 1)}`;
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
@@ -502,6 +503,16 @@ export default function App() {
           <button className="dc-close" aria-label="Hide" onClick={() => setDeathHidden(view.generation)}>✕</button>
           <div className="dc-title">🪦 {graves[graves.length - 1]?.name ?? view.name}</div>
           <div className="dc-sub">starved at Level 0 · reached Level {view.maxLevel}. A gravestone joins the lineage.</div>
+          {autoHatch?.enabled && (
+            <div className="dc-auto">
+              🛠 Dev auto-hatch:{" "}
+              {autoHatch.busy
+                ? "the Keepers are voting…"
+                : autoHatch.hatchAt
+                  ? `the Keepers vote a new egg in ${fmtTime(Math.max(0, (autoHatch.hatchAt - now) / 1000))}`
+                  : "the Keepers will vote a new egg soon"}
+            </div>
+          )}
           {game.hatch ? (
             <button className="press-btn" onClick={doHatch}>🥚 Hatch the next generation</button>
           ) : (
@@ -673,6 +684,33 @@ function friendly(e: unknown): string {
   if (/ERR_ALREADY_VOTED/.test(msg)) return "You already voted on this proposal.";
   if (/once per Totem-day/.test(msg)) return "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment.";
   return msg.length > 140 ? msg.slice(0, 140) + "…" : msg;
+}
+
+interface AutoHatch {
+  enabled: boolean;
+  hatchAt: number | null;
+  busy: boolean;
+}
+
+/** While the team builds, the server re-hatches a dead Totem by DAO vote (server/autohatch.ts). */
+function useAutoHatch(active: boolean): AutoHatch | null {
+  const [s, setS] = useState<AutoHatch | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let stop = false;
+    const load = () =>
+      fetch("/api/autohatch")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => !stop && setS(j))
+        .catch(() => undefined);
+    load();
+    const t = setInterval(load, 5000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [active]);
+  return active ? s : null;
 }
 
 function moodEmoji(mood: string): string {

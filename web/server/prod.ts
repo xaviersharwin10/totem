@@ -12,6 +12,7 @@ import { rpcHandler } from "./rpc";
 import { voiceHandler } from "./voice";
 import { guestHandler, proposeHandler, relayHandler } from "./relay";
 import { historyHandler } from "./history";
+import { autoHatchHandler, startAutoHatch } from "./autohatch";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => unknown;
 const routes: [string, Handler][] = [
@@ -20,6 +21,7 @@ const routes: [string, Handler][] = [
   ["/api/propose", proposeHandler],
   ["/api/voice", voiceHandler],
   ["/api/history", historyHandler],
+  ["/api/autohatch", autoHatchHandler],
   ["/rpc", rpcHandler],
 ];
 
@@ -70,6 +72,7 @@ const server = createServer((req, res) => {
 
 const PORT = Number(process.env.PORT ?? 8080);
 server.listen(PORT, () => console.log(`TOTEM app on :${PORT}`));
+startAutoHatch();
 
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.RUN_BOT !== "0") {
   await import("../bot/bot");

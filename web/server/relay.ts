@@ -24,12 +24,16 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { Account, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
+import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
 import { deserialize } from "borsh";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
 const RELAYER_ID = process.env.RELAYER_ACCOUNT_ID ?? "totem-grumbo-relay.testnet";
-const RPC = process.env.RELAYER_RPC_URL ?? "https://test.rpc.fastnear.com";
+// Public testnet RPCs rate-limit per IP: fail over between them unless one is pinned.
+export const RPC_URLS = process.env.RELAYER_RPC_URL
+  ? [process.env.RELAYER_RPC_URL]
+  : ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://rpc.testnet.near.org"];
+export const rpcProvider = () => new FailoverRpcProvider(RPC_URLS.map((url) => new JsonRpcProvider({ url })));
 // Zero-deposit game actions a guest may do for free.
 const ALLOWED = new Set(["faucet", "feed", "poke", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing"]);
 const MAX_GAS_PER_ACTION = 100_000_000_000_000n; // 100 Tgas
@@ -43,7 +47,7 @@ const MAX_GAS_DAO = 250_000_000_000_000n; // 250 Tgas
 const CREDS_FILE = `${homedir()}/.near-credentials/testnet/${RELAYER_ID}.json`;
 
 /** True when the relayer has a key (env or local keychain) and can sponsor gas. */
-function relayerConfigured(): boolean {
+export function relayerConfigured(): boolean {
   if (process.env.RELAYER_PRIVATE_KEY) return true;
   try {
     return existsSync(CREDS_FILE);
@@ -53,7 +57,7 @@ function relayerConfigured(): boolean {
 }
 
 let relayer: Account | null = null;
-function getRelayer(): Account {
+export function getRelayer(): Account {
   if (relayer) return relayer;
   let key = process.env.RELAYER_PRIVATE_KEY;
   if (!key) {
@@ -62,7 +66,7 @@ function getRelayer(): Account {
     }
     key = JSON.parse(readFileSync(CREDS_FILE, "utf8")).private_key as string;
   }
-  relayer = new Account(RELAYER_ID, new JsonRpcProvider({ url: RPC }), key as KeyPairString);
+  relayer = new Account(RELAYER_ID, rpcProvider(), key as KeyPairString);
   return relayer;
 }
 

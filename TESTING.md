@@ -29,19 +29,17 @@ The contract runs in demo mode: **1 Totem-day = 120 seconds**. Left alone, a Tot
 | every 30 s after that | A **bite**: burns 15% of the Hoard, slashes unshielded stakes by 15%, and costs one level |
 | when the level reaches 0 | **Death**: the rest of the Hoard burns and the Totem NFT becomes a gravestone |
 
-A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching. **The Totem is usually dead when you open the app. That is expected**, and the next section shows how to bring it back.
+A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching.
 
-### Hatch a Totem before you test
+### Auto-hatch (while we build)
 
-Only the tribe's DAO can hatch, and nobody can force it. Use either way:
+The hosted server brings a dead Totem back by itself: **90 seconds after a death** it opens a hatch vote on the DAO and the three testnet Keepers whose keys it holds vote yes. The deciding vote runs `hatch`. It's the real governance flow, just automatic ([`web/server/autohatch.ts`](web/server/autohatch.ts)).
 
-- **Fast (Sharwin's machine, which holds the Keeper keys):**
-  ```bash
-  scripts/dao-propose.sh hatch     # opens the vote (or reuses an open one), the Keepers vote, the contract hatches
-  ```
-- **In the app (anyone):** on the death card press **🥚 Propose hatching …**, then Keepers vote yes. See [scenario 7](#7-hatch-by-dao-vote).
-
-Hatch **right before** a scenario that needs a living Totem, and have the first feed ready.
+- The death card shows "🛠 Dev auto-hatch: the Keepers vote a new egg in 1m 12s", then "the Keepers are voting…".
+- So you get 90 s to look at the death, the gravestone and the death card, then a new egg. To test the in-app vote by hand ([scenario 7](#7-hatch-by-dao-vote)), propose and vote within those 90 s, or turn auto-hatch off.
+- Status: `curl -s https://totem-x2kg.onrender.com/api/autohatch`
+- **Turn it off** (for example before judging): set `AUTO_HATCH=0` on the Render service. Change the wait with `AUTO_HATCH_DELAY_S`.
+- By hand from Sharwin's machine: `scripts/dao-propose.sh hatch`.
 
 ### Accounts you can use
 
@@ -159,7 +157,7 @@ Keepers: `totem-grumbo-keeper`, `keeper2`, `keeper3` and one guest (4 Keepers; 3
 
 - [ ] With the Totem dead, press **🥚 Propose hatching …** on the death card. Anyone can do this, guests included; the game pays the bond. **See:** "Hatch vote is open · 0 of N Keeper votes".
 - [ ] As a Keeper, press **Vote yes**. **See:** the tally moves and "You voted yes ✅". A non-Keeper gets "Only Keepers can vote on that…".
-- [ ] Finish from the CLI if needed: `scripts/dao-propose.sh hatch` (it reuses the open vote). **See:** within seconds the app shows the new egg: name +1, new colours (from its on-chain traits), Level 1, full belly, and the death card is gone.
+- [ ] Finish from the CLI if needed: `scripts/dao-propose.sh hatch` (it reuses the open vote). Auto-hatch also finishes any open hatch vote 90 s after the death. **See:** within seconds the app shows the new egg: name +1, new colours (from its on-chain traits), Level 1, full belly, and the death card is gone.
 - [ ] The new generation has a new treasury account `totem-<gen+1>.totem-grumbo.testnet` with **no access keys** (check on the explorer).
 - [ ] **🏛 Tribe** panel: the **Votes** tab shows open proposals with tallies, **Decided** shows past ones, **Keepers** lists each Keeper and why they qualify, ending with "No council, no admin…".
 - [ ] With 1,000+ staked: **Nominate me** in Keepers opens an `AddMemberToRole` proposal.
@@ -342,7 +340,7 @@ scripts/keepers-sync.sh some-staker.testnet                         # add/remove
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| The app opens on a dead Totem | The demo clock killed it while nobody was feeding | Hatch it ([section 0](#hatch-a-totem-before-you-test)) |
+| The app opens on a dead Totem | The demo clock killed it while nobody was feeding | Wait: auto-hatch brings a new egg within 90 s. If it doesn't, check `/api/autohatch` (`last` says why) |
 | The page takes ~30 s to load the first time | The free host was asleep (rare; it pings itself) | Wait once; later loads are fast |
 | "Play free, no wallet" is missing | The server has no relayer key | Check `RELAYER_PRIVATE_KEY` on Render; `GET /api/guest` should say `{"available":true}` |
 | "Too many … from here" | Free-play limits per IP (5 guests, 40 actions per hour) | Wait, or use a wallet |

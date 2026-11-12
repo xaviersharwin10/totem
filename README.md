@@ -124,7 +124,7 @@ npm install && npm run dev
 npm run build && npm start              # PORT=8080 by default
 ```
 
-**Live:** https://totem-zmwf.onrender.com (testnet, demo clock) · Telegram: [@Babao_panda_bot](https://t.me/Babao_panda_bot)
+**Live:** https://totem-x2kg.onrender.com (testnet, demo clock) · Telegram: [@Babao_panda_bot](https://t.me/Babao_panda_bot)
 
 ## The web app
 

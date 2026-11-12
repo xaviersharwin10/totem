@@ -1,11 +1,13 @@
 // The tribe decides: open votes with live tallies, the Keepers, and your path to
 // becoming one. Everything is the tribe's Sputnik DAO on-chain (chain/dao.ts).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Proposal, Tribe } from "./chain/dao";
-import { DAO_ID, EXPLORER } from "./chain/config";
+import { DAO_ID, EXPLORER, toTokens } from "./chain/config";
 import { shortGuest } from "./chain/guest";
 import { rescueUrl } from "./Sos";
+import { fmt } from "./engine";
+import type { HistoryEvent } from "./History";
 
 const nice = (a: string) => shortGuest(a.length > 30 && /^[0-9a-f]{40,}|^0x/.test(a) ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
 const tokens = (y: string) => Math.floor(Number(BigInt(y || "0") / 10n ** 18n)).toLocaleString("en-US");
@@ -123,8 +125,39 @@ export function TribePanel({
   onConnect: () => void;
   onError: (m: string) => void;
 }) {
-  const [tab, setTab] = useState<"votes" | "keepers" | "history">("votes");
+  const [tab, setTab] = useState<"votes" | "keepers" | "leaderboard" | "history">("votes");
   const err = (e: unknown) => onError(e instanceof Error ? e.message : String(e));
+
+  // leaderboard: aggregate feed events for the current generation from /api/history
+  const [lb, setLb] = useState<{ account: string; fed: number; rescues: number }[]>([]);
+  const [lbGen, setLbGen] = useState<number | null>(null);
+  useEffect(() => {
+    if (tab !== "leaderboard") return;
+    let stop = false;
+    const load = async () => {
+      try {
+        const h = await fetch("/api/history").then((r) => r.json() as Promise<{ events?: HistoryEvent[]; generation?: number }>);
+        if (stop || !h.events) return;
+        const gen = h.generation ?? 0;
+        setLbGen(gen);
+        const map = new Map<string, { fed: number; rescues: number }>();
+        for (const e of h.events) {
+          if (e.kind !== "feed" || e.generation !== gen) continue;
+          const acct = String(e.data.account ?? "");
+          const amt = toTokens(String(e.data.amount ?? "0"));
+          const prev = map.get(acct) ?? { fed: 0, rescues: 0 };
+          map.set(acct, { fed: prev.fed + amt, rescues: prev.rescues + (e.data.rescue ? 1 : 0) });
+        }
+        const rows = [...map.entries()]
+          .map(([account, v]) => ({ account, ...v }))
+          .sort((a, b) => b.fed - a.fed);
+        setLb(rows);
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 15_000);
+    return () => { stop = true; clearInterval(t); };
+  }, [tab]);
   const decided = t.proposals.filter((p) => p.status !== "InProgress").slice(0, 12);
 
   return (
@@ -138,9 +171,9 @@ export function TribePanel({
         </div>
 
         <div className="tabs">
-          {(["votes", "keepers", "history"] as const).map((x) => (
+          {(["votes", "keepers", "leaderboard", "history"] as const).map((x) => (
             <button key={x} className={tab === x ? "on" : ""} onClick={() => setTab(x)}>
-              {x === "votes" ? `Open votes${t.open.length ? ` (${t.open.length})` : ""}` : x === "keepers" ? `Keepers (${t.keepers.length})` : "Decided"}
+              {x === "votes" ? `Open votes${t.open.length ? ` (${t.open.length})` : ""}` : x === "keepers" ? `Keepers (${t.keepers.length})` : x === "leaderboard" ? "🏆 Feeders" : "Decided"}
             </button>
           ))}
         </div>
@@ -236,6 +269,25 @@ export function TribePanel({
             <div className="council-note">
               No council, no admin: the founders hold no vote. Changing these rules takes two thirds of the Keepers.
             </div>
+          </div>
+        )}
+
+        {t.ready && tab === "leaderboard" && (
+          <div className="plist">
+            <div className="lb-header">
+              <span>Top feeders this life{lbGen !== null ? ` (Gen ${lbGen})` : ""}</span>
+              <span className="lb-hint">Every point is a token fed — traceable on-chain</span>
+            </div>
+            {lb.length === 0 && <div className="tribe-empty">Loading feed history…</div>}
+            {lb.slice(0, 15).map((row, i) => (
+              <div key={row.account} className="lb-row">
+                <span className="lb-rank">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</span>
+                <span className="lb-acct">{shortGuest(row.account.length > 28 ? `${row.account.slice(0, 10)}…${row.account.slice(-6)}` : row.account)}</span>
+                <span className="lb-fed">{fmt(row.fed)} $TOTEM</span>
+                {row.rescues > 0 && <span className="lb-rescue" title="rescue feeds">🦸 ×{row.rescues}</span>}
+              </div>
+            ))}
+            {lb.length > 15 && <div className="tribe-empty">+{lb.length - 15} more feeders this life</div>}
           </div>
         )}
 

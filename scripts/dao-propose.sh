@@ -25,6 +25,23 @@ esac
 if [ "$METHOD" = hatch ] && [ "$(view "$CONTRACT_ID" get_totem '{}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["alive"])')" = True ]; then
   echo "!! the Totem is alive: nothing to hatch"; exit 1
 fi
+# Reuse a hatch vote that is already open (the app may have opened one).
+if [ "$METHOD" = hatch ]; then
+  OPEN=$(view "$DAO_ID" get_last_proposal_id '{}' | tr -dc '0-9')
+  OPEN=$(view "$DAO_ID" get_proposals "{\"from_index\":$(( OPEN > 20 ? OPEN - 20 : 0 )),\"limit\":20}" | python3 -c '
+import json,sys,time
+pol_period=int(sys.argv[1])
+for p in json.load(sys.stdin):
+  fc=p["kind"].get("FunctionCall") or {}
+  if p["status"]=="InProgress" and fc.get("receiver_id")==sys.argv[2] and any(a["method_name"]=="hatch" for a in fc.get("actions",[])) and int(p["submission_time"])+pol_period>time.time_ns():
+    print(p["id"]); break' "$(view "$DAO_ID" get_policy '{}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["proposal_period"])')" "$CONTRACT_ID")
+  if [ -n "$OPEN" ]; then
+    echo "==> hatch vote #$OPEN is already open: voting on it"
+    # shellcheck disable=SC2086
+    approve "$OPEN" $VOTERS
+    exit 0
+  fi
+fi
 ARGS64=$(printf '%s' "$MARGS" | base64 -w0)
 KIND=$(printf '{"FunctionCall":{"receiver_id":"%s","actions":[{"method_name":"%s","args":"%s","deposit":"0","gas":"150000000000000"}]}}' \
   "$CONTRACT_ID" "$METHOD" "$ARGS64")

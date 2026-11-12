@@ -55,7 +55,7 @@ let faucetAmount = "";
 async function nb(path: string): Promise<{ data: NbReceipt[]; meta?: { next_page?: string } }> {
   const r = await fetch(`${NEARBLOCKS}${path}`, { headers: { accept: "application/json" } });
   if (!r.ok) throw new Error(`NearBlocks ${r.status}`);
-  return r.json();
+  return (await r.json()) as { data: NbReceipt[]; meta?: { next_page?: string } };
 }
 
 async function rpc(url: string | null, body: unknown): Promise<any> {

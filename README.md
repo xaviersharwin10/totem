@@ -33,6 +33,7 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
   - On testnet: a guest with no wallet staked, nominated itself in the app, was admitted by two Keepers, then proposed and voted the hatch of Mochi VI from the death card; it passed 3 of 3 and the hatch ran in the deciding vote ([proposal 10](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet)).
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
 - **Gasless play for anyone: zero-balance accounts + meta-transactions.** A rescuer with no wallet and no NEAR taps "Rescue": the game creates `g<hex>.totem-grumbo-relay.testnet` holding **0 NEAR** (a NEP-448 zero-balance account) with a key generated in their browser. Each action is a NEP-366 `DelegateAction` signed in the browser; our relayer wraps it in a transaction and pays the gas. The relayer only sponsors zero-deposit calls to this contract's game methods, rate-limited. On testnet a fresh guest rescued the Totem from a Rampage and received the Hero NFT with 0 NEAR in its account. The guest key lives in the browser; **🔑 back up** gives a code that restores the same account in another browser (checked on-chain before it is accepted).
+- **The tribe's alarm bell (Telegram).** The Totem starves on a clock while nobody is looking, so a bot watches the chain and posts to the tribe's group when it matters: starving, Rampage (with the next bite's burn), every bite, the rescue and who did it, death, hatch votes, the new egg. Each alert carries the one-tap gasless rescue link. Anyone can `/watch` an account (public data, no login) to hear when its shield is about to end, when a bite is coming for an unshielded stake, when a Blessing is about to expire, or when a vote needs it as a Keeper. `/ask` puts the question to the Totem's AI voice.
 - **The Totem talks (NEAR AI Cloud).** The panda is an AI character whose facts all come from the chain: a small server endpoint reads `get_totem`, `get_lineage`, `get_caretaker` and `get_stake`, then asks a model on NEAR AI Cloud to answer in character. Its personality is derived from its on-chain traits, which are a hash of the previous generation's top 3 feeders, so the tribe's best feeders shape how the next panda talks. It knows who fed it, by account name, and remembers its ancestors from their gravestones.
 
 ## The rules (all fixed at launch)
@@ -209,7 +210,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Web app: live testnet state, NEAR Connect wallet, feed / poke / faucet transactions, practice-mode fallback | done (wallet signing needs a manual test) |
 | Web app: staking (stake / unstake / withdraw, shield status + one-tap shield, unbonding countdown), claim Blessings and badges | done |
 | Web app: 🧾 on-chain history (every mint/burn/bite/life, tx links) and gravestone life stories | done |
-| Telegram bot | pending |
+| Telegram bot: tribe alarms, personal watches, `/status`, `/ask` | done ([`web/bot/bot.ts`](web/bot/bot.ts)) |
 
 ## On testnet
 

@@ -165,7 +165,9 @@ export function useTribe(active: boolean): Tribe {
     const label = p.type === "policy" ? "policy" : p.type === "add_keeper" ? "add_member_to_role" : p.type === "remove_keeper" ? "remove_member_from_role" : "call";
     return votesNeeded(keepers.length, keepersRole?.vote_policy?.[label]?.threshold ?? dflt);
   };
-  const open = proposals.filter((p) => p.status === "InProgress");
+  // Sputnik leaves an expired proposal "InProgress" until someone finalizes it
+  const period = Number(policy?.proposal_period ?? 0) / 1e6;
+  const open = proposals.filter((p) => p.status === "InProgress" && (!period || Number(p.submission_time) / 1e6 + period > Date.now()));
   const openHatch = open.find((p) => p.type === "hatch") ?? null;
   const amKeeper = !!near.accountId && keepers.includes(near.accountId);
   const myNomination = open.find((p) => p.type === "add_keeper" && p.subject === near.accountId) ?? null;

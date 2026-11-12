@@ -113,6 +113,18 @@ The relayer key is read from `~/.near-credentials/testnet/totem-grumbo-relay.tes
   upstreams and shares identical view calls. A static build (`npm run build`) talks to FastNEAR directly unless
   `VITE_RPC_URL` is set.
 
+### Telegram bot
+
+No token needed to try it: `cd web && npm run bot -- --dry-run` prints every message it would send and reads commands from the terminal.
+
+- [ ] Type `/status`. **See:** the Totem's name, level, mood, a belly bar, the Rampage countdown, the fill amount, the Hoard and the total burned.
+- [ ] `/watch totem-grumbo-keeper.testnet`. **See:** its stake, shield time left, Blessings and Keeper status.
+- [ ] `/lives` lists the last six lives. `/ask who feeds you the most?` answers in the Totem's voice.
+- [ ] Leave it running while the Totem goes hungry (about 2 minutes on the demo clock). **See:** "⚠️ starving", then "🔥 RAMPAGE! … in 30s it bites", then "⚔️ BITE! … burned N", each with the rescue link. If the watched Keeper is unshielded: "⚠️ your stake is not shielded…". Feed it from the app. **See:** "🦸 Rescued! *you* fed …".
+- [ ] Open a hatch vote (`scripts/dao-propose.sh hatch` opens and passes one). **See:** "🗳 Vote open #N", a Keeper nudge for watched Keepers who haven't voted, then "✅ Vote #N passed" and "🥚 … hatched!".
+
+For real: message @BotFather `/newbot`, put `TELEGRAM_BOT_TOKEN=…` in `web/.env`, run `npm run bot`, then DM the bot `/start` or add it to a group (it introduces itself and subscribes the group). Set `APP_URL` to the hosted https app so the links become buttons.
+
 ### Mochi's AI voice
 
 `/api/mochi` (in [`web/server/mochi.ts`](web/server/mochi.ts)) calls NEAR AI Cloud. Put the key in `web/.env` (git-ignored):

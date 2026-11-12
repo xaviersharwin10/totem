@@ -89,7 +89,7 @@ export function moodFor(fullnessBp: number, alive: boolean, inRampage: boolean):
 }
 
 export class TotemEngine {
-  name = "Grumbo I";
+  name = "BaoBao I";
   generation = 1;
   you: string;
 
@@ -284,7 +284,7 @@ export class TotemEngine {
   hatch(now: number) {
     if (this.alive) return;
     this.generation += 1;
-    this.name = "Grumbo " + roman(this.generation);
+    this.name = "BaoBao " + roman(this.generation);
     this.lastSettledAt = now;
     this.fullnessBp = FULL;
     this.happyMs = 0;

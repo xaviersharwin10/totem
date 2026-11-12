@@ -39,7 +39,7 @@ fn setup() -> (Contract, AccountId, AccountId) {
         dao.clone(),
         false,
         None,
-        Some("Grumbo".into()),
+        Some("BaoBao".into()),
     );
     (c, genesis, dao)
 }
@@ -121,7 +121,7 @@ fn init_state_is_healthy_egg() {
     assert_eq!(t.bites_until_death, 1);
     assert_eq!(t.form, "egg");
     assert_eq!(t.mood, "happy");
-    assert_eq!(t.lineage_name, "Grumbo I");
+    assert_eq!(t.lineage_name, "BaoBao I");
     assert!(t.alive);
     assert_eq!(t.owner, dao);
     assert_eq!(c.get_stats().total_supply.0, 1_000_000_000 * ONE);
@@ -256,7 +256,7 @@ fn newborn_dies_at_its_first_bite() {
         graves[0].cause_of_death.as_deref(),
         Some("starved at Level 0")
     );
-    assert_eq!(graves[0].lineage_name, "Grumbo I");
+    assert_eq!(graves[0].lineage_name, "BaoBao I");
     assert_eq!(graves[0].stats.fed.0, 50 * ONE);
     assert_supply_conserved(&c, &[genesis, alice]);
 }
@@ -534,7 +534,7 @@ fn death_leaves_a_gravestone_and_hatch_inherits_traits() {
     let top3 = vec![feeders[1].clone(), feeders[3].clone(), feeders[2].clone()];
     let t = c.get_totem();
     assert_eq!(t.generation, 2);
-    assert_eq!(t.lineage_name, "Grumbo II");
+    assert_eq!(t.lineage_name, "BaoBao II");
     assert_eq!(t.founders, top3);
     assert_eq!(t.traits, lineage::derive_traits(&top3, 2, &[8, 6, 6, 4]));
     // No economic carry-over.
@@ -604,7 +604,7 @@ fn the_totem_is_a_live_nft_owned_by_the_dao() {
     assert_eq!(t.owner_id, dao);
     assert_eq!(
         t.metadata.as_ref().unwrap().title.as_deref(),
-        Some("Grumbo I")
+        Some("BaoBao I")
     );
     // Dynamic: the metadata reflects the live level.
     keep_happy(&mut c, &genesis, DAY / 4, DAY * 5 / 4);
@@ -651,7 +651,7 @@ fn death_turns_the_totem_into_a_gravestone_and_hatch_mints_the_next() {
             .unwrap()
             .title
             .as_deref(),
-        Some("Grumbo II")
+        Some("BaoBao II")
     );
     // The top feeder of generation 1 received a Founder Badge.
     assert!(token_ids_of(&c, &f).contains(&format!("founder-2-{f}")));
@@ -931,7 +931,7 @@ fn the_hoard_counts_only_the_living_totem_never_released_stakes() {
 #[test]
 fn the_demo_faucet_logs_a_standard_mint() {
     set_ctx(&accounts(0), 0);
-    let mut c = Contract::new(accounts(0), accounts(1), true, None, Some("Grumbo".into()));
+    let mut c = Contract::new(accounts(0), accounts(1), true, None, Some("BaoBao".into()));
     let bob = accounts(2);
     set_ctx(&bob, 0);
     let before = c.ft_total_supply().0;

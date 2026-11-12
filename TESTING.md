@@ -93,7 +93,7 @@ The relayer key is read from `~/.near-credentials/testnet/totem-grumbo-relay.tes
 
 - [ ] When the belly drops below 70%, **🆘 Call for help** appears under the belly bar (📣 in the top-right works any time). **See:** a card image of the farm with live numbers, and Share / Post on X / Telegram / Copy / Save image. Nothing is posted unless you post it.
 - [ ] Open `http://127.0.0.1:5173/?rescue=1` in a **private window** (no wallet, no guest). **See:** the Rescue card ("is safe" / "is hungry" / "needs you!" with bites left, countdown and $TOTEM at risk).
-- [ ] Wait for the Rampage (a newborn starves in ~2.5 min), tap **Rescue**. **See:** "Making you a free account…", then "You saved …! A soulbound Hero badge NFT was minted to guest g…". Mochi thanks you in a speech bubble.
+- [ ] Wait for the Rampage (a newborn starves in ~2.5 min), tap **Rescue**. **See:** "Making you a free account…", then "You saved …! A soulbound Hero badge NFT was minted to guest g…". BaoBao thanks you in a speech bubble.
 - [ ] Check on chain: the guest has **0 NEAR** and owns the Hero token:
   ```bash
   near account view-account-summary g<hex>.totem-grumbo-relay.testnet network-config testnet now
@@ -125,13 +125,13 @@ No token needed to try it: `cd web && npm run bot -- --dry-run` prints every mes
 
 For real: message @BotFather `/newbot`, put `TELEGRAM_BOT_TOKEN=…` in `web/.env`, run `npm run bot`, then DM the bot `/start` or add it to a group (it introduces itself and subscribes the group). Set `APP_URL` to the hosted https app so the links become buttons.
 
-### Mochi's AI voice
+### BaoBao's AI voice
 
-`/api/mochi` (in [`web/server/mochi.ts`](web/server/mochi.ts)) calls NEAR AI Cloud. Put the key in `web/.env` (git-ignored):
+`/api/voice` (in [`web/server/voice.ts`](web/server/voice.ts)) calls NEAR AI Cloud. Put the key in `web/.env` (git-ignored):
 
 ```bash
 cp web/.env.example web/.env     # then set NEAR_AI_API_KEY=…  (restart npm run dev)
-curl -s -X POST http://127.0.0.1:5173/api/mochi -H 'content-type: application/json' \
+curl -s -X POST http://127.0.0.1:5173/api/voice -H 'content-type: application/json' \
   -d '{"messages":[{"role":"user","content":"who fed you the most?"}]}'
 # -> {"reply":"…","source":"ai"}   ("fallback" = no key or the model failed)
 ```
@@ -178,7 +178,7 @@ Needs `.env` (copy `.env.example`) and the Keeper keys in `~/.near-credentials` 
 ```bash
 scripts/bootstrap-governance.sh k1.testnet k2.testnet k3.testnet    # once per new DAO: Keepers + constitution
 scripts/dao-propose.sh hatch                                        # after a death; Keepers on this machine vote
-scripts/dao-propose.sh rename Mochi                                 # takes effect for the next generation's name
+scripts/dao-propose.sh rename BaoBao                                 # takes effect for the next generation's name
 VOTERS=totem-grumbo-keeper.testnet scripts/dao-propose.sh rename X   # a Keeper passes it alone
 scripts/keepers-sync.sh some-staker.testnet another.testnet         # add/remove Keepers from on-chain reputation
 ```
@@ -204,8 +204,8 @@ near contract call-function as-read-only totem-grumbo.testnet ft_balance_of json
 | `AccessKeyDoesNotExistError … Exceeded N providers` | Old build; wallet didn't add the function-call key | Pull latest, sign out, connect again |
 | `NotEnoughBalance` / "no NEAR for gas" | Account has 0 testnet NEAR | Fund it (see "Before you start") |
 | Death card won't go away | The Totem is dead on-chain | `scripts/dao-propose.sh hatch`, or press ✕ to hide it |
-| Gravestone says "Grumbo II" but the header says "Mochi II" | It died as Grumbo; the rename applies to the next generation | Expected |
-| Mochi only says canned lines (`"source":"fallback"`) | No `NEAR_AI_API_KEY` in `web/.env`, or NEAR AI is down / out of credits | Set the key, restart `npm run dev` |
+| Older gravestones say "Mochi" or "Grumbo" while the living Totem is "BaoBao" | Each gravestone keeps the name it died with; a rename applies from now on | Expected |
+| BaoBao only says canned lines (`"source":"fallback"`) | No `NEAR_AI_API_KEY` in `web/.env`, or NEAR AI is down / out of credits | Set the key, restart `npm run dev` |
 | "Free $TOTEM refills once per Totem-day" | The faucet was claimed less than 2 minutes ago by this account | Wait a moment and retry |
 | Rescue says "account exists with another key" | This browser's guest key was cleared but the account exists | Clear site data and try again (a new key gets a new guest) |
 | App switched itself to Practice | Testnet RPC unreachable 3 times in a row | Check the network, switch back to Live |

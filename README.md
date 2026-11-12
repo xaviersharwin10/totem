@@ -8,7 +8,10 @@ A community creature on NEAR that dies if the tribe ignores it. Feed it $TOTEM a
 
 ## What it is
 
+
 TOTEM is one shared creature — a single NFT the whole community keeps alive by feeding it a memecoin. Every meal burns half the tokens (supply shrinks the more it is loved) and puts the other half into a treasury the creature itself owns. Holders can stake into its belly. If the tribe stops feeding it, it goes on a rampage: every 6 hours it bites, burning 15% of the treasury, slashing 15% of every staker who hasn't fed it recently, and dropping a level. At Level 0 it dies and becomes a gravestone; the next egg inherits cosmetic traits from its top feeders.
+
+The panda is called **BaoBao**. The tribe chose the name by DAO vote ([proposal 16](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet)), and the tribe can rename it again, so the code never hard-codes it: the app, the bot and the AI voice all read the name from the chain. Each life adds a numeral (BaoBao IX is the 9th generation); gravestones keep the name each life died with (Grumbo I–II, Mochi III–VIII).
 
 ## The problem it answers
 
@@ -89,7 +92,7 @@ What a buyer gets is the right to steer the Totem, not an income stream. That's 
 ├── contract/   Rust contract (near-sdk 5.30): token + game + staking + lineage + NFTs
 ├── sim/        Python agent-based balance model + committed charts
 ├── web/        Vite + React + three.js: the 3D farm where the Totem lives
-│   └── server/ /rpc proxy, /api/mochi (AI voice), /api/guest + /api/relay (gasless guests, NEP-366 relayer)
+│   └── server/ /rpc proxy, /api/voice (AI voice), /api/guest + /api/relay (gasless guests, NEP-366 relayer)
 ├── bot/        Telegram alerts (wip)
 ├── scripts/    deploy / DAO / demo (wip)
 └── RULES.md    final parameters
@@ -124,8 +127,8 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 
 - **Do:** tap the panda. **See:** it jumps, hearts float up, and it says hi in a speech bubble, mentioning how it really feels (belly, level, bites left).
 - **Do:** when it gets hungry, press **🆘 Call for help** (or 📣 any time). **See:** a share card with a snapshot of the farm and the real numbers ("1 bite from death · next bite burns 128 $TOTEM"), with Share / Post on X / Telegram / Copy buttons. Nothing is posted for you.
-- **Do:** open the link from the card (`/?rescue=1`) in a fresh browser with no wallet and tap **Rescue**. **See:** a free guest account is made, the faucet + feed go through as one gasless meta-transaction, the Rampage ends, a soulbound Hero NFT is minted to the guest, and Mochi thanks them by name.
-- **Do:** when the Totem dies, look at the gravestone card. **See:** the live hatch vote ("1 of 3 Keeper votes"), **Propose hatching Mochi VII** if none is open, **Vote yes / no** if you are a Keeper, and **Rally the Keepers** to share.
+- **Do:** open the link from the card (`/?rescue=1`) in a fresh browser with no wallet and tap **Rescue**. **See:** a free guest account is made, the faucet + feed go through as one gasless meta-transaction, the Rampage ends, a soulbound Hero NFT is minted to the guest, and BaoBao thanks them by name.
+- **Do:** when the Totem dies, look at the gravestone card. **See:** the live hatch vote ("1 of 3 Keeper votes"), **Propose hatching BaoBao X** if none is open, **Vote yes / no** if you are a Keeper, and **Rally the Keepers** to share.
 - **Do:** open **🏛 Tribe**. **See:** open votes with tallies, the Keepers and why each qualifies (stake or badge, read from `get_keeper`), past decisions, and your own path: *Nominate me* when you qualify, *Re-stake* after a hatch releases your stake.
 - **Do:** open **🧾 On-chain history**. **See:** the supply ledger at the top (1,000,000,000 minted at launch, + demo faucet, − burned forever = supply now, all from `get_stats`), then every feed, burn, bite, death, hatch, stake, Blessing and badge as a row with its generation and a **tx ↗** link to the explorer. Filter by *Mints & burns*, *Life & death*, *Stakes* or *Rewards*. The rows come from the contract's own NEP-297 event logs (`web/server/history.ts`: NearBlocks lists the receipts, NEAR RPC returns their logs), and add up to the on-chain totals.
 - **Do:** tap a **gravestone** in the graveyard (or **🧾 → Lives**). **See:** that life's story: how long it lived, its best level, fed / burned / slashed / blessed, its top feeders (they seeded the next egg), its NFT id, and every event of that life.
@@ -204,7 +207,7 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Treasury sub-account per Totem (keyless, zero-balance) | done, tested; live: [`totem-7.totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-grumbo.testnet) |
 | Testnet deploy (demo mode, 2-minute day) | done: [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
 | Sputnik DAO owns the Totem; rename / evolve / hatch via proposals | done: hatch of Generation 2 executed by a DAO vote ([tx](https://testnet.nearblocks.io/txns/BWnntErjehHtN6yF9x5cZJkQ8H8a94v43YnMGQxnX2YC)) |
-| Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2) |
+| Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2); later the Keepers named it **BaoBao** (proposal 16) |
 | Demo script | pending |
 | Web app: 3D farm, panda, feeding, bites/levels on the totem pole, death, lineage graveyard | done (local rule mirror) |
 | Web app: live testnet state, NEAR Connect wallet, feed / poke / faucet transactions, practice-mode fallback | done (wallet signing needs a manual test) |
@@ -233,7 +236,7 @@ near contract call-function as-read-only totem-grumbo.testnet get_config json-ar
 Govern it through the DAO (creates a proposal, then the Keepers whose keys are on this machine vote it through):
 
 ```bash
-scripts/dao-propose.sh rename Mochi
+scripts/dao-propose.sh rename BaoBao
 scripts/dao-propose.sh evolve dragon   # only between Level 4 and the deadline
 scripts/dao-propose.sh hatch           # after a death
 

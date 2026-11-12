@@ -1,4 +1,4 @@
-// NEAR RPC proxy at /rpc (dev / preview server, and reused by /api/mochi).
+// NEAR RPC proxy at /rpc (dev / preview server, and reused by /api/voice).
 // Public testnet RPCs rate-limit per IP, and a throttled reply (429) carries no
 // CORS header, so the browser shows it as a "CORS" failure. Proxying from the
 // dev server keeps requests same-origin, rotates upstreams past 429s/5xx, and

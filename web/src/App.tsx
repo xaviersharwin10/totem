@@ -6,7 +6,7 @@ import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
 import { sfx, setMuted } from "./sfx";
-import { MochiChat, useMochi } from "./MochiChat";
+import { TotemChat, useTotemChat } from "./TotemChat";
 import { RescueCard, SosSheet } from "./Sos";
 import { shortGuest } from "./chain/guest";
 import { GuestKeySheet } from "./GuestKey";
@@ -43,7 +43,7 @@ interface Toast {
 
 export default function App() {
   const game = useGame();
-  const chat = useMochi(game);
+  const chat = useTotemChat(game);
   const [chatOpen, setChatOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
   // null = closed; 0 = open on the ledger; n = open on generation n's life
@@ -484,7 +484,7 @@ export default function App() {
       )}
 
       {chatOpen && !loading && (
-        <MochiChat name={view.name} live={game.mode === "live"} chat={chat} onClose={() => setChatOpen(false)} />
+        <TotemChat name={view.name} live={game.mode === "live"} chat={chat} onClose={() => setChatOpen(false)} />
       )}
 
       {/* ---------- death ---------- */}

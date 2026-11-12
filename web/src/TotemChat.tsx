@@ -1,4 +1,4 @@
-// Talk to the Totem. Replies come from /api/mochi (web/server/mochi.ts): a model
+// Talk to the Totem. Replies come from /api/voice (web/server/voice.ts): a model
 // on NEAR AI Cloud, in character, grounded in the Totem's on-chain state.
 // The newest line also floats over the panda's head as a speech bubble.
 
@@ -20,7 +20,7 @@ export interface Speech {
 const SUGGESTIONS = ["How are you feeling?", "Who feeds you the most?", "Tell me about your ancestors", "How do I save you?"];
 const SPEECH_MS = 9000;
 
-export function useMochi(game: Game) {
+export function useTotemChat(game: Game) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [speech, setSpeech] = useState<Speech | null>(null);
@@ -57,7 +57,7 @@ export function useMochi(game: Game) {
             ? { ...v, graves: game.graves }
             : undefined,
       };
-      const r = await fetch("/api/mochi", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const r = await fetch("/api/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = (await r.json()) as { reply?: string };
       return j.reply || "*munch munch* …";
     } catch {
@@ -99,7 +99,7 @@ export function useMochi(game: Game) {
   return { messages, typing, speech, send, hello, fed };
 }
 
-export function MochiChat({
+export function TotemChat({
   name,
   live,
   chat,
@@ -107,7 +107,7 @@ export function MochiChat({
 }: {
   name: string;
   live: boolean;
-  chat: ReturnType<typeof useMochi>;
+  chat: ReturnType<typeof useTotemChat>;
   onClose: () => void;
 }) {
   const [text, setText] = useState("");

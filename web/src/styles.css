@@ -259,7 +259,7 @@ button { font-family: inherit; }
   *, *::before, *::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
 }
 
-/* ---------- Mochi's voice: speech bubble + chat ---------- */
+/* ---------- the Totem's voice: speech bubble + chat ---------- */
 .speech { position: relative; max-width: 240px; width: max-content; background: #fff; color: var(--ink); padding: 9px 13px; border-radius: 16px; font-family: "Nunito", sans-serif;
   font-size: 13.5px; font-weight: 700; line-height: 1.35; box-shadow: 0 6px 18px rgba(43,34,48,0.18); transform: translateY(-50%); animation: speechIn 0.3s cubic-bezier(.2,1.5,.4,1); }
 .speech::after { content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%) rotate(45deg); width: 14px; height: 14px; background: #fff; border-radius: 3px; }

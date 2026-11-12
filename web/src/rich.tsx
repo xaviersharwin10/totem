@@ -1,4 +1,4 @@
-// Mochi's lines use *asterisks* for actions ("*munches bamboo*"): show them in italics.
+// The Totem's lines use *asterisks* for actions ("*munches bamboo*"): show them in italics.
 import { Fragment } from "react";
 
 export function Rich({ text }: { text: string }) {

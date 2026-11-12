@@ -14,13 +14,13 @@
 //
 // Talks to the Bot API directly (long polling, no webhook), so it runs on any
 // machine with outbound HTTPS. Reads the chain through the same RPC rotation as
-// the web server; /ask uses Mochi's voice (NEAR AI Cloud, needs NEAR_AI_API_KEY).
+// the web server; /ask uses the Totem's voice (NEAR AI Cloud, needs NEAR_AI_API_KEY).
 import "./env";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { rpcForward } from "../server/rpc";
 import { history } from "../server/history";
-import { mochiReply } from "../server/mochi";
+import { voiceReply } from "../server/voice";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const DRY = process.argv.includes("--dry-run") || !TOKEN;
@@ -313,7 +313,7 @@ async function command(chatId: string, raw: string, title?: string) {
         const last = asked.get(chatId) ?? 0;
         if (Date.now() - last < 8000) break;
         asked.set(chatId, Date.now());
-        const r = await mochiReply({ messages: [{ role: "user", content: arg.slice(0, 300) }] });
+        const r = await voiceReply({ messages: [{ role: "user", content: arg.slice(0, 300) }] });
         send(chatId, `🐼 ${esc(r.reply)}`);
         break;
       }

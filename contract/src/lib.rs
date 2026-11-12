@@ -233,7 +233,7 @@ impl Contract {
     // ----- owner-gated governance (the DAO) -------------------------------- //
 
     /// Rename the creature's base name (the lineage numeral is added from the
-    /// generation, e.g. "Grumbo III"). Only the Totem NFT owner (the DAO) may call.
+    /// generation, e.g. "BaoBao III"). Only the Totem NFT owner (the DAO) may call.
     pub fn rename(&mut self, name: String) {
         self.assert_owner();
         assert!(name.len() <= 32, "name too long (max 32)");

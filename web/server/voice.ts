@@ -1,12 +1,12 @@
-// Mochi's voice: an AI character grounded in the Totem's real on-chain state.
+// the Totem's voice: an AI character grounded in the Totem's real on-chain state.
 //
-// POST /api/mochi  { messages, accountId?, events?, practice?, trigger? }
+// POST /api/voice  { messages, accountId?, events?, practice?, trigger? }
 //   -> { reply, source: "ai" | "fallback" }
 //
 // The server (never the browser) reads the contract, builds a persona from the
 // Totem's on-chain traits (inherited from the previous generation's top feeders),
 // and asks a model on NEAR AI Cloud to answer in character. The API key stays
-// server-side. Without a key, or if the model fails, Mochi answers from canned
+// server-side. Without a key, or if the model fails, it answers from canned
 // lines that still use the real numbers.
 
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -64,6 +64,7 @@ interface Totem {
   traits: Traits;
   founders: string[];
   seconds_until_starving: string | null;
+  seconds_until_rampage: string | null;
   seconds_until_next_bite: string | null;
   seconds_until_death: string | null;
 }
@@ -82,7 +83,7 @@ interface Life {
 async function view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
   const body = JSON.stringify({
     jsonrpc: "2.0",
-    id: "mochi",
+    id: "voice",
     method: "query",
     params: {
       request_type: "call_function",
@@ -164,6 +165,7 @@ interface PracticeState {
   bitesUntilDeath: number;
   hoard: number;
   totalBurned: number;
+  secondsUntilRampage?: number | null;
   graves?: { name: string; maxLevel: number }[];
 }
 
@@ -172,8 +174,8 @@ function practiceSnapshot(p: PracticeState): Snapshot {
   const n = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0);
   return {
     t: {
-      lineage_name: String(p.name ?? "Mochi").slice(0, 40),
-      name: String(p.name ?? "Mochi").replace(/\s+[IVXLC]+$/, "").slice(0, 32),
+      lineage_name: String(p.name ?? "BaoBao").slice(0, 40),
+      name: String(p.name ?? "BaoBao").replace(/\s+[IVXLC]+$/, "").slice(0, 32),
       generation: g,
       alive: !!p.alive,
       fullness_bp: n(p.fullnessBp),
@@ -186,6 +188,7 @@ function practiceSnapshot(p: PracticeState): Snapshot {
       traits: { palette: g, pattern: g * 7, marking: g * 3, crest: g },
       founders: [],
       seconds_until_starving: null,
+      seconds_until_rampage: p.secondsUntilRampage == null ? null : String(Math.round(n(p.secondsUntilRampage))),
       seconds_until_next_bite: null,
       seconds_until_death: null,
     },
@@ -225,7 +228,9 @@ function systemPrompt(s: Snapshot, practice: boolean): string {
     ? "You are DEAD. You speak as a gentle ghost from your gravestone. Only the tribe's DAO can hatch the next egg."
     : t.mood === "rampage"
       ? `You are STARVING and on a Rampage. Every bite you take burns 15% of the Hoard and costs you a level. ${t.bites_until_death} bite(s) until you die; next bite in ${dur(t.seconds_until_next_bite) ?? "moments"}. You are scared and beg for food.`
-      : t.mood === "hungry"
+      : t.mood === "starving"
+        ? `You are STARVING (belly ${Math.round(t.fullness_bp / 100)}%). In ${dur(t.seconds_until_rampage) ?? "moments"} your belly hits 0% and you go on a Rampage, biting your own Hoard. You are weak and worried; ask for food.`
+        : t.mood === "hungry"
         ? `You are getting hungry (belly ${Math.round(t.fullness_bp / 100)}%). You will start to starve in ${dur(t.seconds_until_starving) ?? "a while"}.`
         : `You are well fed and happy (belly ${Math.round(t.fullness_bp / 100)}%).`;
 
@@ -285,6 +290,8 @@ function fallback(s: Snapshot, trigger?: string): string {
   if (trigger === "fed") return `Nom nom! 🎋 Thank you${s.you ? `, ${short(s.you.id)}` : ""}! Half of that just burned forever.`;
   if (t.mood === "rampage")
     return `HUNGRY!! 😭 ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} until I'm gone and every bite burns 15% of my ${fmt(tokens(t.hoard))} $TOTEM Hoard. Please feed me!`;
+  if (t.mood === "starving")
+    return `I'm starving… 😫 belly at ${Math.round(t.fullness_bp / 100)}%. In ${dur(t.seconds_until_rampage) ?? "moments"} I'll start biting my own Hoard. Please, some bamboo?`;
   if (t.mood === "hungry") return `My tummy is rumbling… belly at ${Math.round(t.fullness_bp / 100)}%. A little bamboo would be lovely 🎋`;
   const cur = s.lineage.find((l) => l.generation === t.generation);
   const best = cur?.top_feeders[0];
@@ -338,7 +345,7 @@ function limited(ip: string): boolean {
 }
 
 // ---------------- request handling ----------------
-export interface MochiRequest {
+export interface VoiceRequest {
   messages?: Msg[];
   accountId?: string;
   events?: string[];
@@ -346,7 +353,7 @@ export interface MochiRequest {
   trigger?: "fed" | "hello" | "rescue";
 }
 
-export async function mochiReply(req: MochiRequest): Promise<{ reply: string; source: "ai" | "fallback" }> {
+export async function voiceReply(req: VoiceRequest): Promise<{ reply: string; source: "ai" | "fallback" }> {
   const practice = !!req.practice;
   const snap = practice ? practiceSnapshot(req.practice!) : await snapshot(req.accountId);
   const history: Msg[] = (req.messages ?? [])
@@ -371,7 +378,7 @@ export async function mochiReply(req: MochiRequest): Promise<{ reply: string; so
   }
 }
 
-export async function mochiHandler(req: IncomingMessage, res: ServerResponse) {
+export async function voiceHandler(req: IncomingMessage, res: ServerResponse) {
   const send = (status: number, obj: unknown) => {
     res.statusCode = status;
     res.setHeader("content-type", "application/json");
@@ -387,7 +394,7 @@ export async function mochiHandler(req: IncomingMessage, res: ServerResponse) {
   });
   req.on("end", async () => {
     try {
-      send(200, await mochiReply(JSON.parse(raw || "{}")));
+      send(200, await voiceReply(JSON.parse(raw || "{}")));
     } catch {
       send(200, { reply: "*rustles in the bamboo* I can't hear you right now… try again in a moment.", source: "fallback" });
     }

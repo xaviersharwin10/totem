@@ -33,7 +33,7 @@ if [ "${1:-}" = "--redeploy" ]; then
   near contract deploy "$CONTRACT_ID" use-file "$WASM" without-init-call \
     network-config "$NETWORK" sign-with-legacy-keychain send
 else
-  ARGS=$(printf '{"genesis_account":"%s","dao_account":"%s","demo_mode":true,"name":"Grumbo"}' "$OWNER_ID" "$OWNER_ID")
+  ARGS=$(printf '{"genesis_account":"%s","dao_account":"%s","demo_mode":true,"name":"BaoBao"}' "$OWNER_ID" "$OWNER_ID")
   near contract deploy "$CONTRACT_ID" use-file "$WASM" \
     with-init-call new json-args "$ARGS" \
     prepaid-gas '100 Tgas' attached-deposit '0 NEAR' \

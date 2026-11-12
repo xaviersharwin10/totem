@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create a DAO proposal that calls the TOTEM contract, then vote it through.
 #
-#   scripts/dao-propose.sh rename Mochi
+#   scripts/dao-propose.sh rename BaoBao
 #   scripts/dao-propose.sh evolve dragon        # or golem; only between L4 and the deadline
 #   scripts/dao-propose.sh hatch                # after a death
 #

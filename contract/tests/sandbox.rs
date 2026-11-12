@@ -52,7 +52,7 @@ async fn world() -> R<World> {
             "genesis_account": genesis.id(),
             "dao_account": dao.id(),
             "demo_mode": true,
-            "name": "Mochi",
+            "name": "BaoBao",
         }))
         .max_gas()
         .transact()

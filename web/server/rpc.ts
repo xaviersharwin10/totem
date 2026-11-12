@@ -42,6 +42,14 @@ function cacheKey(body: string): string | null {
 }
 
 export function rpcHandler(req: IncomingMessage, res: ServerResponse) {
+  // Wallets sign in a sandboxed iframe (origin "null") and call this proxy too.
+  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("access-control-allow-methods", "POST, OPTIONS");
+  res.setHeader("access-control-allow-headers", "content-type");
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    return res.end();
+  }
   if (req.method !== "POST") {
     res.statusCode = 405;
     return res.end();

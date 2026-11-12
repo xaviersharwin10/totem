@@ -171,12 +171,20 @@ const chat = (id: string): ChatState => (state.chats[id] ??= { alerts: true, wat
 
 // ------------------------------------------------------------------ telegram
 
-async function tg<T = any>(method: string, body: object): Promise<T> {
-  const r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function tg<T = any>(method: string, body: object, attempt = 0): Promise<T> {
+  let r: Response;
+  try {
+    r = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    // network blips (ECONNRESET, DNS, timeouts): back off and retry
+    if (attempt >= 5) throw e;
+    await new Promise((res) => setTimeout(res, 1000 * 2 ** attempt));
+    return tg(method, body, attempt + 1);
+  }
   const j = (await r.json()) as { ok: boolean; result: T; description?: string; parameters?: { retry_after?: number } };
   if (!j.ok) {
     if (j.parameters?.retry_after) {
@@ -515,17 +523,21 @@ async function main() {
   if (!DRY) {
     const me = await tg<{ username: string }>("getMe", {});
     console.log(`signed in as @${me.username}; add it to the tribe's group, or DM it /start`);
-    await tg("setMyCommands", {
-      commands: [
-        { command: "status", description: "The Totem right now" },
-        { command: "watch", description: "Personal alerts for an account" },
-        { command: "me", description: "Your watched accounts" },
-        { command: "lives", description: "The lineage" },
-        { command: "ask", description: "Talk to the Totem" },
-        { command: "rescue", description: "One-tap rescue link" },
-        { command: "alerts", description: "on / off" },
-      ],
-    });
+    try {
+      await tg("setMyCommands", {
+        commands: [
+          { command: "status", description: "The Totem right now" },
+          { command: "watch", description: "Personal alerts for an account" },
+          { command: "me", description: "Your watched accounts" },
+          { command: "lives", description: "The lineage" },
+          { command: "ask", description: "Talk to the Totem" },
+          { command: "rescue", description: "One-tap rescue link" },
+          { command: "alerts", description: "on / off" },
+        ],
+      });
+    } catch (e) {
+      console.error("setMyCommands:", e instanceof Error ? e.message : e);
+    }
     pollTelegram();
   } else {
     // the console is one chat: type commands on stdin
@@ -543,4 +555,8 @@ async function main() {
   }
 }
 
-main();
+process.on("unhandledRejection", (e) => console.error("unhandled:", e instanceof Error ? e.message : e));
+main().catch((e) => {
+  console.error("bot stopped:", e);
+  process.exit(1);
+});

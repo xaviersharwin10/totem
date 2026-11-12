@@ -5,7 +5,7 @@
 // so feeding / poking / the faucet sign in the browser without a wallet popup.
 
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { FailoverRpcProvider, JsonRpcProvider, KeyPair, KeyPairSigner, type KeyPairString, getTransactionLastResult } from "near-api-js";
+import { JsonRpcProvider, KeyPair, KeyPairSigner, type KeyPairString, getTransactionLastResult } from "near-api-js";
 import { NearConnector, type EventMap } from "@hot-labs/near-connect";
 import { createAccessKeyPlugin } from "function-call-key-plugin";
 import { CONTRACT_ID, KEY_METHODS, NETWORK, RPC_URLS } from "./config";
@@ -98,7 +98,12 @@ export function NearProvider({ children }: PropsWithChildren) {
       }),
     []
   );
-  const provider = useMemo(() => new FailoverRpcProvider(RPC_URLS.map((url) => new JsonRpcProvider({ url }))), []);
+  // Reads go to RPC_URLS[0] only (our /rpc proxy, which already rotates five
+  // upstreams server-side). A browser-side FailoverRpcProvider also switches on
+  // ordinary contract errors (e.g. a view method that isn't deployed yet), and
+  // it ended up parked on a public RPC whose CORS preflight never answered:
+  // every read in the app hung.
+  const provider = useMemo(() => new JsonRpcProvider({ url: RPC_URLS[0] }), []);
   const [wallet, setWallet] = useState<Wallet | undefined>();
   const [walletAccount, setAccountId] = useState("");
   const [guest, setGuest] = useState<Guest | null>(() => (guestActive() ? loadGuest() : null));

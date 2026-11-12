@@ -2,6 +2,7 @@
 // link. The link opens a one-tap Rescue card; with no wallet, the rescuer gets a
 // free guest account and the game pays the gas (web/src/chain/guest.ts).
 
+import { friendly } from "./errors";
 import { useEffect, useMemo, useState } from "react";
 import { fmt, fmtTime, TotemView } from "./engine";
 import type { Game } from "./game";
@@ -182,8 +183,7 @@ export function RescueCard({
       setPhase("done");
       onDone(r.rescue);
     } catch (e) {
-      const m = e instanceof Error ? e.message : String(e);
-      setErr(/once per Totem-day/.test(m) ? "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment." : m);
+      setErr(friendly(e));
       setPhase("error");
     }
   };

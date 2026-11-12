@@ -2,6 +2,7 @@
 // (Blessings and Caretaker badges). Every number is a contract view:
 // get_stake, get_claimable, get_caretaker, get_config.
 
+import { friendly } from "./errors";
 import { useCallback, useEffect, useState } from "react";
 import { useNear } from "./chain/near";
 import { toTokens, toYocto } from "./chain/config";
@@ -157,8 +158,7 @@ export function StakeSheet({ game, b, onClose, toast }: { game: Game; b: Belly; 
       toast(ok, "level_up");
       setAmt("");
     } catch (e) {
-      const m = e instanceof Error ? e.message : String(e);
-      toast(m.replace(/^.*panicked at[^:]*: ?/, "").slice(0, 160), "info");
+      toast(friendly(e), "info");
     } finally {
       setBusy(null);
       b.refresh();

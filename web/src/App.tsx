@@ -15,6 +15,7 @@ import { HatchVote, TribePanel } from "./Tribe";
 import { HistoryPanel } from "./History";
 import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
+import { friendly } from "./errors";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -146,6 +147,8 @@ export default function App() {
     if (!view.alive || game.busy) return;
     // on live every feed is a transaction: drop mode is one-shot, so later taps don't sign again
     if (game.mode === "live") setTool("pet");
+    if (game.mode === "live" && view.secondsUntilDeath !== null && view.secondsUntilDeath < 20)
+      pushToast(`⏳ Hurry: ${view.name.split(" ")[0]} dies in ${Math.ceil(view.secondsUntilDeath)}s. If it dies before your transaction lands, the feed is refused (only gas is spent).`, "bite");
     if (game.mode === "live") addBurst("text", new THREE.Vector3(x, 1.2, z), "signing…", "#ffffff");
     try {
       const r = await game.feed(amount);
@@ -687,18 +690,6 @@ function DockItem({
   );
 }
 
-/** Turn raw wallet / RPC errors into something a player can act on. */
-function friendly(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
-  if (/NotEnoughBalance|LackBalanceForState|balance/i.test(msg) && !/TOTEM/.test(msg))
-    return "Your account has no testnet NEAR for gas. Sign out and tap “⚡ Play free, no wallet” (the game pays the gas), or get NEAR at near-faucet.io.";
-  if (/AccessKeyDoesNotExist|does not exist/i.test(msg)) return "Wallet key not found on-chain. Sign out and connect again.";
-  if (/reject|cancel|denied|closed/i.test(msg)) return "Cancelled in the wallet.";
-  if (/ERR_PERMISSION_DENIED/.test(msg)) return "Only Keepers can vote on that. Stake 1,000 $TOTEM (or earn Silver) and get nominated in 🏛 Tribe.";
-  if (/ERR_ALREADY_VOTED/.test(msg)) return "You already voted on this proposal.";
-  if (/once per Totem-day/.test(msg)) return "Free $TOTEM refills once per Totem-day (2 minutes here). Try again in a moment.";
-  return msg.length > 140 ? msg.slice(0, 140) + "…" : msg;
-}
 
 interface AutoHatch {
   enabled: boolean;

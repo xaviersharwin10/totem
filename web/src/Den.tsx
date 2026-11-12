@@ -207,8 +207,8 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
             </div>
             <div className="den-wall">
               {data.wall.length === 0 && <div className="tribe-empty">Nobody has written here yet. Be the first.</div>}
-              {data.wall.map((p, i) => (
-                <div className="den-msg" key={i}>
+              {data.wall.map((p) => (
+                <div className="den-msg" key={`${p.who}:${p.at}`}>
                   <span className="den-who">{nice(p.who)}</span> {p.text} <span className="den-at">{ago(p.at)}</span>
                 </div>
               ))}

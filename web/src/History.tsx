@@ -166,8 +166,9 @@ function dedupe(events: HistoryEvent[]): HistoryEvent[] {
     for (const e of list) {
       if (e.kind === "feed") explained.push(BigInt(String(e.data.burned ?? 0)));
       if (e.kind === "bite") {
+        // contract emits ft_burn for (reserve_burned - tip); the tip is transferred, not burned
         const burned = BigInt(String(e.data.reserve_burned ?? 0));
-        explained.push(burned, burned - BigInt(String(e.data.tip ?? 0)));
+        explained.push(burned - BigInt(String(e.data.tip ?? 0)));
       }
     }
     for (const e of list) {

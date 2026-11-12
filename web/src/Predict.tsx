@@ -118,12 +118,16 @@ function MarketRow({
 export function PredictPanel({ game, onClose, toast }: Props) {
   const [side, setSide] = useState<"survive" | "die">("survive");
   const [amount, setAmount] = useState(50);
-  // cache the last active-market bet so it's visible after resolution
-  const [cachedBet, setCachedBet] = useState<{ marketId: number; bet: PredictBet } | null>(null);
+  // accumulate bets for all markets we've seen, so claim buttons persist after resolution
+  const [betCache, setBetCache] = useState<Map<number, PredictBet>>(new Map());
 
   useEffect(() => {
     if (game.activeMarket && game.myBet) {
-      setCachedBet({ marketId: game.activeMarket.market_id, bet: game.myBet });
+      setBetCache((prev) => {
+        const next = new Map(prev);
+        next.set(game.activeMarket!.market_id, game.myBet!);
+        return next;
+      });
     }
   }, [game.myBet, game.activeMarket]);
 
@@ -167,8 +171,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
 
   const betForMarket = (marketId: number): PredictBet | null => {
     if (game.myBet && game.activeMarket?.market_id === marketId) return game.myBet;
-    if (cachedBet?.marketId === marketId) return cachedBet.bet;
-    return null;
+    return betCache.get(marketId) ?? null;
   };
 
   const placed =

@@ -116,7 +116,7 @@ export default function App() {
   };
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
 
-  // background music: starts on the first tap (autoplay rules), follows the mood and the moon
+  // birdsong: starts on the first tap (autoplay rules) and follows BaoBao's mood
   useEffect(() => {
     const go = () => music.start();
     window.addEventListener("pointerdown", go, { once: true });
@@ -127,7 +127,7 @@ export default function App() {
     };
   }, []);
   const musicMood: MusicMood = !view.alive ? "dead" : (["happy", "content", "hungry", "starving", "rampage"].includes(view.mood) ? view.mood : "content") as MusicMood;
-  useEffect(() => music.setMood(musicMood, moon.lit >= 0.9), [musicMood, moon.lit >= 0.9]);
+  useEffect(() => music.setMood(musicMood), [musicMood]);
 
   // switching backends restarts the event stream
   useEffect(() => {
@@ -269,28 +269,27 @@ export default function App() {
     }
   };
 
-  // 🔊 mutes everything; 🎵 turns only the music off (remembered per browser)
-  const [musicOff, setMusicOff] = useState(() => {
+  // 🔊 turns all sound on or off (the birds and the effects), remembered per browser
+  useEffect(() => {
+    let off = false;
     try {
-      return localStorage.getItem("totem-music") === "off";
-    } catch {
-      return false;
+      off = localStorage.getItem("totem-sound") === "off";
+    } catch {}
+    if (off) {
+      setMutedState(true);
+      setMuted(true);
     }
-  });
-  useEffect(() => music.setMuted(muted || musicOff), [muted, musicOff]);
+  }, []);
+  useEffect(() => music.setMuted(muted), [muted]);
   const toggleMute = () => {
     const m = !muted;
     setMutedState(m);
     setMuted(m);
-    if (!m) sfx.click();
-  };
-  const toggleMusic = () => {
-    const off = !musicOff;
-    setMusicOff(off);
     try {
-      localStorage.setItem("totem-music", off ? "off" : "on");
+      localStorage.setItem("totem-sound", m ? "off" : "on");
     } catch {}
-    music.start(); // a tap on 🎵 counts as the first gesture too
+    music.start(); // a tap here counts as the first gesture too
+    if (!m) sfx.click();
   };
 
   // keyboard shortcuts
@@ -470,8 +469,7 @@ export default function App() {
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
         <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
         <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
-        <button className={`icon-btn ${musicOff ? "music-off" : ""}`} onClick={toggleMusic} title={musicOff ? "Music off: tap to play" : "Music on: tap to turn off"} aria-label={musicOff ? "Turn music on" : "Turn music off"} aria-pressed={!musicOff}>🎵</button>
-        <button className="icon-btn" onClick={toggleMute} title="Sound">{muted ? "🔇" : "🔊"}</button>
+        <button className="icon-btn" onClick={toggleMute} title={muted ? "Sound off: tap for birdsong and sounds" : "Sound on: tap to mute"}>{muted ? "🔇" : "🔊"}</button>
       </nav>
 
       {/* ---------- hunger ---------- */}

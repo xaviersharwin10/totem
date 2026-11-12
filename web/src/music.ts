@@ -1,57 +1,36 @@
-// Background music, composed live in the browser (Web Audio, no audio files, no
-// licences). A gentle pentatonic loop whose mood follows BaoBao's:
+// The farm's background sound: birdsong, made live in the browser (Web Audio,
+// no audio files, no licences). A few kinds of birds call now and then from the
+// left or the right, near and far, with a light garden echo.
 //
-//   happy / content  bright major pentatonic, easy tempo, soft shaker
-//   hungry           same key, slower and sparser
-//   starving         minor, low and slow
-//   rampage          minor, faster, taiko drums and a low drone
-//   dead             a slow, soft pad only
-//   moonlit          (moon at least 90% lit) a high shimmer on top
+// The garden follows BaoBao's mood: lively while it's happy, quieter as it gets
+// hungry, fewer still when it's starving, in a Rampage or dead.
 //
-// Starts on the first tap (browsers block autoplay), follows the 🔊 button,
-// and goes quiet while the tab is hidden.
+// Starts on the first tap (browsers block autoplay), follows the 🔊 button, and
+// goes quiet while the tab is hidden.
 import { audioCtx } from "./sfx";
 
 export type MusicMood = "happy" | "content" | "hungry" | "starving" | "rampage" | "dead";
 
-interface Style {
-  bpm: number;
-  root: number; // MIDI note of the key
-  scale: number[]; // semitones above the root
-  chords: number[][]; // per bar, scale-degree indexes
-  density: number; // chance an eighth note plays
-  shaker: boolean;
-  drums: boolean;
-  drone: boolean;
-  melody: boolean;
-  pad: number; // pad loudness
-}
+/** Chance per tick (every TICK seconds) that a bird starts a call. */
+const CALLS: Record<MusicMood, number> = { happy: 0.16, content: 0.13, hungry: 0.09, starving: 0.06, rampage: 0.04, dead: 0.06 };
+const TICK = 0.3;
+const VOLUME = 1;
 
-const MAJOR = [0, 2, 4, 7, 9];
-const MINOR = [0, 3, 5, 7, 10];
-const STYLES: Record<MusicMood, Style> = {
-  happy: { bpm: 84, root: 60, scale: MAJOR, chords: [[0, 2, 4], [4, 1, 3], [3, 0, 2], [1, 3, 4]], density: 0.55, shaker: true, drums: false, drone: false, melody: true, pad: 1 },
-  content: { bpm: 80, root: 60, scale: MAJOR, chords: [[0, 2, 4], [3, 0, 2], [4, 1, 3], [0, 2, 4]], density: 0.45, shaker: true, drums: false, drone: false, melody: true, pad: 1 },
-  hungry: { bpm: 72, root: 60, scale: MAJOR, chords: [[0, 2, 4], [1, 3, 4], [3, 0, 2], [1, 3, 4]], density: 0.3, shaker: false, drums: false, drone: false, melody: true, pad: 0.9 },
-  starving: { bpm: 66, root: 57, scale: MINOR, chords: [[0, 2, 4], [3, 0, 2], [1, 3, 4], [4, 1, 3]], density: 0.28, shaker: false, drums: false, drone: true, melody: true, pad: 0.8 },
-  rampage: { bpm: 104, root: 57, scale: MINOR, chords: [[0, 2, 4], [0, 2, 4], [3, 0, 2], [4, 1, 3]], density: 0.4, shaker: false, drums: true, drone: true, melody: true, pad: 0.6 },
-  dead: { bpm: 52, root: 57, scale: MINOR, chords: [[0, 2, 4], [3, 0, 2]], density: 0, shaker: false, drums: false, drone: false, melody: false, pad: 0.7 },
-};
-
-const VOLUME = 1.2;
-const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+// a few species: a short phrase of quick sine chirps with fast pitch glides
+const BIRDS: { notes: number; base: [number, number]; glide: number; len: [number, number]; gap: number }[] = [
+  { notes: 3, base: [3200, 4200], glide: 0.75, len: [0.05, 0.09], gap: 0.06 }, // quick tweets, falling
+  { notes: 2, base: [2400, 3000], glide: 1.35, len: [0.12, 0.18], gap: 0.1 }, // two rising whistles
+  { notes: 5, base: [4200, 5200], glide: 0.9, len: [0.03, 0.05], gap: 0.035 }, // a fast trill
+  { notes: 4, base: [2800, 3400], glide: 1.15, len: [0.06, 0.1], gap: 0.08 }, // a sing-song warble
+];
 
 let started = false;
 let muted = false;
 let mood: MusicMood = "content";
-let moonlit = false;
 let master: GainNode | null = null;
-let echo: { input: GainNode } | null = null;
+let echo: GainNode | null = null;
 let meter: AnalyserNode | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
-let nextTime = 0; // when the next eighth note plays (AudioContext time)
-let step = 0; // eighth notes since start
-let lastNote = 2; // melody position in the scale (index into a two-octave range)
 
 function graph(a: AudioContext) {
   if (master) return;
@@ -64,21 +43,20 @@ function graph(a: AudioContext) {
   meter = a.createAnalyser();
   meter.fftSize = 2048;
   comp.connect(meter);
-  // a soft echo for the melody: delay with filtered feedback
-  const input = a.createGain();
+  // a soft garden echo: delay with filtered feedback
+  echo = a.createGain();
   const delay = a.createDelay(1);
-  delay.delayTime.value = 0.36;
+  delay.delayTime.value = 0.23;
   const fb = a.createGain();
-  fb.gain.value = 0.32;
+  fb.gain.value = 0.28;
   const lp = a.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 2200;
-  input.connect(delay);
+  lp.frequency.value = 3500;
+  echo.connect(delay);
   delay.connect(lp);
   lp.connect(fb);
   fb.connect(delay);
   lp.connect(master);
-  echo = { input };
 }
 
 function fadeTo(v: number, secs = 1.2) {
@@ -90,114 +68,48 @@ function fadeTo(v: number, secs = 1.2) {
   master.gain.linearRampToValueAtTime(v, t + secs);
 }
 
-function voice(a: AudioContext, freq: number, t: number, dur: number, type: OscillatorType, gain: number, opts: { attack?: number; cutoff?: number; detune?: number; toEcho?: number } = {}) {
-  const osc = a.createOscillator();
-  osc.type = type;
-  osc.frequency.value = freq;
-  if (opts.detune) osc.detune.value = opts.detune;
-  const f = a.createBiquadFilter();
-  f.type = "lowpass";
-  f.frequency.value = opts.cutoff ?? 2400;
-  const g = a.createGain();
-  const att = opts.attack ?? 0.01;
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(gain, t + att);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  osc.connect(f);
-  f.connect(g);
-  g.connect(master!);
-  if (opts.toEcho && echo) {
-    const s = a.createGain();
-    s.gain.value = opts.toEcho;
-    g.connect(s);
-    s.connect(echo.input);
-  }
-  osc.start(t);
-  osc.stop(t + dur + 0.05);
-}
-
-function hit(a: AudioContext, t: number, kind: "shaker" | "taiko") {
-  if (kind === "taiko") {
+function bird(a: AudioContext, t: number) {
+  const b = BIRDS[Math.floor(Math.random() * BIRDS.length)];
+  const pan = a.createStereoPanner();
+  pan.pan.value = Math.random() * 1.6 - 0.8;
+  const out = a.createGain();
+  out.gain.value = 0.06 + Math.random() * 0.05; // near and far birds
+  pan.connect(out);
+  out.connect(master!);
+  const wet = a.createGain();
+  wet.gain.value = 0.3;
+  out.connect(wet);
+  wet.connect(echo!);
+  let at = t;
+  const base = b.base[0] + Math.random() * (b.base[1] - b.base[0]);
+  const n = b.notes + (Math.random() < 0.5 ? 0 : 1);
+  for (let i = 0; i < n; i++) {
+    const len = b.len[0] + Math.random() * (b.len[1] - b.len[0]);
+    const f0 = base * (1 + (Math.random() - 0.5) * 0.12);
     const o = a.createOscillator();
-    const g = a.createGain();
     o.type = "sine";
-    o.frequency.setValueAtTime(110, t);
-    o.frequency.exponentialRampToValueAtTime(42, t + 0.25);
-    g.gain.setValueAtTime(0.55, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.frequency.setValueAtTime(f0, at);
+    o.frequency.exponentialRampToValueAtTime(f0 * b.glide, at + len);
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(1, at + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + len);
     o.connect(g);
-    g.connect(master!);
-    o.start(t);
-    o.stop(t + 0.4);
-    return;
+    g.connect(pan);
+    o.start(at);
+    o.stop(at + len + 0.02);
+    at += len + b.gap * (0.7 + Math.random() * 0.6);
   }
-  const len = 0.06;
-  const buf = a.createBuffer(1, Math.floor(a.sampleRate * len), a.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-  const src = a.createBufferSource();
-  src.buffer = buf;
-  const f = a.createBiquadFilter();
-  f.type = "highpass";
-  f.frequency.value = 6000;
-  const g = a.createGain();
-  g.gain.value = 0.09;
-  src.connect(f);
-  f.connect(g);
-  g.connect(master!);
-  src.start(t);
-}
-
-/** Schedule one eighth note at time t. */
-function play(a: AudioContext, t: number) {
-  const s = STYLES[mood];
-  const eighth = 60 / s.bpm / 2;
-  const inBar = step % 8;
-  const bar = Math.floor(step / 8);
-  const chord = s.chords[bar % s.chords.length];
-  const note = (deg: number, octave = 0) => s.root + s.scale[((deg % 5) + 5) % 5] + 12 * (octave + Math.floor(deg / 5));
-
-  // pad: a soft chord held for the whole bar
-  if (inBar === 0 && s.pad > 0) {
-    const barLen = eighth * 8;
-    for (const deg of chord) voice(a, hz(note(deg, -1)), t, barLen * 1.1, "triangle", 0.12 * s.pad, { attack: 0.5, cutoff: 900, detune: (Math.random() - 0.5) * 8 });
-  }
-  // bass on beats 1 and 3
-  if ((inBar === 0 || inBar === 4) && mood !== "dead") voice(a, hz(note(chord[0], -1)), t, eighth * 3, "triangle", 0.2, { attack: 0.02, cutoff: 700 });
-  // drone under starving and rampage
-  if (s.drone && inBar === 0) voice(a, hz(s.root - 24), t, eighth * 8.5, "sawtooth", 0.03, { attack: 0.8, cutoff: 260 });
-  // melody: a gentle random walk on the scale, resting often
-  if (s.melody && Math.random() < s.density) {
-    const moveBy = [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)];
-    lastNote = Math.max(0, Math.min(9, lastNote + moveBy));
-    if (inBar === 0) lastNote = chord[0] + (lastNote >= 5 ? 5 : 0); // land on the chord at the bar line
-    const long = Math.random() < 0.3;
-    voice(a, hz(note(lastNote, 0)), t, eighth * (long ? 2.8 : 1.4), "triangle", 0.2, { cutoff: 3200, toEcho: 0.5 });
-  }
-  // percussion
-  if (s.shaker && inBar % 2 === 1) hit(a, t, "shaker");
-  if (s.drums && (inBar === 0 || inBar === 3 || inBar === 4 || inBar === 6)) hit(a, t, "taiko");
-  // moonlit shimmer: high bell notes now and then
-  if (moonlit && mood !== "dead" && inBar % 4 === 2 && Math.random() < 0.6) {
-    voice(a, hz(note(Math.floor(Math.random() * 5), 2)), t, eighth * 4, "sine", 0.07, { attack: 0.02, toEcho: 0.8 });
-  }
-  step++;
 }
 
 function tick() {
   const a = audioCtx();
-  const eighth = 60 / STYLES[mood].bpm / 2;
-  if (nextTime < a.currentTime) nextTime = a.currentTime + 0.05;
-  while (nextTime < a.currentTime + 0.2) {
-    play(a, nextTime);
-    nextTime += eighth;
-  }
+  if (Math.random() < CALLS[mood]) bird(a, a.currentTime + 0.05 + Math.random() * TICK);
 }
 
 function run() {
   if (timer || muted || document.hidden) return;
-  nextTime = 0;
-  timer = setInterval(tick, 50);
+  timer = setInterval(tick, TICK * 1000);
   fadeTo(VOLUME);
 }
 function halt() {
@@ -213,15 +125,11 @@ export const music = {
     if (started) return;
     started = true;
     graph(audioCtx());
-    document.addEventListener("visibilitychange", () => (document.hidden ? halt() : started && run()));
+    document.addEventListener("visibilitychange", () => (document.hidden ? halt() : run()));
     run();
   },
-  setMood(m: MusicMood, isMoonlit = false) {
-    moonlit = isMoonlit;
-    if (m === mood) return;
+  setMood(m: MusicMood) {
     mood = m;
-    // land the new mood on a bar line
-    step = Math.ceil(step / 8) * 8;
   },
   /** Loudness right now, in dBFS (for tests and tuning). */
   levelDb(): number {

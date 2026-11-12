@@ -33,6 +33,7 @@ pub fn is_soulbound(token_id: &str) -> bool {
         || token_id.starts_with("hero-")
         || token_id.starts_with("founder-")
         || token_id.starts_with("moonlit-")
+        || token_id.starts_with("returned-")
 }
 
 impl Contract {

@@ -246,6 +246,10 @@ The bot runs inside the hosted app. **Don't run `npm run bot` with the real toke
   5. either "🦸 Rescued! *who* fed …" or "🪦 … died"
   6. "🗳 Vote open #N", then "✅ Vote #N passed"
 - [ ] **Personal alerts** for a watched account: shield ending soon, "your stake is not shielded" before a bite, "stake released", "Blessing ready", or "last chance to claim". A watched Keeper who hasn't voted on an open vote gets a nudge.
+- [ ] **🔔 button (link in one tap):** connect in the app, press 🔔, then **Get alerts on Telegram**. Sign the free message (MetaMask accounts get a MetaMask "personal sign" popup). **See:** Telegram opens @Babao_panda_bot; press **Start**. **See:** "🔔 Linked: *your account*" and your stake / Blessing summary. Opening the same link again says it expired or was used.
+- [ ] **Thank-yous:** feed for the first time from a new guest. **See** in the group: "🎉 *who* just fed me for the first time ever". Feed while BaoBao is starving (but not on a Rampage): "🦸 *who* fed me when my belly was almost empty". Other feeds are thanked in a digest at most every 30 minutes.
+- [ ] **Quiet holders:** while BaoBao is hungry, at most every 6 hours, the group gets "🥺 N wallets hold $TOTEM but have never fed me…". Nobody is named.
+- [ ] **I miss you (linked accounts only):** a linked account that hasn't fed for 3 Totem-days (at least an hour) gets "🥺 it's been … since you last fed me" in its chat, at most every 12 hours; one that never fed gets a friendly first-feed invite.
 - [ ] Redeploying the app resets the bot's memory. Send `/start` and `/watch` again after a push to `main`.
 
 ### 14. Guest backup and restore
@@ -305,7 +309,7 @@ Open the app on a phone, in portrait.
 # Contract: unit tests + sandbox tests on a real local NEAR node
 cd contract
 cargo near build non-reproducible-wasm   # the sandbox tests load target/near/totem.wasm
-cargo test                              # expect: 49 passed (unit) and 2 passed (sandbox)
+cargo test                              # expect: 53 passed (unit) and 2 passed (sandbox)
 
 # Economic simulation: 60 days, five scenarios, charts in sim/out/
 cd ../sim
@@ -403,7 +407,7 @@ The contract computes tonight's moon from the block time ([`contract/src/moon.rs
 
 ### 21. The Den (badge holders only)
 
-Holders of a Hero, Founder, Moonlit or Caretaker badge NFT can open 🗝 the Den. The server enforces it ([`web/server/den.ts`](web/server/den.ts)); the browser is never trusted.
+Holders of a Hero, Founder, Moonlit, Welcome Back or Caretaker badge NFT can open 🗝 the Den. MetaMask (0x) accounts can enter too: they sign with MetaMask's personal sign. The server enforces it ([`web/server/den.ts`](web/server/den.ts)); the browser is never trusted.
 
 - [ ] With an account that holds **no** badge: press 🗝. **See:** "holds no badge yet" and how to earn each one. There is no Enter button.
 - [ ] Earn one: rescue BaoBao from a Rampage as a guest (scenario 5) to get a Hero badge, then press 🗝. **See:** your badges, then **Enter the Den**. Press it. A guest signs with its own key (no popup); a NEAR wallet asks you to sign a message (free, nothing is sent to the chain).
@@ -416,6 +420,16 @@ Holders of a Hero, Founder, Moonlit or Caretaker badge NFT can open 🗝 the Den
   npx tsx server/den.e2e.mts http://localhost:8096      # expect: 9 passed, 0 failed
   ```
   It checks that a holder gets in; a replayed signature, a non-holder, someone else's key, a tampered signature, a signature over a different message and a forged session token are all refused; and a holder can post.
+- [ ] **Telegram link + MetaMask signing checks** (same server, needs the bot token in `web/.env`):
+  ```bash
+  npx tsx server/link.e2e.mts http://localhost:8096     # expect: 8 passed, 0 failed
+  ```
+  A NEAR account gets a one-time t.me link that works once; signatures over another account or the Den's message are refused; a 0x account links with personal_sign; an Ethereum key can't claim someone else's 0x account.
+
+### 22. Welcome back (needs the contract redeploy)
+
+- [ ] Feed from an account, then don't feed from it for 3 Totem-days (6 minutes on testnet) while someone else keeps BaoBao alive. Feed again. **See:** +50% points on that feed (at most +100), a soulbound **🤗 Welcome Back** badge (once per life) that also opens the Den, and in Telegram "🤗 Welcome back, *who*!".
+- [ ] `cargo test welcome` (4 tests): the bonus and badge, no bonus after a short break, no bonus on a first-ever feed, and the cap.
 
 ---
 

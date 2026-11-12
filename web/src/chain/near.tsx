@@ -11,6 +11,28 @@ import { createAccessKeyPlugin } from "function-call-key-plugin";
 import { CONTRACT_ID, KEY_METHODS, NETWORK, RPC_URLS } from "./config";
 import { Call, Guest, createGuest, guestCall, loadGuest, restoreGuest } from "./guest";
 
+/** Proof that the player owns the account, for server/auth.ts. */
+export interface SignedProof {
+  accountId: string;
+  publicKey?: string;
+  signature: string;
+  scheme?: "nep413" | "eth";
+}
+const ETH_ACCOUNT = /^0x[0-9a-f]{40}$/;
+/** The words an Ethereum wallet signs (must match ethText in server/auth.ts). */
+const ethText = (message: string, recipient: string, nonce: Uint8Array) =>
+  `${message}\n\nFor: ${recipient}\nNonce: ${Array.from(nonce, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+
+/** A fresh 32-byte nonce whose first 8 bytes are the time (the server refuses stale ones). */
+export function freshNonce(): { bytes: Uint8Array; b64: string } {
+  const bytes = new Uint8Array(32);
+  new DataView(bytes.buffer).setBigUint64(0, BigInt(Date.now()));
+  crypto.getRandomValues(bytes.subarray(8));
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return { bytes, b64: btoa(bin) };
+}
+
 const GUEST_ON = "totem.guest.active";
 const guestActive = () => {
   try {
@@ -53,7 +75,7 @@ export interface NearCtx {
   viewAt: <T = unknown>(contractId: string, method: string, args?: Record<string, unknown>) => Promise<T>;
   call: (method: string, args?: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
   /** Sign a NEP-413 message (proves you own the account; nothing is sent to the chain). */
-  signMessage: (message: string, recipient: string, nonce: Uint8Array) => Promise<{ accountId: string; publicKey: string; signature: string }>;
+  signMessage: (message: string, recipient: string, nonce: Uint8Array) => Promise<SignedProof>;
 }
 
 const Ctx = createContext<NearCtx | null>(null);
@@ -256,11 +278,23 @@ export function NearProvider({ children }: PropsWithChildren) {
         return { accountId: g.accountId, publicKey: s.publicKey.toString(), signature: btoa(bin) };
       }
       if (!wallet) throw new Error("Connect a wallet first");
+      // MetaMask-style NEAR accounts (0x…) can't do NEP-413: they sign the same
+      // words with Ethereum's personal_sign, and the server recovers the address.
+      if (ETH_ACCOUNT.test(walletAccount)) {
+        const eth = (window as unknown as { ethereum?: { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
+        if (!eth) throw new Error("Open this page in the browser where your Ethereum wallet (MetaMask) is installed, then try again.");
+        const text = ethText(message, recipient, nonce);
+        const hex = "0x" + Array.from(new TextEncoder().encode(text), (b) => b.toString(16).padStart(2, "0")).join("");
+        const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+        if (!accounts.some((x) => x.toLowerCase() === walletAccount)) throw new Error(`Switch MetaMask to ${walletAccount} and try again.`);
+        const signature = (await eth.request({ method: "personal_sign", params: [hex, walletAccount] })) as string;
+        return { accountId: walletAccount, signature, scheme: "eth" as const };
+      }
       const r = await wallet.signMessage({ message, recipient, nonce });
       if (!r?.signature) throw new Error("This wallet can't sign messages. Try a NEAR wallet (HOT, Meteor) or play as a guest.");
       return { accountId: r.accountId, publicKey: r.publicKey, signature: r.signature };
     },
-    [wallet, guest]
+    [wallet, guest, walletAccount]
   );
 
   const value = useMemo(

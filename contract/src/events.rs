@@ -21,6 +21,7 @@ pub fn feed(
     points: u128,
     rescue: bool,
     staker: bool,
+    welcome_back: bool,
 ) {
     emit(
         "feed",
@@ -32,6 +33,7 @@ pub fn feed(
             "points": points.to_string(),
             "rescue": rescue,
             "staker_bonus": staker,
+            "welcome_back": welcome_back,
         }),
     );
 }

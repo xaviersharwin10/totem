@@ -1,10 +1,10 @@
 // The Den: a page only badge holders can open. The gate is enforced by the
 // server (web/server/den.ts): you sign a message proving you own the account,
 // and the server checks on chain that the account holds a TOTEM badge NFT
-// (Hero, Founder, Moonlit or a Caretaker badge). Lose the badge, lose the Den.
+// (Hero, Founder, Moonlit, Welcome Back or a Caretaker badge). Lose the badge, lose the Den.
 
 import { useCallback, useEffect, useState } from "react";
-import { useNear } from "./chain/near";
+import { freshNonce, useNear } from "./chain/near";
 import { friendly } from "./errors";
 
 interface Key {
@@ -39,7 +39,7 @@ const save = (a: string, t: string | null) => {
   } catch {}
 };
 
-const icon = (id: string) => (id.startsWith("hero-") ? "🦸" : id.startsWith("founder-") ? "🏛" : id.startsWith("moonlit-") ? "🌕" : "🏅");
+const icon = (id: string) => (id.startsWith("hero-") ? "🦸" : id.startsWith("founder-") ? "🏛" : id.startsWith("moonlit-") ? "🌕" : id.startsWith("returned-") ? "🤗" : "🏅");
 const nice = (id: string) => (/^g[0-9a-f]{8}\./.test(id) ? `guest ${id.split(".")[0]}` : id.length > 28 ? `${id.slice(0, 10)}…${id.slice(-6)}` : id);
 const ago = (t: number) => {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -59,7 +59,7 @@ function useKeys(accountId: string) {
         if (stop) return;
         setKeys(
           ts
-            .filter((t) => ["hero-", "founder-", "moonlit-", "badge-"].some((p) => t.token_id.startsWith(p)))
+            .filter((t) => ["hero-", "founder-", "moonlit-", "returned-", "badge-"].some((p) => t.token_id.startsWith(p)))
             .map((t) => ({ id: t.token_id, title: t.metadata?.title ?? t.token_id }))
         );
       })
@@ -108,18 +108,13 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
     setErr("");
     setBusy("Sign the message in your wallet…");
     try {
-      // the first 8 bytes are the time, so the server can refuse stale signatures
-      const nonce = new Uint8Array(32);
-      new DataView(nonce.buffer).setBigUint64(0, BigInt(Date.now()));
-      crypto.getRandomValues(nonce.subarray(8));
-      const s = await near.signMessage(`Enter the TOTEM Den as ${who}`, RECIPIENT, nonce);
-      let bin = "";
-      nonce.forEach((b) => (bin += String.fromCharCode(b)));
+      const nonce = freshNonce();
+      const s = await near.signMessage(`Enter the TOTEM Den as ${who}`, RECIPIENT, nonce.bytes);
       setBusy("Checking your badges on chain…");
       const r = await fetch("/api/den/enter", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ accountId: s.accountId, publicKey: s.publicKey, signature: s.signature, nonce: btoa(bin) }),
+        body: JSON.stringify({ ...s, nonce: nonce.b64 }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error ?? "The Den refused you.");
@@ -190,6 +185,7 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
                   <li>🦸 <b>Hero</b>: feed BaoBao back from a Rampage.</li>
                   <li>🌕 <b>Moonlit</b>: feed it on a night the moon is at least 90% full.</li>
                   <li>🏅 <b>Bronze</b>: reach 100 points (1 point per $TOTEM fed), then mint it in 🛡 Stake.</li>
+                  <li>🤗 <b>Welcome Back</b>: feed it again after a break of 3 Totem-days.</li>
                   <li>🏛 <b>Founder</b>: be a top-3 feeder of a life; you get it when the next egg hatches.</li>
                 </ul>
               </>

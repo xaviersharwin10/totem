@@ -113,6 +113,8 @@ pub struct CaretakerView {
     pub lifetime_points: U128,
     pub badge_earned: String,
     pub badge_claimed: String,
+    /// When this account last fed (ns), if ever.
+    pub last_fed_ns: Option<U64>,
 }
 
 #[near(serializers = [json])]
@@ -315,11 +317,13 @@ impl Contract {
         let earned = crate::rewards::tier_name(self.tier_for(lt));
         let claimed =
             crate::rewards::tier_name(self.badges_claimed.get(&account_id).copied().unwrap_or(0));
+        let last_fed_ns = self.last_fed.get(&account_id).map(|&t| U64(t));
         CaretakerView {
             account_id,
             lifetime_points: U128(lt),
             badge_earned: earned.to_string(),
             badge_claimed: claimed.to_string(),
+            last_fed_ns,
         }
     }
 

@@ -92,9 +92,25 @@ impl Contract {
         if staker {
             pts = pts * self.cfg.staker_points_num as u128 / self.cfg.staker_points_den as u128;
         }
+
+        // Welcome back: fed before, then stayed away for `welcome_back_days`.
+        // Bonus points (capped) and a soulbound badge, once per life.
+        let away_ns = self.cfg.welcome_back_days as u64 * self.cfg.day_length_ns;
+        let returning = matches!(self.last_fed.get(&caller), Some(&t) if now.saturating_sub(t) >= away_ns);
+        if returning {
+            let bonus = (pts * self.cfg.welcome_back_bp as u128 / FULL_BP as u128)
+                .min(self.cfg.welcome_back_max_points as u128);
+            pts += bonus;
+            let id = format!("returned-{}-{}", self.generation, caller);
+            if self.nft.owner_by_id.get(&id).is_none() {
+                self.mint_badge(&caller, "returned", id, "Welcome Back".to_string());
+                events::badge_minted(&caller, "returned");
+            }
+        }
+        self.last_fed.insert(caller.clone(), now);
         self.award_points(&caller, pts);
 
-        events::feed(&caller, accepted, burn, to_reserve, pts, rescue, staker);
+        events::feed(&caller, accepted, burn, to_reserve, pts, rescue, staker, returning);
     }
 
     /// Permissionless keeper call: settle state. If it applies at least one bite,

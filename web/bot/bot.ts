@@ -12,6 +12,12 @@
 //   npm run bot -- --dry-run                  (no Telegram: prints what it would send;
 //                                              type /status, /watch x.testnet … on stdin)
 //
+// It also cheers the tribe on: it thanks feeders by name (first feeds, comebacks,
+// rescues, and a digest of everyone else), now and then reminds the quiet holders
+// that BaoBao exists (as a crowd, never by name), and tells accounts that were
+// *linked* from the app (🔔 button, a signed proof of ownership) when BaoBao
+// misses them.
+//
 // Talks to the Bot API directly (long polling, no webhook), so it runs on any
 // machine with outbound HTTPS. Reads the chain through the same RPC rotation as
 // the web server; /ask uses the Totem's voice (NEAR AI Cloud, needs NEAR_AI_API_KEY).
@@ -21,6 +27,7 @@ import { createInterface } from "node:readline";
 import { rpcForward } from "../server/rpc";
 import { history } from "../server/history";
 import { voiceReply } from "../server/voice";
+import { redeemLinkCode } from "../server/link";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const DRY = process.argv.includes("--dry-run") || !TOKEN;
@@ -111,6 +118,7 @@ const tokens = (y: string | bigint) => {
 const secs = (s: string | number | null | undefined) => {
   if (s === null || s === undefined) return "—";
   const n = Math.max(0, Math.floor(Number(s)));
+  if (n >= 2 * 86400) return `${Math.floor(n / 86400)} days`;
   if (n >= 3600) return `${Math.floor(n / 3600)}h ${Math.floor((n % 3600) / 60)}m`;
   if (n >= 60) return `${Math.floor(n / 60)}m ${n % 60}s`;
   return `${n}s`;
@@ -152,6 +160,8 @@ function statusText(t: Totem, s: Stats): string {
 interface ChatState {
   alerts: boolean;
   watch: string[];
+  /** accounts linked from the app (signed proof): they asked for personal nudges */
+  linked?: string[];
   title?: string;
 }
 interface State {
@@ -159,11 +169,13 @@ interface State {
   chats: Record<string, ChatState>;
   /** keys of personal alerts already sent (dedupe across restarts) */
   sent: Record<string, number>;
+  /** newest feed event already celebrated (ms) */
+  cheeredUpTo?: number;
 }
 const state: State = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, "utf8")) : { offset: 0, chats: {}, sent: {} };
 const save = () => {
   // forget dedupe keys older than a day
-  const cut = Date.now() - 86_400_000;
+  const cut = Date.now() - 3 * 86_400_000;
   for (const [k, v] of Object.entries(state.sent)) if (v < cut) delete state.sent[k];
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 };
@@ -253,6 +265,13 @@ async function command(chatId: string, raw: string, title?: string) {
   try {
     switch (cmd) {
       case "/start":
+        if (arg.startsWith("link_")) {
+          await linkChat(chatId, c, arg.slice(5));
+          break;
+        }
+        c.alerts = true;
+        send(chatId, HELP, [links.farm]);
+        break;
       case "/help":
         c.alerts = true;
         send(chatId, HELP, [links.farm]);
@@ -291,6 +310,7 @@ async function command(chatId: string, raw: string, title?: string) {
       }
       case "/unwatch":
         c.watch = c.watch.filter((x) => x !== arg.toLowerCase());
+        c.linked = (c.linked ?? []).filter((x) => x !== arg.toLowerCase());
         send(chatId, `Stopped watching ${esc(arg)}.`);
         break;
       case "/me":
@@ -333,6 +353,23 @@ async function command(chatId: string, raw: string, title?: string) {
   } finally {
     save();
   }
+}
+
+/** `/start link_<code>` from the app's 🔔 button: watch that account here, as linked. */
+async function linkChat(chatId: string, c: ChatState, code: string) {
+  const a = redeemLinkCode(code);
+  if (!a) {
+    send(chatId, "That link has expired or was already used. Tap 🔔 in the app again to get a fresh one.", [links.farm]);
+    return;
+  }
+  c.alerts = true;
+  c.watch = [a, ...c.watch.filter((x) => x !== a)].slice(0, MAX_WATCH);
+  c.linked = [a, ...(c.linked ?? []).filter((x) => x !== a)].slice(0, MAX_WATCH);
+  send(
+    chatId,
+    `🔔 <b>Linked: ${esc(who(a))}</b>\nYou'll hear from me here when I'm starving or on a Rampage, when your shield is running out, when a Blessing is waiting for you, and (only because you asked) when I miss you. /unwatch ${esc(a)} to stop.\n\n${await meText(a)}`,
+    [links.farm]
+  );
 }
 
 async function meText(a: string): Promise<string> {
@@ -454,7 +491,119 @@ async function tick() {
   prev = { t, s, open };
 
   await personalAlerts(t, open, keepers);
+  await cheer(t).catch((e) => console.error("cheer:", e instanceof Error ? e.message : e));
+  await quietCrowd(t).catch((e) => console.error("crowd:", e instanceof Error ? e.message : e));
+  await missYou(t).catch((e) => console.error("miss-you:", e instanceof Error ? e.message : e));
   save();
+}
+
+// ------------------------------------------------------------------ cheering the tribe on
+//
+// Celebrate the feeders instead of shaming the holders. Specials (a first feed
+// ever, a comeback, a rescue from starving) get their own message, at most one a
+// minute; every other feed goes into a thank-you digest, at most every 30 min.
+
+interface Caretaker {
+  lifetime_points: string;
+  last_fed_ns?: string | null;
+}
+const caretaker = (a: string) => view<Caretaker>("get_caretaker", { account_id: a });
+let lastSpecial = 0;
+let lastDigest = Date.now();
+const digest = new Map<string, bigint>(); // account -> tokens fed since the last digest
+
+async function cheer(t: Totem) {
+  const since = state.cheeredUpTo ?? Date.now(); // never replay old feeds on first run
+  const feeds = (await history()).events.filter((e) => e.kind === "feed" && e.ts > since).sort((a, b) => a.ts - b.ts);
+  if (feeds.length) state.cheeredUpTo = feeds[feeds.length - 1].ts;
+  else state.cheeredUpTo ??= since;
+
+  const ended = (await history()).events.filter((e) => e.kind === "rampage_end");
+  for (const e of feeds) {
+    const a = String(e.data.account);
+    // a feed that ended a Rampage already got its own "Rescued!" message
+    if (ended.some((r) => r.tx === e.tx)) continue;
+    const amount = BigInt(String(e.data.amount ?? "0"));
+    const pts = BigInt(String(e.data.points ?? "0"));
+    let special = "";
+    if (e.data.welcome_back) special = `🤗 <b>Welcome back, ${esc(who(a))}!</b> You fed me ${tokens(amount)} $TOTEM after a long break: bonus points and a Welcome Back badge for you.`;
+    else if (e.data.rescue && t.alive) special = `🦸 <b>${esc(who(a))}</b> fed me ${tokens(amount)} $TOTEM when my belly was almost empty. Thank you, I was so hungry!`;
+    else {
+      // first feed ever: all their lifetime points came from this one
+      const c = await caretaker(a).catch(() => null);
+      if (c && BigInt(c.lifetime_points) === pts && pts > 0n) special = `🎉 <b>${esc(who(a))}</b> just fed me for the first time ever (${tokens(amount)} $TOTEM). Welcome to the tribe!`;
+    }
+    if (special && Date.now() - lastSpecial > 60_000) {
+      lastSpecial = Date.now();
+      broadcast(special);
+    } else digest.set(a, (digest.get(a) ?? 0n) + amount);
+  }
+
+  if (digest.size && Date.now() - lastDigest > 30 * 60_000) {
+    lastDigest = Date.now();
+    const top = [...digest.entries()].sort((x, y) => (y[1] > x[1] ? 1 : -1));
+    const names = top.slice(0, 3).map(([a]) => `<b>${esc(who(a))}</b>`);
+    const more = top.length - names.length;
+    const total = top.reduce((s, [, v]) => s + v, 0n);
+    broadcast(`🙏 Thank you ${names.join(", ")}${more > 0 ? ` and ${more} other${more === 1 ? "" : "s"}` : ""}: ${tokens(total)} $TOTEM in my belly since my last thank-you. You keep me alive.`);
+    digest.clear();
+  }
+}
+
+// The quiet holders: accounts that got $TOTEM and never fed. Addressed as a
+// crowd, never by name, at most every 6 hours, and only while BaoBao is hungry.
+async function quietCrowd(t: Totem) {
+  if (!t.alive || !["hungry", "starving", "rampage"].includes(t.mood)) return;
+  const slot = `crowd-${Math.floor(Date.now() / (6 * 3_600_000))}`;
+  if (state.sent[slot]) return;
+  const candidates = new Set<string>();
+  for (const e of (await history()).events) {
+    if (e.kind === "ft_mint") candidates.add(String(e.data.owner_id));
+    if (e.kind === "ft_transfer") candidates.add(String(e.data.new_owner_id));
+  }
+  try {
+    const r = await fetch(`https://api-testnet.nearblocks.io/v3/fts/${CONTRACT_ID}/holders?per_page=50`);
+    for (const h of ((await r.json()) as { data?: { account: string }[] }).data ?? []) candidates.add(h.account);
+  } catch {}
+  let quiet = 0;
+  for (const a of [...candidates].slice(0, 120)) {
+    if (a === CONTRACT_ID || a.endsWith(`.${CONTRACT_ID}`)) continue; // the game's own accounts
+    const [bal, c] = await Promise.all([view<string>("ft_balance_of", { account_id: a }).catch(() => "0"), caretaker(a).catch(() => null)]);
+    if (BigInt(bal) > 0n && c && BigInt(c.lifetime_points) === 0n) quiet++;
+  }
+  state.sent[slot] = Date.now();
+  if (!quiet) return;
+  broadcast(
+    `🥺 ${quiet} wallet${quiet === 1 ? " holds" : "s hold"} $TOTEM but ${quiet === 1 ? "has" : "have"} never fed me… Even one bamboo would make my day. Every feed earns points, and the first one makes you part of the tribe.`,
+    [links.farm]
+  );
+}
+
+// "I miss you": only for accounts linked from the app (they asked for it).
+// Idle = no feed for 3 Totem-days (at least an hour); at most every 12 hours.
+let dayMs = 0;
+async function missYou(t: Totem) {
+  if (!t.alive) return;
+  const linked = new Map<string, string[]>();
+  for (const [id, c] of Object.entries(state.chats)) for (const a of c.linked ?? []) linked.set(a, [...(linked.get(a) ?? []), id]);
+  if (!linked.size) return;
+  if (!dayMs) dayMs = Number((await view<{ day_length_ns: string | number }>("get_config")).day_length_ns) / 1e6;
+  const idleMs = Math.max(3 * dayMs, 3_600_000);
+  const feeds = (await history()).events.filter((e) => e.kind === "feed");
+  for (const [a, chats] of linked) {
+    const key = `miss-${a}-${Math.floor(Date.now() / (12 * 3_600_000))}`;
+    if (state.sent[key]) continue;
+    const c = await caretaker(a).catch(() => null);
+    // the contract knows (last_fed_ns); before that, the event log does
+    const last = c?.last_fed_ns ? Number(BigInt(c.last_fed_ns) / 1_000_000n) : feeds.find((e) => e.data.account === a)?.ts ?? 0;
+    const never = !c || BigInt(c.lifetime_points) === 0n;
+    if (!never && (!last || Date.now() - last < idleMs)) continue; // fed recently, or the log is too short to tell
+    state.sent[key] = Date.now();
+    const text = never
+      ? `🐼 Hi <b>${esc(who(a))}</b>, you haven't fed me yet. Even 1 $TOTEM counts, and your first feed makes you part of the tribe.`
+      : `🥺 <b>${esc(who(a))}</b>, it's been ${secs(Math.floor((Date.now() - last) / 1000))} since you last fed me. I miss you! Come back: a feed after a long break earns bonus points and a Welcome Back badge.`;
+    for (const id of chats) send(id, text, [t.mood === "rampage" || t.mood === "starving" ? links.rescue : links.farm]);
+  }
 }
 
 /** Alerts for watched accounts. Each fires once (dedupe key in state.sent). */

@@ -1382,3 +1382,64 @@ fn a_new_moon_feed_earns_no_moonlit_badge() {
     c.feed(U128(10 * ONE));
     assert!(!token_ids_of(&c, &g).iter().any(|t| t.starts_with("moonlit-")));
 }
+
+// ---------------------------------------------------------------- welcome back
+
+/// Bob feeds 10 at half a day, genesis keeps the Totem alive, Bob feeds 10 again
+/// at `back`. Returns the contract and Bob.
+fn away_and_back(cfg: Option<crate::Config>, back: u64, second: u128) -> (Contract, AccountId) {
+    let genesis = accounts(0);
+    set_ctx(&genesis, 0);
+    let mut c = Contract::new(genesis.clone(), accounts(1), false, cfg, Some("BaoBao".into()));
+    let bob = accounts(2);
+    fund(&mut c, &genesis, &bob, 1_000, 0);
+    set_ctx(&bob, DAY / 2);
+    c.feed(U128(10 * ONE));
+    let last = keep_happy(&mut c, &genesis, DAY / 2 + DAY / 4, back - DAY / 4);
+    // leave room for Bob's feed without dropping into the rescue zone
+    assert!(back - last <= DAY / 2);
+    set_ctx(&bob, back);
+    c.feed(U128(second * ONE));
+    (c, bob)
+}
+
+#[test]
+fn a_caretaker_back_after_three_days_gets_bonus_points_and_a_welcome_back_badge() {
+    let back = DAY / 2 + 3 * DAY + DAY / 8;
+    let (c, bob) = away_and_back(None, back, 10);
+    // 10 + 10 points, plus 50% of the second feed's 10 points
+    assert_eq!(c.get_caretaker(bob.clone()).lifetime_points.0, 25);
+    let id = format!("returned-1-{bob}");
+    assert!(token_ids_of(&c, &bob).contains(&id), "Welcome Back badge minted");
+    assert_eq!(c.get_caretaker(bob.clone()).last_fed_ns.unwrap().0, back);
+    // soulbound, like every badge
+    let mut c = c;
+    ctx(&bob, back, NearToken::from_yoctonear(1));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.nft_transfer(accounts(3), id.clone(), None, None)));
+    assert!(r.is_err(), "Welcome Back badges are soulbound");
+}
+
+#[test]
+fn a_short_break_earns_no_welcome_back_bonus() {
+    let (c, bob) = away_and_back(None, DAY / 2 + 2 * DAY, 10);
+    assert_eq!(c.get_caretaker(bob.clone()).lifetime_points.0, 20);
+    assert!(!token_ids_of(&c, &bob).iter().any(|t| t.starts_with("returned-")));
+}
+
+#[test]
+fn a_first_ever_feed_is_not_a_welcome_back() {
+    let (mut c, genesis) = setup_at(0);
+    set_ctx(&genesis, DAY * 3 / 10); // 30% into the day: not hungry enough to rescue
+    c.feed(U128(10 * ONE));
+    assert_eq!(c.get_caretaker(genesis.clone()).lifetime_points.0, 10);
+    assert!(!token_ids_of(&c, &genesis).iter().any(|t| t.starts_with("returned-")));
+}
+
+#[test]
+fn the_welcome_back_bonus_is_capped() {
+    let mut cfg = crate::Config::defaults(false);
+    cfg.welcome_back_max_points = 3;
+    let (c, bob) = away_and_back(Some(cfg), DAY / 2 + 3 * DAY + DAY / 8, 10);
+    // 10 + 10 + min(5, 3)
+    assert_eq!(c.get_caretaker(bob).lifetime_points.0, 23);
+}

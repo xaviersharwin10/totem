@@ -59,6 +59,7 @@ enum StorageKey {
     NftEnum,
     PredictMarkets,
     PredictBets,
+    LastFed,
 }
 
 #[near(contract_state)]
@@ -140,6 +141,10 @@ pub struct Contract {
     predict_pot: u128,
     predict_markets: LookupMap<u32, PredictMarket>,
     predict_bets: LookupMap<(u32, AccountId), PredictBet>,
+
+    // --- welcome back ---
+    /// When each account last fed (block time, ns): a long gap earns a welcome-back bonus.
+    last_fed: LookupMap<AccountId, u64>,
 }
 
 #[near]
@@ -239,6 +244,7 @@ impl Contract {
             predict_pot: 0,
             predict_markets: LookupMap::new(StorageKey::PredictMarkets),
             predict_bets: LookupMap::new(StorageKey::PredictBets),
+            last_fed: LookupMap::new(StorageKey::LastFed),
         };
         // The Totem NFT of generation 1 belongs to the tribe's DAO.
         this.ensure_treasury();

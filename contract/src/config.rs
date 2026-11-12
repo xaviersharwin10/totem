@@ -94,6 +94,13 @@ pub struct Config {
     pub moon_burn_bp: u32,
     /// Feeding while the moon is at least this lit earns the Moonlit badge (once per cycle).
     pub moonlit_min_bp: u32,
+    /// Welcome back: a caretaker who fed before and then stayed away at least
+    /// this many Totem-days gets bonus points on the feed that brings them back.
+    pub welcome_back_days: u32,
+    /// The bonus, as a share of that feed's points (5000 = +50%)...
+    pub welcome_back_bp: u32,
+    /// ...capped at this many points, so it can't be farmed with big feeds.
+    pub welcome_back_max_points: u32,
 }
 
 impl Config {
@@ -144,6 +151,9 @@ impl Config {
             moon_hunger_bp: 5_000,
             moon_burn_bp: 2_000,
             moonlit_min_bp: 9_000,
+            welcome_back_days: 3,
+            welcome_back_bp: 5_000,
+            welcome_back_max_points: 100,
         }
     }
 
@@ -170,6 +180,7 @@ impl Config {
         assert!(self.total_supply.0 > 0, "zero supply");
         assert!(self.burn_share_bp + self.moon_burn_bp <= FULL_BP, "burn_share + moon_burn > 100%");
         assert!(self.moonlit_min_bp <= FULL_BP, "moonlit_min > 100%");
+        assert!(self.welcome_back_days > 0, "welcome_back_days must be positive");
     }
 }
 

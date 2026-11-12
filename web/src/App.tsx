@@ -17,6 +17,7 @@ import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
+import { AlertsPanel } from "./Alerts";
 import { moonEmoji as moonIcon, moonLit, moonPhaseName, moonWaxing, nextFullMoon } from "./moon";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
@@ -54,6 +55,7 @@ export default function App() {
   const [histGen, setHistGen] = useState<number | null>(null);
   const [stakeOpen, setStakeOpen] = useState(false);
   const [denOpen, setDenOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [predictOpen, setPredictOpen] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
@@ -414,6 +416,9 @@ export default function App() {
             <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
           )}
           {game.mode === "live" && (
+            <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => setAlertsOpen((o) => !o)} title="Get BaoBao's alerts on Telegram">🔔</button>
+          )}
+          {game.mode === "live" && (
             <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
           )}
           <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
@@ -545,6 +550,7 @@ export default function App() {
           onGuest={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}
         />
       )}
+      {alertsOpen && game.mode === "live" && <AlertsPanel onClose={() => setAlertsOpen(false)} onConnect={() => game.connect().catch(() => undefined)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (
         <RescueCard

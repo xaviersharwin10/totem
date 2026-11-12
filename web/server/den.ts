@@ -1,34 +1,30 @@
 // The Den: a page only badge holders can open (NFT-gated, enforced here, not in
 // the browser).
 //
-// To enter, a player signs a NEP-413 message with their account's key (any
-// NEAR wallet's signMessage, or a guest's own key). The server checks:
-//   1. the signature matches the message (NEP-413 hash, ed25519),
-//   2. the public key is a full-access key of that account, on chain right now,
-//   3. the message is fresh (timestamp in the nonce, each nonce used once),
-//   4. the account currently holds a TOTEM badge NFT (hero-, founder-, moonlit-
-//      or badge-), read from the contract's nft_tokens_for_owner.
+// To enter, a player signs a free message proving the account is theirs
+// (server/auth.ts: NEP-413 for NEAR wallets and guests, personal_sign for
+// MetaMask-style 0x accounts; fresh, used once). Then the server checks that
+// the account holds a TOTEM badge NFT right now (hero-, founder-, moonlit-,
+// returned- or badge-), read from the contract's nft_tokens_for_owner.
 // Then it hands out a short-lived session token. Every Den request re-checks
 // the holdings, so a badge holder who loses the badge loses the Den.
 //
-//   POST /api/den/enter   { accountId, publicKey, signature, nonce, message } -> { token, ... }
+//   POST /api/den/enter   { accountId, publicKey?, signature, nonce, scheme? } -> { token, ... }
 //   GET  /api/den         ?token=…  -> { account, keys, wall, diary }
 //   POST /api/den/wall    { token, text } -> { wall }
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { serialize } from "borsh";
-import { PublicKey, baseDecode } from "near-api-js";
 import { rpcForward } from "./rpc";
 import { diaryEntry } from "./voice";
+import { verifyOwnership, type SignedProof } from "./auth";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-grumbo.testnet";
 export const DEN_RECIPIENT = "totem-den";
 const SECRET = process.env.DEN_SECRET ? Buffer.from(process.env.DEN_SECRET) : randomBytes(32);
 const SESSION_MS = 12 * 60 * 60 * 1000;
-const FRESH_MS = 5 * 60 * 1000;
 const WALL_FILE = process.env.DEN_WALL_FILE ?? new URL("../bot/den-wall.json", import.meta.url).pathname;
-const KEY_PREFIXES = ["hero-", "founder-", "moonlit-", "badge-"];
+const KEY_PREFIXES = ["hero-", "founder-", "moonlit-", "returned-", "badge-"];
 
 // ---------------------------------------------------------------- chain
 
@@ -38,15 +34,6 @@ async function rpc<T>(params: Record<string, unknown>): Promise<T> {
   if (!j.result) throw new Error(j.error?.message ?? "RPC failed");
   if ((j.result as { error?: string }).error) throw new Error((j.result as { error?: string }).error);
   return j.result;
-}
-
-async function isFullAccessKey(accountId: string, publicKey: string): Promise<boolean> {
-  try {
-    const k = await rpc<{ permission: unknown }>({ request_type: "view_access_key", account_id: accountId, public_key: publicKey });
-    return k.permission === "FullAccess";
-  } catch {
-    return false;
-  }
 }
 
 interface Token {
@@ -74,27 +61,7 @@ async function denKeys(accountId: string): Promise<{ id: string; title: string }
   return keys;
 }
 
-// ---------------------------------------------------------------- NEP-413
-
-const Nep413Schema = {
-  struct: { message: "string", nonce: { array: { type: "u8", len: 32 } }, recipient: "string", callbackUrl: { option: "string" } },
-} as const;
-
-function nep413Hash(message: string, nonce: Uint8Array, recipient: string): Uint8Array {
-  const prefix = serialize("u32", 2147484061); // 2^31 + 413
-  const body = serialize(Nep413Schema, { message, nonce: Array.from(nonce), recipient, callbackUrl: null });
-  return new Uint8Array(createHash("sha256").update(Buffer.concat([Buffer.from(prefix), Buffer.from(body)])).digest());
-}
-
 export const denMessage = (accountId: string) => `Enter the TOTEM Den as ${accountId}`;
-
-const usedNonces = new Map<string, number>();
-
-function decodeSig(s: string): Uint8Array {
-  // NEP-413 wallets return base64; some return "ed25519:<base58>"
-  if (s.startsWith("ed25519:")) return new Uint8Array(baseDecode(s.slice(8)));
-  return new Uint8Array(Buffer.from(s, "base64"));
-}
 
 // ---------------------------------------------------------------- sessions
 
@@ -164,36 +131,17 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
 }
 
 const NOT_HOLDER =
-  "The Den is for badge holders. Rescue BaoBao from a Rampage (Hero), feed it under a full moon (Moonlit), reach 100 points (Bronze), or be a top-3 feeder of a life (Founder).";
+  "The Den is for badge holders. Rescue BaoBao from a Rampage (Hero), feed it under a full moon (Moonlit), reach 100 points (Bronze), come back after a break (Welcome Back), or be a top-3 feeder of a life (Founder).";
 
 export async function denHandler(req: IncomingMessage, res: ServerResponse) {
   const path = (req.url ?? "/").split("?")[0];
   try {
     if (req.method === "POST" && path === "/enter") {
       const b = await readJson(req);
-      const accountId = String(b.accountId ?? "");
-      const publicKey = String(b.publicKey ?? "");
-      const signature = String(b.signature ?? "");
-      const nonce = new Uint8Array(Buffer.from(String(b.nonce ?? ""), "base64"));
-      if (!/^[a-z0-9._-]{2,64}$/.test(accountId)) return send(res, 400, { error: "bad account id" });
-      if (nonce.length !== 32) return send(res, 400, { error: "bad nonce" });
-      // freshness: the nonce starts with the time it was made (ms, big-endian u64)
-      const madeAt = Number(Buffer.from(nonce.slice(0, 8)).readBigUInt64BE());
-      if (Math.abs(Date.now() - madeAt) > FRESH_MS) return send(res, 400, { error: "That signature is stale. Try again." });
-      const nk = Buffer.from(nonce).toString("hex");
-      if (usedNonces.has(nk)) return send(res, 400, { error: "That signature was already used." });
-      // 1. the signature over exactly our message
-      const hash = nep413Hash(denMessage(accountId), nonce, DEN_RECIPIENT);
-      let ok = false;
-      try {
-        ok = PublicKey.fromString(publicKey).verify(hash, decodeSig(signature));
-      } catch {}
-      if (!ok) return send(res, 401, { error: "The signature doesn't match. Try again." });
-      // 2. the key belongs to the account (full access, as NEP-413 requires)
-      if (!(await isFullAccessKey(accountId, publicKey))) return send(res, 401, { error: "That key isn't a full-access key of this account." });
-      usedNonces.set(nk, Date.now());
-      for (const [k, t] of usedNonces) if (Date.now() - t > FRESH_MS * 2) usedNonces.delete(k);
-      // 3. holds a badge right now
+      const proof = await verifyOwnership(b as unknown as SignedProof, denMessage(String(b.accountId ?? "")), DEN_RECIPIENT);
+      if (proof.ok === false) return send(res, proof.status, { error: proof.error });
+      const accountId = proof.accountId;
+      // holds a badge right now
       const keys = await denKeys(accountId);
       if (!keys.length) return send(res, 403, { error: NOT_HOLDER, keys });
       return send(res, 200, { token: makeToken(accountId), account: accountId, keys });

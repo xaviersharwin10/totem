@@ -5,6 +5,7 @@
 //   /api/relay  NEP-366 meta-transaction relayer: the game pays the gas
 //   /api/propose  open a hatch vote / Keeper nomination for players without NEAR
 //   /api/history  the contract's event log (every feed, burn, bite, life), from chain
+//   /api/den    the badge holders' Den · /api/link  the Telegram alerts button
 import type { Plugin } from "vite";
 import { rpcHandler } from "./rpc";
 import { voiceHandler } from "./voice";
@@ -12,6 +13,7 @@ import { guestHandler, proposeHandler, relayHandler } from "./relay";
 import { historyHandler } from "./history";
 import { autoHatchHandler } from "./autohatch";
 import { denHandler } from "./den";
+import { linkHandler } from "./link";
 
 export function totemServer(): Plugin {
   return {
@@ -25,6 +27,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/history", historyHandler);
       s.middlewares.use("/api/autohatch", autoHatchHandler);
       s.middlewares.use("/api/den", denHandler);
+      s.middlewares.use("/api/link", linkHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -35,6 +38,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/history", historyHandler);
       s.middlewares.use("/api/autohatch", autoHatchHandler);
       s.middlewares.use("/api/den", denHandler);
+      s.middlewares.use("/api/link", linkHandler);
     },
   };
 }

@@ -6,6 +6,7 @@ import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
 import { Tool, addBurst, dropFood, throwBall, world } from "./world/store";
 import { sfx, setMuted } from "./sfx";
+import { music, type MusicMood } from "./music";
 import { TotemChat, useTotemChat } from "./TotemChat";
 import { RescueCard, SosSheet } from "./Sos";
 import { shortGuest } from "./chain/guest";
@@ -114,6 +115,19 @@ export default function App() {
     moonlitNow: view.moonlitNow ?? false,
   };
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
+
+  // background music: starts on the first tap (autoplay rules), follows the mood and the moon
+  useEffect(() => {
+    const go = () => music.start();
+    window.addEventListener("pointerdown", go, { once: true });
+    window.addEventListener("keydown", go, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", go);
+      window.removeEventListener("keydown", go);
+    };
+  }, []);
+  const musicMood: MusicMood = !view.alive ? "dead" : (["happy", "content", "hungry", "starving", "rampage"].includes(view.mood) ? view.mood : "content") as MusicMood;
+  useEffect(() => music.setMood(musicMood, moon.lit >= 0.9), [musicMood, moon.lit >= 0.9]);
 
   // switching backends restarts the event stream
   useEffect(() => {
@@ -255,11 +269,28 @@ export default function App() {
     }
   };
 
+  // 🔊 mutes everything; 🎵 turns only the music off (remembered per browser)
+  const [musicOff, setMusicOff] = useState(() => {
+    try {
+      return localStorage.getItem("totem-music") === "off";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => music.setMuted(muted || musicOff), [muted, musicOff]);
   const toggleMute = () => {
     const m = !muted;
     setMutedState(m);
     setMuted(m);
     if (!m) sfx.click();
+  };
+  const toggleMusic = () => {
+    const off = !musicOff;
+    setMusicOff(off);
+    try {
+      localStorage.setItem("totem-music", off ? "off" : "on");
+    } catch {}
+    music.start(); // a tap on 🎵 counts as the first gesture too
   };
 
   // keyboard shortcuts
@@ -439,6 +470,7 @@ export default function App() {
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
         <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
         <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
+        <button className={`icon-btn ${musicOff ? "music-off" : ""}`} onClick={toggleMusic} title={musicOff ? "Music off: tap to play" : "Music on: tap to turn off"} aria-label={musicOff ? "Turn music on" : "Turn music off"} aria-pressed={!musicOff}>🎵</button>
         <button className="icon-btn" onClick={toggleMute} title="Sound">{muted ? "🔇" : "🔊"}</button>
       </nav>
 

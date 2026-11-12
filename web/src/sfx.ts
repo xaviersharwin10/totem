@@ -9,6 +9,8 @@ function ac(): AudioContext {
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
 }
+/** The one AudioContext the game uses (sound effects and music share it). */
+export const audioCtx = ac;
 
 export function setMuted(m: boolean) {
   muted = m;

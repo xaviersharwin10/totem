@@ -27,6 +27,7 @@ export interface Game {
   events: GameEvent[];
   accountId: string;
   isGuest: boolean; // playing free: no wallet, the game pays the gas
+  freePlay: boolean; // the server has a relayer, so free guest play is offered
   balance: number | null; // $TOTEM, live only
   busy: boolean;
   connect: () => Promise<void>;
@@ -363,6 +364,7 @@ export function useGame(): Game {
     events,
     accountId: near.accountId,
     isGuest: near.isGuest,
+    freePlay: near.freePlay,
     balance,
     busy,
     connect: near.signIn,

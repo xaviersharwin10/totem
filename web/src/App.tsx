@@ -337,10 +337,14 @@ export default function App() {
             ) : (
               <>
                 <button className="press-btn wallet-btn" onClick={() => game.connect().catch(() => undefined)}>Connect wallet</button>
-                <button className="ghost-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
-                  ⚡ Play free, no wallet
-                </button>
-                <button className="link-btn restore-link" onClick={() => setGuestKey("restore")}>have a guest backup code?</button>
+                {game.freePlay && (
+                  <>
+                    <button className="ghost-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
+                      ⚡ Play free, no wallet
+                    </button>
+                    <button className="link-btn restore-link" onClick={() => setGuestKey("restore")}>have a guest backup code?</button>
+                  </>
+                )}
               </>
             ))}
           {game.mode === "live" && (

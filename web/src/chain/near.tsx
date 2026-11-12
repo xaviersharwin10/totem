@@ -35,6 +35,8 @@ export interface NearCtx {
   accountId: string;
   /** true when playing as a gasless guest (no wallet; the game pays the gas) */
   isGuest: boolean;
+  /** true when the server has a relayer configured, so free guest play is offered */
+  freePlay: boolean;
   signIn: () => Promise<void>;
   /** Start (or resume) a free guest account: no wallet, no NEAR needed. */
   playAsGuest: () => Promise<string>;
@@ -83,6 +85,18 @@ export function NearProvider({ children }: PropsWithChildren) {
   guestRef.current = guest;
   const isGuest = !walletAccount && !!guest;
   const [ready, setReady] = useState(false);
+  // Ask the server once whether free guest play is available (relayer configured).
+  const [freePlay, setFreePlay] = useState(false);
+  useEffect(() => {
+    let off = false;
+    fetch("/api/guest")
+      .then((r) => r.json())
+      .then((j: { available?: boolean }) => !off && setFreePlay(!!j.available))
+      .catch(() => !off && setFreePlay(false));
+    return () => {
+      off = true;
+    };
+  }, []);
   const pluginReady = useRef<Promise<void>>();
 
   useEffect(() => {
@@ -228,8 +242,8 @@ export function NearProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo(
-    () => ({ ready, accountId, isGuest, guest: isGuest ? guest : null, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany }),
-    [ready, accountId, isGuest, guest, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany]
+    () => ({ ready, accountId, isGuest, freePlay, guest: isGuest ? guest : null, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany }),
+    [ready, accountId, isGuest, freePlay, guest, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

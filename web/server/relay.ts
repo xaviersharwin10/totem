@@ -22,7 +22,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { Account, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
 import { deserialize } from "borsh";
@@ -40,17 +40,33 @@ const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
 const DAO_METHODS = new Set(["act_proposal"]);
 const MAX_GAS_DAO = 250_000_000_000_000n; // 250 Tgas
 
+const CREDS_FILE = `${homedir()}/.near-credentials/testnet/${RELAYER_ID}.json`;
+
+/** True when the relayer has a key (env or local keychain) and can sponsor gas. */
+function relayerConfigured(): boolean {
+  if (process.env.RELAYER_PRIVATE_KEY) return true;
+  try {
+    return existsSync(CREDS_FILE);
+  } catch {
+    return false;
+  }
+}
+
 let relayer: Account | null = null;
 function getRelayer(): Account {
   if (relayer) return relayer;
   let key = process.env.RELAYER_PRIVATE_KEY;
   if (!key) {
-    const f = `${homedir()}/.near-credentials/testnet/${RELAYER_ID}.json`;
-    key = JSON.parse(readFileSync(f, "utf8")).private_key as string;
+    if (!existsSync(CREDS_FILE)) {
+      throw new Error("relayer not configured");
+    }
+    key = JSON.parse(readFileSync(CREDS_FILE, "utf8")).private_key as string;
   }
   relayer = new Account(RELAYER_ID, new JsonRpcProvider({ url: RPC }), key as KeyPairString);
   return relayer;
 }
+
+const NO_RELAYER = "Free play isn't set up on this server. Connect a wallet to play for now.";
 
 // ---------------- rate limits ----------------
 const buckets = new Map<string, number[]>();
@@ -109,7 +125,10 @@ function failureOf(outcome: unknown): string | null {
 
 // ---------------- /api/guest ----------------
 export async function guestHandler(req: IncomingMessage, res: ServerResponse) {
+  // Capability probe: the UI asks whether free play is available here.
+  if (req.method === "GET") return send(res, 200, { available: relayerConfigured() });
   if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+  if (!relayerConfigured()) return send(res, 503, { error: NO_RELAYER, unavailable: true });
   if (over(`guest:${ipOf(req)}`, 5, 60 * 60_000)) return send(res, 429, { error: "Too many new guest accounts from here, try again later." });
   try {
     const body = await readJson(req);
@@ -146,6 +165,7 @@ interface DecodedDelegate {
 
 export async function relayHandler(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+  if (!relayerConfigured()) return send(res, 503, { error: NO_RELAYER, unavailable: true });
   const ip = ipOf(req);
   if (over(`relay-ip:${ip}`, 40, 60 * 60_000)) return send(res, 429, { error: "Too many free actions from here this hour." });
   try {
@@ -203,6 +223,7 @@ async function openProposals(r: Account): Promise<DaoProposal[]> {
 
 export async function proposeHandler(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+  if (!relayerConfigured()) return send(res, 503, { error: NO_RELAYER, unavailable: true });
   if (over(`propose:${ipOf(req)}`, 6, 60 * 60_000)) return send(res, 429, { error: "Too many proposals from here this hour." });
   try {
     const body = await readJson(req);

@@ -574,3 +574,27 @@ button { font-family: inherit; }
 /* ── pulsing 🔮 icon when a market is live ── */
 .icon-btn.pulse { animation: pulse 1.2s infinite; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* the real moon */
+.chip.moon { border: 0; cursor: pointer; font-family: inherit; background: #262a44; color: #fff6d6; text-transform: none; }
+.chip.moon.moonlit { box-shadow: 0 0 0 2px #ffe27a, 0 0 14px #ffe27a; }
+.moonlit-pill { margin-top: 8px; font-size: 12px; font-weight: 800; color: #6b4fc4; }
+.moon-preview { margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(43,34,48,0.06); cursor: default; }
+.moon-preview label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.moon-preview input { width: 100%; }
+
+/* the Den (badge holders only) */
+.tribe.den { max-width: 520px; }
+.den-door p { font-size: 13.5px; font-weight: 600; line-height: 1.5; margin: 6px 0 12px; }
+.den-earn { margin: 0 0 6px; padding-left: 18px; font-size: 13px; font-weight: 600; line-height: 1.7; }
+.den-keys { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.den-key { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: #262a44; color: #fff6d6; }
+.den-diary { background: #fffaf0; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600; line-height: 1.5; font-style: italic; box-shadow: inset 0 0 0 1.5px #f1e3c4; margin-bottom: 12px; }
+.den-post { display: flex; gap: 6px; margin-bottom: 8px; }
+.den-post input { flex: 1; min-width: 0; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 14px; font-weight: 600; background: #fff; box-shadow: inset 0 0 0 2px rgba(155,122,216,0.25); outline: none; }
+.den-post .press-btn { height: 40px; padding: 0 14px; font-size: 14px; }
+.den-wall { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.den-msg { background: rgba(255,255,255,0.7); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 600; line-height: 1.4; word-break: break-word; }
+.den-who { font-weight: 800; color: #6b4fc4; }
+.den-at { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-left: 4px; }
+.den-ghost { color: var(--ink) !important; }

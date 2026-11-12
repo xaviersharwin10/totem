@@ -40,6 +40,9 @@ export interface Game {
   feed: (amount: number | "fill") => Promise<FeedResult>;
   poke: () => Promise<void>;
   hatch: (() => void) | null; // practice only; live hatching is a DAO vote
+  /** Practice only: preview another moon (0..1), or null for tonight's real moon. */
+  moonPreview: number | null;
+  setMoonPreview: ((lit: number | null) => void) | null;
   explorer: string;
   // survival records (Friends ball-catch style)
   recordLifespanSec: number;   // best lifespan across past generations (0 = no record yet)
@@ -76,6 +79,12 @@ interface ChainTotem {
   seconds_until_rampage: string | null;
   seconds_until_next_bite: string | null;
   seconds_until_death: string | null;
+  // the real moon (contract moon.rs); absent on an older deploy
+  moon_bp?: number;
+  moon_phase?: string;
+  hunger_bp?: number;
+  burn_share_bp?: number;
+  moonlit_now?: boolean;
 }
 interface ChainStats {
   total_burned: string;
@@ -117,6 +126,11 @@ function toView(t: ChainTotem, s: ChainStats): TotemView {
     secondsUntilDeath: num(t.seconds_until_death),
     secondsUntilNextBite: num(t.seconds_until_next_bite),
     bitesUntilDeath: t.bites_until_death,
+    moonLit: t.moon_bp === undefined ? undefined : t.moon_bp / 10_000,
+    moonPhase: t.moon_phase,
+    hunger: t.hunger_bp === undefined ? undefined : t.hunger_bp / 10_000,
+    burnShare: t.burn_share_bp === undefined ? undefined : t.burn_share_bp / 10_000,
+    moonlitNow: t.moonlit_now,
   };
 }
 
@@ -245,7 +259,7 @@ export function useGame(): Game {
     // tick the countdowns and the belly between polls
     const dt = (Date.now() - live.at) / 1000;
     const dec = (x: number | null) => (x === null ? null : Math.max(0, x - dt));
-    const drain = base.alive && base.fullnessBp > 0 ? Math.round((dt * 1000 * 10_000) / DAY_MS) : 0;
+    const drain = base.alive && base.fullnessBp > 0 ? Math.round(((dt * 1000 * 10_000) / DAY_MS) * (base.hunger ?? 1)) : 0;
     view = {
       ...base,
       fullnessBp: Math.max(0, base.fullnessBp - drain),
@@ -313,13 +327,13 @@ export function useGame(): Game {
     setBusy(true);
     try {
       await near.call("feed", { amount: amount === "fill" ? live.t.fill_amount : toYocto(want) });
-      pushLive(rescue ? "rescue" : "feed", `${rescue ? "⚔️" : "🎋"} you fed ${fmt(accepted)}: ${fmt(accepted / 2)} burned forever`);
+      pushLive(rescue ? "rescue" : "feed", `${rescue ? "⚔️" : "🎋"} you fed ${fmt(accepted)}: ${fmt(accepted * (view?.burnShare ?? 0.5))} burned forever`);
     } finally {
       setBusy(false);
       refresh();
       refreshBalance();
     }
-    return { accepted, burn: accepted / 2, rescue };
+    return { accepted, burn: accepted * (view.burnShare ?? 0.5), rescue };
   };
 
   const poke = async () => {
@@ -374,8 +388,8 @@ export function useGame(): Game {
       const rescueNow = live.t.fullness_bp < 3000;
       await near.callMany(calls);
       const accepted = toTokens(amt);
-      pushLive("rescue", `${rescueNow ? "🦸" : "🎋"} you fed ${fmt(accepted)}: ${fmt(accepted / 2)} burned forever`);
-      return { accepted, burn: accepted / 2, rescue: rescueNow };
+      pushLive("rescue", `${rescueNow ? "🦸" : "🎋"} you fed ${fmt(accepted)}: ${fmt(accepted * (view?.burnShare ?? 0.5))} burned forever`);
+      return { accepted, burn: accepted * (view?.burnShare ?? 0.5), rescue: rescueNow };
     } finally {
       setBusy(false);
       refresh();
@@ -473,6 +487,15 @@ export function useGame(): Game {
     feed,
     poke,
     hatch,
+    moonPreview: engine.moonPreview,
+    setMoonPreview:
+      mode === "practice"
+        ? (lit) => {
+            engine.settle(Date.now()); // the old moon applies up to now
+            engine.moonPreview = lit;
+            bump();
+          }
+        : null,
     explorer: `${EXPLORER}/address/${CONTRACT_ID}`,
     recordLifespanSec,
     currentLifespanSec,

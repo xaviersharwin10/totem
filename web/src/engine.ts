@@ -48,6 +48,15 @@ export interface TotemView {
   secondsUntilDeath: number | null;
   secondsUntilNextBite: number | null;
   bitesUntilDeath: number;
+  /** tonight's real moon, 0 = new … 1 = full (contract: moon.rs) */
+  moonLit?: number;
+  moonPhase?: string;
+  /** belly empties this many times faster than normal (1 at new moon, 1.5 at full) */
+  hunger?: number;
+  /** share of the next meal that burns (0.5 at new moon, 0.7 at full) */
+  burnShare?: number;
+  /** feeding now earns the soulbound Moonlit badge */
+  moonlitNow?: boolean;
 }
 
 export interface GameEvent {
@@ -69,12 +78,13 @@ export interface GameEvent {
   ts: number;
 }
 
+import { burnShareFor, hungerFor, moonLit, moonPhaseName, MOONLIT_MIN } from "./moon";
+
 // --- parameters (demo clock: one Totem-day = 120 s, matching demo_mode) --------
 export const DAY_MS = 120_000;
 const FULL = 10_000;
 const BASE_MEAL = 100;
 const APPETITE = 1.5;
-const BURN_SHARE = 0.5;
 const HAPPY_BP = 7_000;
 const STARVING_BP = 3_000;
 const RESCUE_MULT = 2;
@@ -122,6 +132,16 @@ export class TotemEngine {
   hoard = 0;
   totalBurned = 0;
   totalFed = 0;
+  /** Practice only: preview another moon (0..1). null = tonight's real moon. */
+  moonPreview: number | null = null;
+
+  moonAt(now: number): number {
+    return this.moonPreview ?? moonLit(now);
+  }
+  /** How long a full belly lasts under this moon (the contract's drain_day_ns). */
+  private drainDay(now: number): number {
+    return DAY_MS / hungerFor(this.moonAt(now));
+  }
 
   bornAt: number;
   private _deadLifespanMs: number | null = null;
@@ -177,10 +197,11 @@ export class TotemEngine {
     }
     const elapsed = now - this.lastSettledAt;
     const f0 = this.fullnessBp;
+    const day = this.drainDay(now);
 
     // XP: time spent Happy during the drain.
     if (f0 > HAPPY_BP) {
-      const dur = ((f0 - HAPPY_BP) / FULL) * DAY_MS;
+      const dur = ((f0 - HAPPY_BP) / FULL) * day;
       this.happyMs += Math.min(dur, elapsed);
     }
 
@@ -197,9 +218,9 @@ export class TotemEngine {
       }
     }
 
-    const toZero = (f0 / FULL) * DAY_MS;
+    const toZero = (f0 / FULL) * day;
     if (elapsed < toZero) {
-      this.fullnessBp = Math.max(0, Math.round(f0 - (elapsed / DAY_MS) * FULL));
+      this.fullnessBp = Math.max(0, Math.round(f0 - (elapsed / day) * FULL));
     } else {
       const z = this.lastSettledAt + toZero;
       this.fullnessBp = 0;
@@ -268,7 +289,7 @@ export class TotemEngine {
     if (accepted <= 0) throw new Error("the Totem is full");
 
     const rescue = this.fullnessBp < STARVING_BP;
-    const burn = accepted * BURN_SHARE;
+    const burn = accepted * burnShareFor(this.moonAt(now));
     const toHoard = accepted - burn;
     this.hoard += toHoard;
     this.totalBurned += burn;
@@ -338,10 +359,11 @@ export class TotemEngine {
     let fullnessBp = this.fullnessBp;
     if (this.alive && now > this.lastSettledAt) {
       const elapsed = now - this.lastSettledAt;
-      const toZero = (this.fullnessBp / FULL) * DAY_MS;
+      const d = this.drainDay(now);
+      const toZero = (this.fullnessBp / FULL) * d;
       fullnessBp =
         elapsed < toZero
-          ? Math.max(0, Math.round(this.fullnessBp - (elapsed / DAY_MS) * FULL))
+          ? Math.max(0, Math.round(this.fullnessBp - (elapsed / d) * FULL))
           : 0;
     }
     const rampageNow = this.alive && (fullnessBp === 0 || this.rampageStartedAt !== null);
@@ -352,15 +374,16 @@ export class TotemEngine {
     const ms = this.mealSize(level, this.form);
     const fill = (ms * (FULL - fullnessBp)) / FULL;
 
+    const day = this.drainDay(now);
     const untilStarving =
-      fullnessBp > STARVING_BP ? ((fullnessBp - STARVING_BP) / FULL) * DAY_MS / 1000 : null;
-    const untilRampage = fullnessBp > 0 ? (fullnessBp / FULL) * DAY_MS / 1000 : null;
+      fullnessBp > STARVING_BP ? ((fullnessBp - STARVING_BP) / FULL) * day / 1000 : null;
+    const untilRampage = fullnessBp > 0 ? (fullnessBp / FULL) * day / 1000 : null;
     let nextBiteMs: number | null = null;
     if (this.alive) {
       if (this.rampageStartedAt !== null) {
         nextBiteMs = this.rampageStartedAt + (this.bitesApplied + 1) * BITE_INTERVAL_MS - now;
       } else {
-        nextBiteMs = (fullnessBp / FULL) * DAY_MS + BITE_INTERVAL_MS;
+        nextBiteMs = (fullnessBp / FULL) * day + BITE_INTERVAL_MS;
       }
       nextBiteMs = Math.max(0, nextBiteMs);
     }
@@ -389,6 +412,11 @@ export class TotemEngine {
       secondsUntilDeath: untilDeath,
       secondsUntilNextBite: untilNextBite,
       bitesUntilDeath: level,
+      moonLit: this.moonAt(now),
+      moonPhase: this.moonPreview === null ? moonPhaseName(now) : "preview",
+      hunger: hungerFor(this.moonAt(now)),
+      burnShare: burnShareFor(this.moonAt(now)),
+      moonlitNow: this.alive && this.moonAt(now) >= MOONLIT_MIN,
     };
   }
 

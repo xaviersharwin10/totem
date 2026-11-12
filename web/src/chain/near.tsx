@@ -5,7 +5,7 @@
 // so feeding / poking / the faucet sign in the browser without a wallet popup.
 
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { FailoverRpcProvider, JsonRpcProvider, getTransactionLastResult } from "near-api-js";
+import { FailoverRpcProvider, JsonRpcProvider, KeyPair, KeyPairSigner, type KeyPairString, getTransactionLastResult } from "near-api-js";
 import { NearConnector, type EventMap } from "@hot-labs/near-connect";
 import { createAccessKeyPlugin } from "function-call-key-plugin";
 import { CONTRACT_ID, KEY_METHODS, NETWORK, RPC_URLS } from "./config";
@@ -52,6 +52,8 @@ export interface NearCtx {
   view: <T = unknown>(method: string, args?: Record<string, unknown>) => Promise<T>;
   viewAt: <T = unknown>(contractId: string, method: string, args?: Record<string, unknown>) => Promise<T>;
   call: (method: string, args?: Record<string, unknown>, opts?: { gas?: string; deposit?: string }) => Promise<unknown>;
+  /** Sign a NEP-413 message (proves you own the account; nothing is sent to the chain). */
+  signMessage: (message: string, recipient: string, nonce: Uint8Array) => Promise<{ accountId: string; publicKey: string; signature: string }>;
 }
 
 const Ctx = createContext<NearCtx | null>(null);
@@ -241,9 +243,29 @@ export function NearProvider({ children }: PropsWithChildren) {
     [wallet, guest]
   );
 
+  const signMessage = useCallback(
+    async (message: string, recipient: string, nonce: Uint8Array) => {
+      const g = guestRef.current;
+      if (!wallet && g) {
+        // a guest signs with its own key, kept in this browser
+        const s = await new KeyPairSigner(KeyPair.fromString(g.secretKey as KeyPairString)).signNep413Message(g.accountId, { message, recipient, nonce });
+        const sig = s.signature as unknown as Uint8Array | { data: Uint8Array };
+        const bytes = sig instanceof Uint8Array ? sig : sig.data;
+        let bin = "";
+        bytes.forEach((b) => (bin += String.fromCharCode(b)));
+        return { accountId: g.accountId, publicKey: s.publicKey.toString(), signature: btoa(bin) };
+      }
+      if (!wallet) throw new Error("Connect a wallet first");
+      const r = await wallet.signMessage({ message, recipient, nonce });
+      if (!r?.signature) throw new Error("This wallet can't sign messages. Try a NEAR wallet (HOT, Meteor) or play as a guest.");
+      return { accountId: r.accountId, publicKey: r.publicKey, signature: r.signature };
+    },
+    [wallet, guest]
+  );
+
   const value = useMemo(
-    () => ({ ready, accountId, isGuest, freePlay, guest: isGuest ? guest : null, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany }),
-    [ready, accountId, isGuest, freePlay, guest, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany]
+    () => ({ ready, accountId, isGuest, freePlay, guest: isGuest ? guest : null, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany, signMessage }),
+    [ready, accountId, isGuest, freePlay, guest, signIn, signOut, playAsGuest, restoreGuestCode, view, viewAt, call, callAt, callMany, signMessage]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

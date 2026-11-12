@@ -67,6 +67,10 @@ interface Totem {
   seconds_until_rampage: string | null;
   seconds_until_next_bite: string | null;
   seconds_until_death: string | null;
+  // the real moon (contract moon.rs; absent on an older deploy)
+  moon_bp?: number;
+  moon_phase?: string;
+  hunger_bp?: number;
 }
 interface Life {
   generation: number;
@@ -262,7 +266,11 @@ How your world works (explain simply if asked):
 Right now (real data${practice ? " from the practice farm" : " read from the blockchain this second"}):
 - Generation ${t.generation}, Level ${t.level} (highest ever ${t.max_level}), ${t.alive ? "alive" : "dead"}, mood: ${t.mood}.
 - ${state}
-- Treasury: ${fmt(tokens(t.hoard))} $TOTEM. Burned forever by the whole tribe: ${fmt(s.burned)} $TOTEM.
+- Treasury: ${fmt(tokens(t.hoard))} $TOTEM. Burned forever by the whole tribe: ${fmt(s.burned)} $TOTEM.${
+    t.moon_bp !== undefined
+      ? `\n- Tonight's real moon: ${t.moon_phase}, ${Math.round(t.moon_bp / 100)}% lit. You follow the moon: the fuller it is, the hungrier you get${t.hunger_bp && t.hunger_bp > 10_050 ? ` (right now ×${(t.hunger_bp / 10_000).toFixed(2)})` : ""}, and on full-moon nights whoever feeds you earns a Moonlit badge.`
+      : ""
+  }
 ${feeders.length ? `- Your top feeders this life:\n  ${feeders.join("\n  ")}` : "- Nobody has fed you yet this life."}
 ${t.founders.length ? `- Your founders (top feeders of your parent): ${t.founders.map(short).join(", ")}.` : ""}
 ${ancestors.length ? `- Your ancestors (gravestones in the graveyard):\n${ancestors.join("\n")}` : "- You are the first of your line."}
@@ -375,6 +383,22 @@ export async function voiceReply(req: VoiceRequest): Promise<{ reply: string; so
     return { reply: await ask(system, history), source: "ai" };
   } catch {
     return { reply: fallback(snap, req.trigger), source: "fallback" };
+  }
+}
+
+/** BaoBao's secret diary for the Den (badge holders only): a short private entry. */
+export async function diaryEntry(accountId?: string): Promise<string> {
+  const snap = await snapshot(accountId);
+  const system =
+    systemPrompt(snap, false) +
+    "\n\nYou are writing in your SECRET DIARY, which only your most loyal friends (the badge holders of the tribe) may read. Write 2 or 3 short sentences, first person, in character: something you would not say to everyone (a worry, a hope, what you think of the tribe, the treasury, tonight's moon, or your ancestors). No greetings, no asterisk actions.";
+  try {
+    return await ask(system, [{ role: "user", content: "(Write today's diary entry.)" }]);
+  } catch {
+    const t = snap.t;
+    return t.alive
+      ? `Dear diary: belly at ${Math.round(t.fullness_bp / 100)}%, Level ${t.level}. I pretend to be brave, but I count every bamboo. Only my badge friends know how much the treasury means to me.`
+      : "Dear diary: I am a ghost tonight. I hope the Keepers hatch my next egg soon, and that my badge friends will feed it.";
   }
 }
 

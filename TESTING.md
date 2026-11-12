@@ -77,6 +77,8 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 | 17 | [Phone](#17-phone) | any | 5 min |
 | 18 | [Developer tests](#18-developer-tests) | none | 5 min |
 | 19 | [Prediction market](#19-prediction-market) | alive, then Rampage | 8 min |
+| 20 | [BaoBao follows the real moon](#20-baobao-follows-the-real-moon) | any | 5 min |
+| 21 | [The Den (badge holders only)](#21-the-den-badge-holders-only) | any | 5 min |
 
 ---
 
@@ -303,7 +305,7 @@ Open the app on a phone, in portrait.
 # Contract: unit tests + sandbox tests on a real local NEAR node
 cd contract
 cargo near build non-reproducible-wasm   # the sandbox tests load target/near/totem.wasm
-cargo test                              # expect: 34 passed (unit) and 2 passed (sandbox)
+cargo test                              # expect: 49 passed (unit) and 2 passed (sandbox)
 
 # Economic simulation: 60 days, five scenarios, charts in sim/out/
 cd ../sim
@@ -385,6 +387,35 @@ cargo test                    # expect: 40 unit tests + 2 sandbox — all pass
 # new_market_opens_on_second_rampage
 # predict_with_no_losers_pays_stake_back
 ```
+
+---
+
+### 20. BaoBao follows the real moon
+
+The contract computes tonight's moon from the block time ([`contract/src/moon.rs`](contract/src/moon.rs)). **Testnet status:** the app and the moon in the sky are live; the moon's effect on hunger and burning needs the contract redeployed (until then the 🌙 sheet says so).
+
+- [ ] Look at the sky above the totem pole. **See:** the moon with tonight's real phase (a waxing crescent lit on the right in mid-November 2026; full moon on 24 November). Compare it with the real sky or any moon-phase site.
+- [ ] Top-left: the 🌙 chip shows how lit it is (e.g. "🌒 7%"). Tap it or the moon. **See:** tonight's phase, the hunger multiplier, this meal's burn share, and the next full moon date.
+- [ ] **Practice:** switch to 🧪 Practice, open the 🌙 sheet and drag **Preview a moon** to 100%. **See:** the chip reads "hunger ×1.50", the belly drains visibly faster, and a feed of 50 burns 35 (70%) instead of 25. Drag back to 0% (or tap "back to tonight's moon").
+- [ ] **On chain** (after the redeploy): `get_totem` returns `moon_bp`, `moon_phase`, `hunger_bp`, `burn_share_bp` and `moonlit_now`; `get_config` returns `moon_hunger_bp` (5000), `moon_burn_bp` (2000) and `moonlit_min_bp` (9000).
+- [ ] **Moonlit badge** (from 22 to 27 November, when the moon is at least 90% lit): feed once. **See:** a "🌕 Moonlit night" line on the card, then a soulbound `moonlit-<cycle>-<you>` NFT. A second feed the same night mints nothing more.
+- [ ] Unit tests: `cargo test moon` (the maths against known dates, the 70% burn and ×1.5 hunger at full moon, the settled drain matching the view's prediction, one Moonlit badge per cycle).
+
+### 21. The Den (badge holders only)
+
+Holders of a Hero, Founder, Moonlit or Caretaker badge NFT can open 🗝 the Den. The server enforces it ([`web/server/den.ts`](web/server/den.ts)); the browser is never trusted.
+
+- [ ] With an account that holds **no** badge: press 🗝. **See:** "holds no badge yet" and how to earn each one. There is no Enter button.
+- [ ] Earn one: rescue BaoBao from a Rampage as a guest (scenario 5) to get a Hero badge, then press 🗝. **See:** your badges, then **Enter the Den**. Press it. A guest signs with its own key (no popup); a NEAR wallet asks you to sign a message (free, nothing is sent to the chain).
+- [ ] **See:** BaoBao's secret diary (a short private entry from its AI voice) and the holders' wall. Post a message; it appears at the top. One post every 20 seconds.
+- [ ] Close and reopen 🗝. **See:** you go straight in (a 12-hour session), and the server re-checks your badges on every request.
+- [ ] **Security checks** (needs the testnet keys of `totem-grumbo-keeper`, a Founder holder, and `keeper2`, who holds none):
+  ```bash
+  cd web
+  RUN_BOT=0 AUTO_HATCH=0 PORT=8096 npx tsx server/prod.ts &
+  npx tsx server/den.e2e.mts http://localhost:8096      # expect: 9 passed, 0 failed
+  ```
+  It checks that a holder gets in; a replayed signature, a non-holder, someone else's key, a tampered signature, a signature over a different message and a forged session token are all refused; and a holder can post.
 
 ---
 

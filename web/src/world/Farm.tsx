@@ -949,3 +949,81 @@ export function SkyAndLight({ dayFrac, mood }: { dayFrac: number; mood: Mood }) 
     </>
   );
 }
+
+// --------------------------------------------------------------------------- //
+// the real moon: tonight's phase, drawn on a camera-facing disc
+// --------------------------------------------------------------------------- //
+
+function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
+  const S = 256;
+  const c = document.createElement("canvas");
+  c.width = c.height = S;
+  const g = c.getContext("2d")!;
+  const r = S * 0.34;
+  const cx = S / 2;
+  const cy = S / 2;
+  // glow, brighter the fuller it is
+  const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, S / 2);
+  glow.addColorStop(0, `rgba(255,248,214,${0.15 + 0.45 * lit})`);
+  glow.addColorStop(1, "rgba(255,248,214,0)");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, S, S);
+  // the unlit part: faint earthshine, like the real moon in a day sky
+  const DARK = "rgba(214,222,242,0.38)";
+  g.fillStyle = DARK;
+  g.beginPath();
+  g.arc(cx, cy, r, 0, Math.PI * 2);
+  g.fill();
+  // the lit part: a half disc on the lit side, then the terminator ellipse
+  const right = waxing; // northern-hemisphere view: waxing is lit on the right
+  g.fillStyle = "#fff6d6";
+  g.beginPath();
+  g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !right);
+  g.fill();
+  const w = r * Math.abs(1 - 2 * lit);
+  // a crescent's terminator is cut back to the unlit colour (clear first so it isn't doubled)
+  if (lit <= 0.5) {
+    g.save();
+    g.globalCompositeOperation = "destination-out";
+    g.beginPath();
+    g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  g.fillStyle = lit > 0.5 ? "#fff6d6" : DARK;
+  g.beginPath();
+  g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
+  g.fill();
+  // a few craters
+  g.fillStyle = "rgba(120,110,90,0.18)";
+  for (const [x, y, rr] of [[-0.3, -0.25, 0.14], [0.2, 0.3, 0.1], [0.35, -0.1, 0.07], [-0.1, 0.15, 0.06]])
+    g.beginPath(), g.arc(cx + x * r, cy + y * r, rr * r, 0, Math.PI * 2), g.fill();
+  return c;
+}
+
+export function Moon({ lit, waxing, onInfo }: { lit: number; waxing: boolean; onInfo: () => void }) {
+  const key = Math.round(lit * 100) + (waxing ? "w" : "n");
+  const tex = useMemo(() => {
+    const t = new THREE.CanvasTexture(drawMoon(lit, waxing));
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const ref = useRef<THREE.Sprite>(null!);
+  useFrame((state) => {
+    ref.current.position.y = -2.4 + Math.sin(state.clock.elapsedTime * 0.2) * 0.25;
+  });
+  return (
+    <sprite
+      ref={ref}
+      position={[3.5, -2.4, -32]}
+      scale={[4.6, 4.6, 1]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onInfo();
+      }}
+    >
+      <spriteMaterial map={tex} transparent depthWrite={false} fog={false} />
+    </sprite>
+  );
+}

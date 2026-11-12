@@ -16,6 +16,8 @@ import { HistoryPanel } from "./History";
 import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
 import { friendly } from "./errors";
+import { DenPanel } from "./Den";
+import { moonEmoji as moonIcon, moonLit, moonPhaseName, moonWaxing, nextFullMoon } from "./moon";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
 const LOOKS: PandaLook[] = [
@@ -51,6 +53,7 @@ export default function App() {
   // null = closed; 0 = open on the ledger; n = open on generation n's life
   const [histGen, setHistGen] = useState<number | null>(null);
   const [stakeOpen, setStakeOpen] = useState(false);
+  const [denOpen, setDenOpen] = useState(false);
   const [predictOpen, setPredictOpen] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
@@ -71,7 +74,7 @@ export default function App() {
   const [follow, setFollow] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [info, setInfo] = useState<null | "totem" | "hoard">(null);
+  const [info, setInfo] = useState<null | "totem" | "hoard" | "moon">(null);
   const [guestKey, setGuestKey] = useState<null | "backup" | "restore">(null);
   // generation whose death card the player hid (it shrinks to a pill; a new death shows it again)
   const [deathHidden, setDeathHidden] = useState<number | null>(null);
@@ -92,6 +95,16 @@ export default function App() {
   const autoHatch = useAutoHatch(game.mode === "live" && !loading && !view.alive);
   const belly = useBelly(game.mode === "live");
   const nextName = `${view.name.replace(/\s+[IVXLCDM]+$/, "")} ${roman(view.generation + 1)}`;
+  // tonight's real moon (the contract reports it once deployed with moon.rs; the
+  // phase itself is the same formula either way)
+  const moon = {
+    lit: view.moonLit ?? moonLit(now),
+    waxing: moonWaxing(now),
+    phase: view.moonPhase && view.moonPhase !== "preview" ? view.moonPhase : game.moonPreview !== null ? "preview" : moonPhaseName(now),
+    hunger: view.hunger,
+    burn: view.burnShare,
+    moonlitNow: view.moonlitNow ?? false,
+  };
   const look = LOOKS[((game.palette % LOOKS.length) + LOOKS.length) % LOOKS.length];
 
   // switching backends restarts the event stream
@@ -288,6 +301,8 @@ export default function App() {
             pushToast("🍎 Apples are a free snack. Only $TOTEM bamboo fills its belly.", "info");
           }}
           onInfo={(w) => setInfo(w)}
+          moonLit={moon.lit}
+          moonWaxing={moon.waxing}
         />
       </div>
 
@@ -304,7 +319,12 @@ export default function App() {
           <span className="chip">gen {view.generation}</span>
           <span className="chip">{view.form}</span>
           <span className="chip lvl">Level {view.level}</span>
+          <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => setInfo("moon")} title="BaoBao follows the real moon">
+            {moonIcon(moon.lit, moon.waxing)} {Math.round(moon.lit * 100)}%
+            {moon.hunger !== undefined && moon.hunger > 1.005 && <> · hunger ×{moon.hunger.toFixed(2)}</>}
+          </button>
         </div>
+        {moon.moonlitNow && view.alive && <div className="moonlit-pill">🌕 Moonlit night: feed now to earn the Moonlit badge</div>}
         <div className="lives" title="Each bite costs a level. At Level 0 it dies.">
           {Array.from({ length: Math.max(view.level, 0) }).map((_, i) => (
             <span key={i} className="life">❤</span>
@@ -389,6 +409,9 @@ export default function App() {
           )}
           {game.mode === "live" && (
             <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
+          )}
+          {game.mode === "live" && (
+            <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
           )}
           {game.mode === "live" && (
             <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
@@ -515,6 +538,13 @@ export default function App() {
         <PredictPanel game={game} onClose={() => setPredictOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
       )}
       {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
+      {denOpen && game.mode === "live" && (
+        <DenPanel
+          onClose={() => setDenOpen(false)}
+          onConnect={() => game.connect().catch(() => undefined)}
+          onGuest={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}
+        />
+      )}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (
         <RescueCard
@@ -571,7 +601,44 @@ export default function App() {
       {/* ---------- info popover ---------- */}
       {info && (
         <div className="info-pop glass" onClick={() => setInfo(null)}>
-          {info === "totem" ? (
+          {info === "moon" ? (
+            <>
+              <div className="ip-title">{moonIcon(moon.lit, moon.waxing)} BaoBao follows the real moon</div>
+              <p>
+                {moon.phase === "preview" ? <>Previewing a moon <b>{Math.round(moon.lit * 100)}% lit</b> (Practice only).</> : <>Tonight: <b>{moon.phase}</b>, {Math.round(moon.lit * 100)}% lit.</>}{" "}
+                The contract computes the moon from the block time: no oracle, no admin, check it against the sky.
+              </p>
+              {moon.hunger !== undefined && moon.burn !== undefined ? (
+                <p>
+                  The fuller the moon, the hungrier it gets: the belly empties <b>×{moon.hunger.toFixed(2)}</b> faster now (×1.5 at full
+                  moon). And meals burn more: <b>{Math.round(moon.burn * 100)}%</b> of the next meal burns (70% at full moon).
+                </p>
+              ) : (
+                <p>The moon's effect on hunger and burning goes live with the next contract deploy.</p>
+              )}
+              <p>
+                Feed while the moon is at least 90% lit to earn the soulbound 🌕 <b>Moonlit</b> badge, once per lunar cycle. Next full
+                moon: <b>{new Date(nextFullMoon(now)).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</b>, a rally night for the tribe.
+              </p>
+              {game.setMoonPreview && (
+                <div className="moon-preview" onClick={(e) => e.stopPropagation()}>
+                  <label>
+                    Preview a moon (Practice): {Math.round((game.moonPreview ?? moon.lit) * 100)}%
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round((game.moonPreview ?? moon.lit) * 100)}
+                      onChange={(e) => game.setMoonPreview?.(Number(e.target.value) / 100)}
+                    />
+                  </label>
+                  {game.moonPreview !== null && (
+                    <button className="link-btn" onClick={() => game.setMoonPreview?.(null)}>back to tonight's moon</button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : info === "totem" ? (
             <>
               <div className="ip-title">🗿 The totem pole</div>
               <p>

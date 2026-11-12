@@ -16,6 +16,7 @@ import {
   Graveyard,
   HoardChest,
   Island,
+  Moon,
   Pond,
   SkyAndLight,
   TotemPole,
@@ -37,7 +38,10 @@ export interface WorldProps {
   onPet: () => void;
   speech?: { id: number; text: string; typing?: boolean } | null;
   onShakeTree: () => void;
-  onInfo: (what: "totem" | "hoard") => void;
+  onInfo: (what: "totem" | "hoard" | "moon") => void;
+  /** tonight's real moon: 0 = new … 1 = full */
+  moonLit: number;
+  moonWaxing: boolean;
 }
 
 export function World(p: WorldProps) {
@@ -54,6 +58,7 @@ export function World(p: WorldProps) {
       }}
     >
       <SkyAndLight dayFrac={p.dayFrac} mood={p.mood} />
+      <Moon lit={p.moonLit} waxing={p.moonWaxing} onInfo={() => p.onInfo("moon")} />
       <Island onGround={p.onGround} rampage={p.mood === "rampage"} />
       <ContactShadows position={[0, 0.02, 0]} opacity={0.25} scale={24} blur={2.4} far={4} />
       <Trees onShake={p.onShakeTree} />

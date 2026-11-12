@@ -1201,3 +1201,184 @@ fn predict_with_no_losers_pays_stake_back() {
     assert_eq!(payout, 100 * ONE, "stake returned when no losers");
     assert_supply_conserved(&c, &[genesis, alice, bob]);
 }
+
+// ---------------------------------------------------------------------- //
+// selling the Totem in the middle of a payout
+// ---------------------------------------------------------------------- //
+
+/// The NFT track's hardest transfer case: the tribe sells the Totem NFT while a
+/// Blessing is reserved but unclaimed and the next period is half-way. The
+/// seller must walk away with nothing, the caretakers who earned the Blessing
+/// must still be paid in full, and the buyer gets governance, not the money.
+#[test]
+fn selling_the_totem_mid_payout_moves_no_money_to_the_seller() {
+    let (mut c, genesis, dao) = setup();
+    let carer = accounts(2);
+    let buyer = accounts(4);
+    fund(&mut c, &genesis, &carer, 50_000, 0);
+    // The caretaker keeps it Happy until a Blessing period closes at L3+.
+    let mut t = DAY / 4;
+    while t <= 7 * DAY {
+        set_ctx(&carer, t);
+        let fill = c.get_totem().fill_amount.0;
+        if fill > 0 {
+            c.feed(U128(fill));
+        }
+        t += DAY / 4;
+    }
+    let owed = c.get_blessing_share(0, carer.clone()).0;
+    assert!(owed > 0, "the caretaker earned a Blessing in period 0");
+    assert!(c.last_closed_period >= 1, "and the next period is running");
+
+    // snapshot every pot before the sale
+    let reserved = c.reserved;
+    let reserve = c.reserve;
+    let treasury_bal = c.ft_balance_of(c.treasury_id()).0;
+    let contract_bal = c.ft_balance_of(contract_id()).0;
+    let seller_bal = c.ft_balance_of(dao.clone()).0;
+
+    // the sale, mid-payout
+    ctx(&dao, t, NearToken::from_yoctonear(1));
+    c.nft_transfer(buyer.clone(), "totem-1".into(), None, None);
+    assert_eq!(c.get_totem().owner, buyer);
+
+    // nothing moved: not to the seller, not to the buyer
+    assert_eq!(c.reserved, reserved, "reserved Blessings untouched");
+    assert_eq!(c.reserve, reserve, "the Reserve untouched");
+    assert_eq!(c.ft_balance_of(c.treasury_id()).0, treasury_bal, "treasury account untouched");
+    assert_eq!(c.ft_balance_of(contract_id()).0, contract_bal, "contract-held pots untouched");
+    assert_eq!(c.ft_balance_of(dao.clone()).0, seller_bal, "the seller got nothing");
+    assert_eq!(c.ft_balance_of(buyer.clone()).0, 0, "the buyer got no tokens either");
+
+    // neither side of the sale can take the caretaker's Blessing
+    for who in [&dao, &buyer] {
+        set_ctx(who, t);
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.claim_blessing(0)));
+        assert!(r.is_err(), "{who} earned no Blessing and cannot claim one");
+    }
+    // the seller lost governance, the buyer has it
+    set_ctx(&dao, t);
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.rename("Mine".into()))).is_err());
+    set_ctx(&buyer, t);
+    c.rename("Sold".into());
+
+    // the caretaker is paid in full after the sale
+    set_ctx(&carer, t);
+    let before = c.ft_balance_of(carer.clone()).0;
+    c.claim_blessing(0);
+    assert_eq!(c.ft_balance_of(carer.clone()).0 - before, owed);
+
+    // and the period that was running during the sale still pays its caretakers
+    let mut t2 = t;
+    while c.last_closed_period < 2 {
+        t2 += DAY / 4;
+        set_ctx(&carer, t2);
+        let fill = c.get_totem().fill_amount.0;
+        if fill > 0 {
+            c.feed(U128(fill));
+        }
+    }
+    assert!(c.get_blessing_share(1, carer.clone()).0 > 0, "period 1 pays the caretaker, not the buyer");
+    assert_eq!(c.get_blessing_share(1, buyer.clone()).0, 0);
+    assert_supply_conserved(&c, &[genesis, carer, buyer, dao]);
+}
+
+// ---------------------------------------------------------------------- //
+// the real moon
+// ---------------------------------------------------------------------- //
+
+/// A Totem born at `t0` (real time, so the moon is real).
+fn setup_at(t0: u64) -> (Contract, AccountId) {
+    let genesis = accounts(0);
+    set_ctx(&genesis, t0);
+    let c = Contract::new(genesis.clone(), accounts(1), false, None, Some("BaoBao".into()));
+    (c, genesis)
+}
+
+const FULL_MOON: u64 = crate::moon::NEW_MOON_REF_NS + 300 * crate::moon::SYNODIC_NS + crate::moon::SYNODIC_NS / 2;
+const NEW_MOON: u64 = crate::moon::NEW_MOON_REF_NS + 300 * crate::moon::SYNODIC_NS;
+
+/// Feed 40 at `at` on a Totem born half a day earlier; return what burned and the view.
+fn moon_feed(at: u64) -> (u128, crate::views::TotemView) {
+    let (mut c, g) = setup_at(at - DAY / 2);
+    set_ctx(&g, at);
+    let before = c.total_burned;
+    c.feed(U128(40 * ONE));
+    (c.total_burned - before, c.get_totem())
+}
+
+#[test]
+fn a_new_moon_leaves_the_rules_as_they_are() {
+    let (burned, v) = moon_feed(NEW_MOON);
+    assert_eq!(v.moon_phase, "new moon");
+    assert!(v.moon_bp < 10);
+    assert_eq!(burned, 20 * ONE, "the normal 50% burn");
+    assert_eq!(v.burn_share_bp, 5_000);
+    assert_eq!(v.hunger_bp, 10_000);
+    assert!(!v.moonlit_now);
+}
+
+#[test]
+fn a_full_moon_burns_more_and_empties_the_belly_faster() {
+    let (burned, v) = moon_feed(FULL_MOON);
+    assert_eq!(v.moon_phase, "full moon");
+    assert!(v.moon_bp > 9_990);
+    assert_eq!(burned, 28 * ONE, "70% of the meal burns at full moon");
+    assert_eq!(v.burn_share_bp, 7_000);
+    assert_eq!(v.hunger_bp, 15_000, "hunger 1.5x");
+    // the same belly lasts two thirds as long as a Totem-day would give it
+    let normal = v.fullness_bp as u64 * (DAY / 1_000_000_000) / 10_000;
+    let got = v.seconds_until_rampage.unwrap().0;
+    let ratio = got as f64 / normal as f64;
+    assert!((ratio - 2.0 / 3.0).abs() < 0.01, "full-moon belly lasts 2/3 as long: {got}s vs {normal}s");
+}
+
+#[test]
+fn the_settled_belly_drains_by_the_same_moon_the_view_predicts() {
+    let (mut c, g) = setup_at(FULL_MOON - DAY / 2);
+    set_ctx(&g, FULL_MOON);
+    c.feed(U128(40 * ONE));
+    let f0 = c.fullness_bp;
+    let predicted = c.get_totem().seconds_until_rampage.unwrap().0 * 1_000_000_000;
+    // half-way: about half the belly is gone
+    set_ctx(&g, FULL_MOON + predicted / 2);
+    c.poke();
+    assert!(c.fullness_bp.abs_diff(f0 / 2) <= 20, "settled {} vs predicted {}", c.fullness_bp, f0 / 2);
+    // The contract uses the moon at the moment it catches up, and hours after full
+    // moon the moon is a touch dimmer, so the Rampage lands within 1% of the
+    // prediction made at the full moon itself (never wildly off).
+    set_ctx(&g, FULL_MOON + predicted * 99 / 100);
+    c.poke();
+    assert!(c.rampage_started_at.is_none(), "not before 99% of the predicted time");
+    set_ctx(&g, FULL_MOON + predicted * 101 / 100);
+    c.poke();
+    assert!(c.rampage_started_at.is_some(), "by 101% of the predicted time");
+}
+
+#[test]
+fn feeding_under_a_full_moon_mints_one_soulbound_moonlit_badge_per_cycle() {
+    let (mut c, g) = setup_at(FULL_MOON - DAY / 2);
+    set_ctx(&g, FULL_MOON);
+    assert!(c.get_totem().moonlit_now);
+    c.feed(U128(10 * ONE));
+    let id = format!("moonlit-{}-{g}", crate::moon::cycle(FULL_MOON));
+    assert!(token_ids_of(&c, &g).contains(&id), "Moonlit badge minted");
+    // a second feed the same night: still one badge
+    set_ctx(&g, FULL_MOON + HOUR);
+    c.feed(U128(10 * ONE));
+    assert_eq!(token_ids_of(&c, &g).iter().filter(|t| t.starts_with("moonlit-")).count(), 1);
+    // soulbound
+    ctx(&g, FULL_MOON + HOUR, NearToken::from_yoctonear(1));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        c.nft_transfer(accounts(3), id.clone(), None, None)
+    }));
+    assert!(r.is_err(), "Moonlit badges are soulbound");
+}
+
+#[test]
+fn a_new_moon_feed_earns_no_moonlit_badge() {
+    let (mut c, g) = setup_at(NEW_MOON - DAY / 2);
+    set_ctx(&g, NEW_MOON);
+    c.feed(U128(10 * ONE));
+    assert!(!token_ids_of(&c, &g).iter().any(|t| t.starts_with("moonlit-")));
+}

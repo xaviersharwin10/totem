@@ -86,6 +86,14 @@ pub struct Config {
     pub total_supply: U128,
     /// Demo faucet: tokens per account per Totem-day.
     pub faucet_amount: U128,
+
+    /// BaoBao follows the real moon (see moon.rs). At full moon the belly
+    /// empties this much faster (5000 = 1.5x), scaled by how lit the moon is.
+    pub moon_hunger_bp: u32,
+    /// Extra share of each meal burned at full moon (2000 = 50% -> 70%), scaled likewise.
+    pub moon_burn_bp: u32,
+    /// Feeding while the moon is at least this lit earns the Moonlit badge (once per cycle).
+    pub moonlit_min_bp: u32,
 }
 
 impl Config {
@@ -133,6 +141,9 @@ impl Config {
             badge_thresholds: vec![100, 1_000, 10_000],
             total_supply: U128(1_000_000_000 * ONE_TOKEN),
             faucet_amount: U128(1_000 * ONE_TOKEN),
+            moon_hunger_bp: 5_000,
+            moon_burn_bp: 2_000,
+            moonlit_min_bp: 9_000,
         }
     }
 
@@ -157,6 +168,8 @@ impl Config {
         assert!(self.appetite_den > 0, "appetite_den zero");
         assert!(!self.level_thresholds.is_empty(), "no level thresholds");
         assert!(self.total_supply.0 > 0, "zero supply");
+        assert!(self.burn_share_bp + self.moon_burn_bp <= FULL_BP, "burn_share + moon_burn > 100%");
+        assert!(self.moonlit_min_bp <= FULL_BP, "moonlit_min > 100%");
     }
 }
 

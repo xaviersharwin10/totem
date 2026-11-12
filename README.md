@@ -2,9 +2,8 @@
 
 A community creature on NEAR that dies if the tribe ignores it. Feed it $TOTEM and it grows and pays its caretakers; neglect it and it eats the community treasury.
 
-> Status: Day 2 of a 4-day hackathon build. The contract core and balance model
-> are done and tested; the NFT standard wiring, testnet deploy, and bot are in
-> progress. This README marks what works today honestly — see **Status** below.
+> Built for the NEAR Hackathon (Nov 2026). Live on testnet, playable in the browser with no wallet:
+> **https://totem-x2kg.onrender.com**. What works and what doesn't is marked honestly under **Status** below.
 
 ## What it is
 
@@ -23,6 +22,41 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 - **nfts** — "NFTs as accounts: assets that own money ... ownership with behavior." The Totem is a living NFT that owns a treasury **sub-account** (`totem-<gen>.<contract>`, keyless); its level and art change over time; Caretaker Badges are credential NFTs.
 - **social** — "shared budgets, programmable rewards, reputation-based access on Sputnik DAO." The tribe's Sputnik DAO owns the Totem and votes on its name, evolution and rebirth; Blessings are programmable rewards; Badges are reputation.
 
+## Track checklist (the official prompts, point by point)
+
+The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-examples/tree/main/tracks) list what each track asks for. Here is each requirement, where it lives, and how to check it yourself.
+
+**Memecoins With Mechanics** ([11-memecoins](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md))
+
+| The prompt asks for | TOTEM | Check it |
+|---|---|---|
+| A NEP-141 token with the mechanic in the contract, not a backend someone could switch off | Feeding, burning, bites, death, Blessings and the moon are all in [`contract/src/game.rs`](contract/src/game.rs) / [`moon.rs`](contract/src/moon.rs). The server only relays and reads | `cargo test` (49 unit + 2 sandbox) |
+| All parameters set at launch, readable by anyone, no admin key | `Config` is fixed at `new()`; there is no setter and no owner method touches the token | `get_config` on [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) |
+| Supply that reacts to the community; treasuries with rules; onchain rituals | Every meal burns 50–70%; neglect makes it bite the treasury; **BaoBao follows the real moon** (full-moon rally nights) | App: feed and watch 🔥 Burned; tap the 🌙 chip |
+| Sybil resistance good enough for a demo, limits written plainly | [Below](#why-fake-accounts-dont-help) | `sybil_split_earns_identical_total` |
+| A page with the live state and a log of every mint and burn | 🧾 history: supply reconciliation (launch + faucet − burned = `ft_total_supply`) and every `ft_mint` / `ft_burn` with tx links | App → 🧾 |
+| Simulate 60 days before picking parameters | [`sim/simulate.py`](sim/simulate.py), 5 scenarios, 14 checks, charts committed | `python3 sim/simulate.py` |
+
+**NFTs That Do Something** ([10-nfts](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md))
+
+| The prompt asks for | TOTEM | Check it |
+|---|---|---|
+| An NFT that owns money through its own account | Each Totem NFT `totem-<gen>` has a keyless treasury sub-account `totem-<gen>.totem-grumbo.testnet` holding its Reserve | Explorer: the account has no access keys |
+| How control passes on transfer, and what stops the old owner keeping access | [Selling the Totem](#selling-the-totem-what-moves-and-what-the-seller-cant-keep): every seller trick and what stops it | `transferring_the_totem_moves_governance_with_it` |
+| Tests for the transfer path, including a sale in the middle of a payout | `selling_the_totem_mid_payout_moves_no_money_to_the_seller`: sold while a Blessing is reserved and the next period runs; seller gets nothing, caretaker paid in full, buyer gets governance only | `cargo test selling` |
+| A gated page only current holders can open | **🗝 The Den**: badge NFT holders only, enforced by the server (NEP-413 signature + full-access key check + on-chain holdings on every request) | App → 🗝; `npx tsx web/server/den.e2e.mts` (9 checks) |
+| A history view per NFT | 🧾 → Lives: each life's stats, top feeders, NFT id and events; tap a gravestone | App → tap a gravestone |
+| NFTs as credentials / memberships | Soulbound Hero, Founder, Moonlit and Caretaker badges; they are the Den's keys and count toward Keeper eligibility | `badges_are_soulbound_nfts` |
+
+**Social Money** ([12-social](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md))
+
+| The prompt asks for | TOTEM | Check it |
+|---|---|---|
+| Use Sputnik DAO / Trezu for custody and approvals, don't write a new multisig | The tribe is a plain Sputnik DAO ([`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet)) that owns the Totem NFT; Trezu-ready on mainnet | `get_policy` |
+| Reputation tied to named accounts, every point traceable | Points come only from feeds (each a logged event); Keeper eligibility is `get_keeper` (stake or Silver/Gold badge) | 🏛 Tribe → Keepers |
+| Tiered approvals | Majority of Keepers for Totem calls and membership; two thirds for the constitution; no council, no founder vote | 🏛 Tribe; proposal 13 |
+| A public board | 🏛 Tribe: open votes with tallies, decided proposals, Keepers and why they qualify; Telegram bot posts every vote | App → 🏛, [@Babao_panda_bot](https://t.me/Babao_panda_bot) |
+
 ## How NEAR is used
 
 - **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
@@ -35,6 +69,8 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
   - **Trezu-ready.** It is a plain Sputnik DAO, the same contract NEAR's Trezu treasury app is built on. Trezu runs on mainnet only, so on testnet the 🏛 Tribe panel is the client; deployed as a mainnet `*.sputnik-dao.near` DAO, the panel links straight to it in Trezu.
   - On testnet: a guest with no wallet staked, nominated itself in the app, was admitted by two Keepers, then proposed and voted the hatch of Mochi VI from the death card; it passed 3 of 3 and the hatch ran in the deciding vote ([proposal 10](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet)).
 - **No admin key.** Every parameter is fixed at `new()` and exposed via `get_config()`.
+- **BaoBao follows the real moon.** The contract computes tonight's moon from the block time ([`moon.rs`](contract/src/moon.rs): a known new moon, the 29.53-day synodic month, an integer sine approximation within ~0.2%). No oracle, no admin. The fuller the moon, the hungrier BaoBao gets (the belly empties up to 1.5× faster at full moon) and the more each meal burns (50% at new moon, up to 70% at full). Feeding while the moon is at least 90% lit mints a soulbound **Moonlit** badge, once per lunar cycle. Full-moon nights are the tribe's rally nights. The moon shows in the farm's sky with its real phase; the 🌙 chip explains the current effect, and Practice mode can preview any phase. *Testnet status: the moon in the sky and the Practice preview are live; the hunger, burn and badge effects are tested in the contract (`cargo test moon`) and go live on testnet with the next contract deploy.*
+- **🗝 The Den: a page only badge holders can open.** A player signs a NEP-413 message (any NEAR wallet's `signMessage`, or a guest's own key; nothing goes on chain). The server ([`web/server/den.ts`](web/server/den.ts)) checks the signature, that the key is a full-access key of that account on chain right now, that the message is fresh and unused, and that the account holds a Hero, Founder, Moonlit or Caretaker badge NFT, then re-checks the holdings on every request. Inside: BaoBao's secret diary (written by its AI voice for holders only) and a holders-only wall.
 - **Gasless play for anyone: zero-balance accounts + meta-transactions.** A rescuer with no wallet and no NEAR taps "Rescue": the game creates `g<hex>.totem-grumbo-relay.testnet` holding **0 NEAR** (a NEP-448 zero-balance account) with a key generated in their browser. Each action is a NEP-366 `DelegateAction` signed in the browser; our relayer wraps it in a transaction and pays the gas. The relayer only sponsors zero-deposit calls to this contract's game methods, rate-limited. On testnet a fresh guest rescued the Totem from a Rampage and received the Hero NFT with 0 NEAR in its account. The guest key lives in the browser; **🔑 back up** gives a code that restores the same account in another browser (checked on-chain before it is accepted).
 - **The tribe's alarm bell (Telegram).** The Totem starves on a clock while nobody is looking, so a bot watches the chain and posts to the tribe's group when it matters: starving, Rampage (with the next bite's burn), every bite, the rescue and who did it, death, hatch votes, the new egg. Each alert carries the one-tap gasless rescue link. Anyone can `/watch` an account (public data, no login) to hear when its shield is about to end, when a bite is coming for an unshielded stake, when a Blessing is about to expire, or when a vote needs it as a Keeper. `/ask` puts the question to the Totem's AI voice.
 - **The Totem talks (NEAR AI Cloud).** The panda is an AI character whose facts all come from the chain: a small server endpoint reads `get_totem`, `get_lineage`, `get_caretaker` and `get_stake`, then asks a model on NEAR AI Cloud to answer in character. Its personality is derived from its on-chain traits, which are a hash of the previous generation's top 3 feeders, so the tribe's best feeders shape how the next panda talks. It knows who fed it, by account name, and remembers its ancestors from their gravestones.
@@ -43,9 +79,10 @@ Most memecoins have no mechanic and most community treasuries have no reason to 
 
 | Parameter | Value |
 |---|---|
-| Fullness drain | 100% → 0% over one Totem-day |
+| Fullness drain | 100% → 0% over one Totem-day at new moon; faster under a brighter moon (two thirds of a day at full moon) |
 | Meal size | `base_meal × 1.5^(level−1) × form_appetite` |
-| Burn share | 50% of every meal (the rest goes to the Reserve) |
+| Burn share | 50% of every meal at new moon, up to 70% at full moon (scaled by how lit the moon is); the rest goes to the Reserve |
+| The moon | Hunger up to ×1.5 at full moon; Moonlit badge for a feed while ≥ 90% lit (once per lunar cycle). Phase from block time, no oracle |
 | Points | 1 per whole token fed, ×2 when rescuing (fullness < 30%), ×1.5 when staked |
 | Rampage bite | every ¼ Totem-day at 0%: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level |
 | Death | when a bite takes it to Level 0 (a newborn L1 dies at its first bite) |
@@ -63,6 +100,12 @@ Full parameter list: [`RULES.md`](RULES.md). The live values are always readable
 
 Points, Badges and Blessings are all proportional to tokens actually spent, and half of every meal is burned. Splitting 100 tokens across 100 accounts earns exactly what one account earns with 100 tokens. There is nothing to farm — only to spend. (Proven by the `sybil_split_earns_identical_total` unit test.)
 
+**The limits, plainly:**
+- **Badges are per account.** One person with many accounts can hold more Hero or Moonlit badges, but each one still cost a real feed (Hero: ending a Rampage; Moonlit: a feed under a full moon), and badges are soulbound, so they can't be sold.
+- **Keeper seats** need 1,000 $TOTEM staked in the living Totem or a Silver/Gold badge. Splitting a stake across accounts makes it too small to qualify, so a seat costs real capital, which is slashed if left unshielded. A rich attacker can still buy several seats; the DAO's two-thirds rule for constitution changes limits what they can do with them.
+- **Free play** (gasless guests) is rate-limited per IP: 5 new guest accounts and 40 sponsored actions per hour, and 30 per guest account. Rotating IPs gets around this; on testnet that only costs our relayer gas.
+- **The demo faucet** (1,000 test $TOTEM per account per Totem-day) is testnet-only. Mainnet has no faucet (`demo_mode = false`).
+
 ## Selling the Totem: what moves, and what the seller can't keep
 
 The Totem NFT (`totem-<gen>`) is transferable, normally by DAO vote. Here is everything the token controls and what happens to each on a transfer. Every way a seller might try to keep value is listed with what stops it.
@@ -78,7 +121,7 @@ The Totem NFT (`totem-<gen>`) is transferable, normally by DAO vote. Here is eve
 | Rename, evolve or hatch after the sale | `assert_owner` panics: "only the Totem owner (DAO) may call this" (test `transferring_the_totem_moves_governance_with_it`) |
 | Empty the Reserve before the sale | No owner method moves Reserve tokens. Its only exits are listed above, and none goes to the owner |
 | Keep an approval and take the token back | NFT approvals (NEP-178) are not enabled (`NonFungibleToken::new(…, None)`), so there are no approvals to keep |
-| Sell during a payout and claim the buyer's share | Blessings are paid to feeders by points earned in the period, never to the owner. A sale mid-period changes nothing (`blessings_pay_at_l3_and_stay_claimable_after_death`) |
+| Sell during a payout and claim the buyer's share | Blessings are paid to feeders by points earned in the period, never to the owner. Sold while a Blessing is reserved and the next period is running: no balance moves, neither seller nor buyer can claim, the caretaker is paid in full, and the running period still pays its caretakers (`selling_the_totem_mid_payout_moves_no_money_to_the_seller`) |
 | Take the stakes along | Stakes belong to their stakers. Only the staker can `unstake` or `withdraw` their own stake |
 | Sell a reputation badge | Caretaker, Hero and Founder badges are soulbound. `nft_transfer` and `nft_transfer_call` panic for them (`badges_are_soulbound_nfts`) |
 | Hatch the next egg for themselves after selling the gravestone | `hatch` mints the new Totem to the gravestone's current owner, so it goes to the buyer |
@@ -109,7 +152,7 @@ cargo near build non-reproducible-wasm  # writes target/near/totem.wasm
 
 # Contract: unit tests (settle, feed, rampage, death, sybil-neutrality…) and
 # sandbox integration tests (the wasm on a local NEAR node, real block time)
-cargo test                              # expect: 34 passed (unit) + 2 passed (sandbox)
+cargo test                              # expect: 49 passed (unit) + 2 passed (sandbox)
 
 # Simulation: 60-day balance model, five scenarios, charts to sim/out/
 cd ../sim
@@ -178,6 +221,9 @@ The unit tests (`contract/src/tests.rs`) exercise the mechanic end to end:
 - `an_expired_blessing_cannot_be_claimed_and_claimable_lists_the_rest` — once an unclaimed Blessing returns to the Reserve, claiming it fails; `get_claimable` lists exactly what pays.
 - `the_reserve_lives_in_a_keyless_treasury_sub_account`, `a_reserve_held_by_the_contract_migrates_into_the_treasury_on_first_touch` — treasury balance = Reserve through feed, bite, death and hatch; transfers into the treasury or the contract are refused. Every test that checks supply also checks: treasury = Reserve, contract = Blessings + stakes.
 - `the_hoard_counts_only_the_living_totem_never_released_stakes`, `the_demo_faucet_logs_a_standard_mint`.
+- `selling_the_totem_mid_payout_moves_no_money_to_the_seller` — the NFT sold with a Blessing reserved and the next period running: every pot is untouched, seller and buyer can't claim, the caretaker is paid in full, and the running period pays its caretakers.
+- The moon: `the_reference_new_moon_is_dark_and_half_a_month_later_is_full`, `november_2026_new_moon_on_the_10th_full_moon_on_the_24th`, `bhaskara_stays_close_to_the_true_curve` (moon maths); `a_new_moon_leaves_the_rules_as_they_are`, `a_full_moon_burns_more_and_empties_the_belly_faster` (70% burn, ×1.5 hunger), `the_settled_belly_drains_by_the_same_moon_the_view_predicts`, `feeding_under_a_full_moon_mints_one_soulbound_moonlit_badge_per_cycle`, `a_new_moon_feed_earns_no_moonlit_badge`.
+- Raksha's prediction market: `predict_*` (6 tests).
 
 The sandbox tests (`contract/tests/sandbox.rs`, near-workspaces) run the compiled wasm on a local node:
 

@@ -53,6 +53,16 @@ pub struct TotemView {
     pub seconds_until_next_bite: Option<U64>,
     /// Seconds until death if nobody feeds it.
     pub seconds_until_death: Option<U64>,
+    /// Tonight's real moon (moon.rs): how lit it is, 0 = new, 10_000 = full.
+    pub moon_bp: u32,
+    /// "new moon", "waxing crescent", … "full moon", …
+    pub moon_phase: String,
+    /// How fast the belly empties under this moon (10_000 = normal, 15_000 = 1.5x).
+    pub hunger_bp: u32,
+    /// Share of the next meal that burns under this moon.
+    pub burn_share_bp: u32,
+    /// Feeding now earns the Moonlit badge (if not already earned this cycle).
+    pub moonlit_now: bool,
 }
 
 /// Who may be a Keeper (vote on hatch / rename / evolve and on new Keepers in
@@ -166,7 +176,7 @@ impl Contract {
             0
         };
 
-        let day = self.cfg.day_length_ns;
+        let day = crate::moon::drain_day_ns(&self.cfg, now);
         let iv = self.cfg.bite_interval_ns;
         let secs = |ns: u64| U64(ns / NANOS_PER_SEC);
         let alive_and = |v: Option<U64>| if p.alive { v } else { None };
@@ -219,6 +229,11 @@ impl Contract {
             seconds_until_rampage: alive_and((p.fullness > 0).then(|| secs(to_rampage_ns))),
             seconds_until_next_bite: alive_and(Some(secs(next_bite_ns))),
             seconds_until_death: alive_and(Some(secs(death_ns))),
+            moon_bp: crate::moon::moon_bp(now),
+            moon_phase: crate::moon::phase_name(now).to_string(),
+            hunger_bp: crate::moon::hunger_bp(&self.cfg, now),
+            burn_share_bp: crate::moon::burn_share_bp(&self.cfg, now),
+            moonlit_now: p.alive && crate::moon::moon_bp(now) >= self.cfg.moonlit_min_bp,
         }
     }
 
@@ -406,7 +421,7 @@ impl Contract {
         if now <= self.last_settled_at {
             return p;
         }
-        let day = self.cfg.day_length_ns;
+        let day = crate::moon::drain_day_ns(&self.cfg, now); // same as settle
         let elapsed = now - self.last_settled_at;
         let f0 = self.fullness_bp;
 
@@ -416,7 +431,7 @@ impl Contract {
             let dur = (drop_bp * day as u128 / FULL_BP as u128) as u64;
             happy_ns += dur.min(elapsed);
         }
-        p.happy_days = (happy_ns / day) as u32;
+        p.happy_days = (happy_ns / self.cfg.day_length_ns) as u32;
         p.level = level_for(&self.cfg, p.happy_days).max(self.level);
         p.peak_level = p.peak_level.max(p.level);
 

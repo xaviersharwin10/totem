@@ -11,6 +11,7 @@ import { voiceHandler } from "./voice";
 import { guestHandler, proposeHandler, relayHandler } from "./relay";
 import { historyHandler } from "./history";
 import { autoHatchHandler } from "./autohatch";
+import { denHandler } from "./den";
 
 export function totemServer(): Plugin {
   return {
@@ -23,6 +24,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/voice", voiceHandler);
       s.middlewares.use("/api/history", historyHandler);
       s.middlewares.use("/api/autohatch", autoHatchHandler);
+      s.middlewares.use("/api/den", denHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -32,6 +34,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/voice", voiceHandler);
       s.middlewares.use("/api/history", historyHandler);
       s.middlewares.use("/api/autohatch", autoHatchHandler);
+      s.middlewares.use("/api/den", denHandler);
     },
   };
 }

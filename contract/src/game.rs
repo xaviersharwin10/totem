@@ -33,7 +33,9 @@ impl Contract {
         let rescue = self.fullness_bp < self.cfg.starving_threshold_bp;
         let staker = self.live_principal(&caller) >= self.cfg.min_stake.0;
 
-        let burn = accepted * self.cfg.burn_share_bp as u128 / FULL_BP as u128;
+        let now = env::block_timestamp();
+        // a brighter moon burns a bigger share of the meal (moon.rs)
+        let burn = accepted * crate::moon::burn_share_bp(&self.cfg, now) as u128 / FULL_BP as u128;
         let to_reserve = accepted - burn;
 
         // Move the Reserve share into the Totem's treasury account (supply
@@ -69,6 +71,15 @@ impl Contract {
 
         if accepted >= self.cfg.shield_min_feed.0 {
             self.extend_shield(&caller);
+        }
+
+        // feeding under a (nearly) full moon: the Moonlit badge, once per lunar cycle
+        if crate::moon::moon_bp(now) >= self.cfg.moonlit_min_bp {
+            let id = format!("moonlit-{}-{}", crate::moon::cycle(now), caller);
+            if self.nft.owner_by_id.get(&id).is_none() {
+                self.mint_badge(&caller, "moonlit", id, "Moonlit Feeder".to_string());
+                events::badge_minted(&caller, "moonlit");
+            }
         }
 
         let whole = accepted / ONE_TOKEN;
@@ -138,7 +149,8 @@ impl Contract {
             return;
         }
 
-        let day = self.cfg.day_length_ns;
+        // how long a full belly lasts under tonight's moon (moon.rs)
+        let day = crate::moon::drain_day_ns(&self.cfg, now);
         let elapsed = now - self.last_settled_at;
         let f0 = self.fullness_bp;
 

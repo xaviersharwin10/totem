@@ -13,6 +13,7 @@ import { voiceHandler } from "./voice";
 import { guestHandler, proposeHandler, relayHandler } from "./relay";
 import { historyHandler } from "./history";
 import { autoHatchHandler, startAutoHatch } from "./autohatch";
+import { denHandler } from "./den";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => unknown;
 const routes: [string, Handler][] = [
@@ -22,6 +23,7 @@ const routes: [string, Handler][] = [
   ["/api/voice", voiceHandler],
   ["/api/history", historyHandler],
   ["/api/autohatch", autoHatchHandler],
+  ["/api/den", denHandler],
   ["/rpc", rpcHandler],
 ];
 

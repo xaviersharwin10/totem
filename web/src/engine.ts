@@ -123,6 +123,10 @@ export class TotemEngine {
   totalBurned = 0;
   totalFed = 0;
 
+  bornAt: number;
+  private _deadLifespanMs: number | null = null;
+  private _sessionRecordMs = 0;
+
   points = new Map<string, number>();
   events: GameEvent[] = [];
   private nextEventId = 1;
@@ -130,6 +134,7 @@ export class TotemEngine {
   constructor(you = "you.testnet", now = Date.now()) {
     this.you = you;
     this.lastSettledAt = now;
+    this.bornAt = now;
     this.pushEvent("hatch", `${this.name} hatched at Level 1`, now);
   }
 
@@ -242,6 +247,7 @@ export class TotemEngine {
       this.totalBurned += this.hoard;
       this.hoard = 0;
     }
+    this._deadLifespanMs = now - this.bornAt;
     this.alive = false;
     this.rampageStartedAt = null;
     this.pushEvent(
@@ -298,9 +304,13 @@ export class TotemEngine {
 
   hatch(now: number) {
     if (this.alive) return;
+    if (this._deadLifespanMs !== null)
+      this._sessionRecordMs = Math.max(this._sessionRecordMs, this._deadLifespanMs);
     this.generation += 1;
     this.name = "BaoBao " + roman(this.generation);
     this.lastSettledAt = now;
+    this.bornAt = now;
+    this._deadLifespanMs = null;
     this.fullnessBp = FULL;
     this.happyMs = 0;
     this.level = 1;
@@ -312,6 +322,15 @@ export class TotemEngine {
     this.alive = true;
     this.hoard = 0;
     this.pushEvent("hatch", `🥚 A new egg hatched: ${this.name}`, now);
+  }
+
+  currentLifespanSec(now: number): number {
+    if (this.alive) return (now - this.bornAt) / 1000;
+    return this._deadLifespanMs !== null ? this._deadLifespanMs / 1000 : 0;
+  }
+
+  get sessionRecordSec(): number {
+    return this._sessionRecordMs / 1000;
   }
 
   /** Current projected view at `now`. */

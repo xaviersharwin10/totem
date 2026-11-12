@@ -41,6 +41,9 @@ export interface Game {
   poke: () => Promise<void>;
   hatch: (() => void) | null; // practice only; live hatching is a DAO vote
   explorer: string;
+  // survival records (Friends ball-catch style)
+  recordLifespanSec: number;   // best lifespan across past generations (0 = no record yet)
+  currentLifespanSec: number;  // how long the current/last generation has been alive
   // prediction market
   activeMarket: PredictMarket | null;
   myBet: PredictBet | null;
@@ -84,6 +87,8 @@ interface ChainLife {
   alive: boolean;
   max_level: number;
   top_feeders: [string, string][];
+  born_at: string;
+  lifespan_sec: string | null;
 }
 
 const num = (s: string | null) => (s === null ? null : Number(s));
@@ -262,6 +267,28 @@ export function useGame(): Game {
     graves = [];
     leaderboard = [];
     events = [];
+  }
+
+  // ---------------- survival record ----------------
+  let recordLifespanSec: number;
+  let currentLifespanSec: number;
+  const nowSec = Date.now() / 1000;
+
+  if (mode === "practice") {
+    currentLifespanSec = engine.currentLifespanSec(Date.now());
+    recordLifespanSec = engine.sessionRecordSec;
+  } else if (live) {
+    const deadRecord = live.lineage
+      .filter((l) => !l.alive && l.lifespan_sec)
+      .reduce((max, l) => Math.max(max, Number(l.lifespan_sec!)), 0);
+    const curLife = live.lineage.find((l) => l.generation === live.t.generation);
+    currentLifespanSec = curLife?.born_at
+      ? Math.max(0, nowSec - Number(curLife.born_at) / 1e9)
+      : 0;
+    recordLifespanSec = live.t.alive ? deadRecord : Math.max(deadRecord, currentLifespanSec);
+  } else {
+    recordLifespanSec = 0;
+    currentLifespanSec = 0;
   }
 
   // ---------------- actions ----------------
@@ -447,6 +474,8 @@ export function useGame(): Game {
     poke,
     hatch,
     explorer: `${EXPLORER}/address/${CONTRACT_ID}`,
+    recordLifespanSec,
+    currentLifespanSec,
     activeMarket: mode === "live" ? activeMarket : null,
     myBet: mode === "live" ? myBet : null,
     predict,

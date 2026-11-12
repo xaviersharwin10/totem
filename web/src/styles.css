@@ -65,6 +65,14 @@ button { font-family: inherit; }
 .xp { height: 6px; border-radius: 99px; background: rgba(43,34,48,0.1); margin-top: 10px; overflow: hidden; }
 .xp-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #9b7ad8, #ff6b9a, #ffc94a); transition: width 0.4s ease; }
 
+/* ---------- survival streak ---------- */
+.streak-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; font-weight: 700; }
+.streak-time { color: var(--ink-soft); display: flex; align-items: center; gap: 5px; }
+.streak-time.streak-record { color: #ffc94a; animation: streak-glow 1.4s ease-in-out infinite alternate; }
+.streak-badge { font-size: 11px; background: linear-gradient(135deg, #ffd54a, #ff8a4d); color: #2b2230; padding: 1px 7px; border-radius: 999px; letter-spacing: 0.02em; }
+.streak-best { color: var(--ink-soft); opacity: 0.65; }
+@keyframes streak-glow { from { text-shadow: 0 0 4px #ffc94a80; } to { text-shadow: 0 0 12px #ffc94a, 0 0 24px #ff8a4d80; } }
+
 /* ---------- treasury (top-right) ---------- */
 .hud-tr { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 5; }
 .stat-card { padding: 10px 16px; min-width: 170px; text-align: right; cursor: pointer; transition: transform 0.15s ease; }

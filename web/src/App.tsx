@@ -81,6 +81,7 @@ export default function App() {
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
   const lastEventId = useRef(0);
   const prev = useRef({ mood: "happy", level: 1, alive: true, name: "" });
+  const recordToastedGen = useRef<number | null>(null);
 
   const now = Date.now();
   const loading = !game.view;
@@ -131,6 +132,24 @@ export default function App() {
     if (!view.alive && p.alive) sfx.death();
     prev.current = { mood: view.mood, level: view.level, alive: view.alive, name: view.name };
   }, [view.mood, view.level, view.alive, view.name, view.maxLevel]);
+
+  // new survival record celebration
+  useEffect(() => {
+    if (!view.alive || game.recordLifespanSec === 0) {
+      recordToastedGen.current = null;
+      return;
+    }
+    if (
+      game.currentLifespanSec > game.recordLifespanSec &&
+      recordToastedGen.current !== view.generation
+    ) {
+      recordToastedGen.current = view.generation;
+      pushToast(`🏆 NEW RECORD! ${view.name} just outlasted the previous best of ${fmtTime(game.recordLifespanSec)}!`, "level_up");
+      sfx.levelUp();
+      addBurst("text", world.panda.pos.clone().setY(3.5), "🏆 RECORD!", "#ffd54a");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.currentLifespanSec > game.recordLifespanSec, view.alive, view.generation]);
 
   // panda finished a snack
   useEffect(() => {
@@ -303,6 +322,11 @@ export default function App() {
             }}
           />
         </div>
+        <StreakRow
+          currentSec={game.currentLifespanSec}
+          recordSec={game.recordLifespanSec}
+          alive={view.alive}
+        />
       </div>
 
       {/* ---------- top-right: treasury ---------- */}
@@ -720,4 +744,20 @@ function useAutoHatch(active: boolean): AutoHatch | null {
 
 function moodEmoji(mood: string): string {
   return { happy: "😊", hungry: "🥺", starving: "😭", rampage: "😡", dead: "💀" }[mood] ?? "·";
+}
+
+function StreakRow({ currentSec, recordSec, alive }: { currentSec: number; recordSec: number; alive: boolean }) {
+  const isRecord = alive && recordSec > 0 && currentSec > recordSec;
+  const label = fmtTime(currentSec);
+  return (
+    <div className="streak-row">
+      <span className={`streak-time ${isRecord ? "streak-record" : ""}`}>
+        {alive ? "⏱" : "💀"} {label}
+        {isRecord && <span className="streak-badge">🏆 record!</span>}
+      </span>
+      {!isRecord && recordSec > 0 && (
+        <span className="streak-best">🏆 {fmtTime(recordSec)}</span>
+      )}
+    </div>
+  );
 }

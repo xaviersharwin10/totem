@@ -94,7 +94,7 @@ function Underside() {
   const rocks = useMemo(() => {
     const r = rand(23);
     const out: { x: number; z: number; y: number; s: number; rot: number; dark: boolean }[] = [];
-    const n = 16;
+    const n = 34;
     // profile matching the Island lathe: [y, radius] top -> tip
     const prof: [number, number][] = [
       [-0.45, ISLAND_RADIUS], [-0.9, ISLAND_RADIUS - 0.5], [-1.7, ISLAND_RADIUS - 1.6],
@@ -113,9 +113,10 @@ function Underside() {
     };
     for (let i = 0; i < n; i++) {
       const ang = (i / n) * Math.PI * 2 + r() * 0.6;
-      const y = -1.0 - r() * 4.2;
-      const s = 0.7 + r() * 1.2;
-      const surfR = radAt(y) - s * 0.45; // embed the bump into the surface
+      // bias chunks toward the upper half so the disc bottom is densely rocky
+      const y = -0.7 - Math.pow(r(), 1.5) * 5.0;
+      const s = 0.7 + r() * 1.4;
+      const surfR = radAt(y) - s * 0.3; // protrude a little so they read as attached chunks
       out.push({ x: Math.cos(ang) * surfR, z: Math.sin(ang) * surfR, y, s, rot: r() * Math.PI, dark: i % 2 === 0 });
     }
     // a chunk at the very tip
@@ -183,11 +184,11 @@ function FloatingRocks() {
   const g = useRef<THREE.Group>(null!);
   const rocks = useMemo(() => {
     const r = rand(31);
-    return Array.from({ length: 13 }, () => ({
+    return Array.from({ length: 4 }, () => ({
       x: (r() - 0.5) * 20,
       z: (r() - 0.5) * 20,
-      y: -4.5 - r() * 4.5,
-      s: 0.4 + r() * 0.9,
+      y: -5.5 - r() * 3.0,
+      s: 0.35 + r() * 0.5,
       p: r() * 6,
       spin: 0.1 + r() * 0.2,
     }));
@@ -251,30 +252,99 @@ function BaseClouds() {
 }
 
 function Fence() {
+  const woodTex = useMemo(() => {
+    const W = 64, H = 256;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d")!;
+    ctx.fillStyle = "#6b3520";
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#3e1c0c";
+    ctx.lineWidth = 1.8;
+    for (let g = 0; g < 5; g++) {
+      const xb = 5 + g * 13;
+      ctx.beginPath();
+      ctx.moveTo(xb, 0);
+      for (let y = 0; y < H; y += 4)
+        ctx.lineTo(xb + Math.sin(y * 0.22 + g * 1.7) * 2.8, y + 4);
+      ctx.stroke();
+    }
+    // subtle edge glow
+    const gr = ctx.createLinearGradient(0, 0, W, 0);
+    gr.addColorStop(0, "rgba(255,160,60,0.12)");
+    gr.addColorStop(0.25, "rgba(255,160,60,0)");
+    gr.addColorStop(0.85, "rgba(0,0,0,0)");
+    gr.addColorStop(1, "rgba(0,0,0,0.2)");
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, W, H);
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }, []);
+
+  const railTex = useMemo(() => {
+    const W = 256, H = 32;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d")!;
+    ctx.fillStyle = "#5a2e18";
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#3a1c0a";
+    ctx.lineWidth = 1.2;
+    for (let g = 0; g < 4; g++) {
+      const yb = 4 + g * 8;
+      ctx.beginPath();
+      ctx.moveTo(0, yb);
+      for (let x = 0; x < W; x += 8)
+        ctx.lineTo(x + 8, yb + Math.sin(x * 0.12 + g) * 1.8);
+      ctx.stroke();
+    }
+    return new THREE.CanvasTexture(cv);
+  }, []);
+
   const posts = useMemo(() => {
-    const out: { x: number; z: number; a: number }[] = [];
+    const out: { x: number; z: number; a: number; h: number; lean: number; twist: number; dz: number }[] = [];
     const n = 44;
+    const r = rand(61);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      out.push({ x: Math.cos(a) * (ISLAND_RADIUS - 0.5), z: Math.sin(a) * (ISLAND_RADIUS - 0.5), a });
+      out.push({
+        x: Math.cos(a) * (ISLAND_RADIUS - 0.5),
+        z: Math.sin(a) * (ISLAND_RADIUS - 0.5),
+        a,
+        h: 0.52 + r() * 0.34,
+        lean: (r() - 0.5) * 0.22,
+        twist: (r() - 0.5) * 0.3,
+        dz: (r() - 0.5) * 0.12,
+      });
     }
     return out;
   }, []);
+
   return (
     <group>
       {posts.map((p, i) => (
         <group key={i} position={s3(p.x, 0, p.z)} rotation={[0, -p.a, 0]}>
-          <mesh position={s3(0, 0.38, 0)} castShadow>
-            <boxGeometry args={[0.14, 0.76, 0.14]} />
-            <meshStandardMaterial color="#c99a6b" roughness={1} />
+          <group position={s3(0, 0, p.dz)} rotation={[p.lean, p.twist, 0]}>
+            {/* chunky picket board with wood-grain texture */}
+            <mesh position={s3(0, p.h / 2, 0)} castShadow>
+              <boxGeometry args={[0.26, p.h, 0.1]} />
+              <meshStandardMaterial map={woodTex} roughness={0.88} />
+            </mesh>
+            {/* rounded/chamfered top cap — 8-sided tapered cylinder, NOT a sharp spike */}
+            <mesh position={s3(0, p.h + 0.07, 0)} castShadow>
+              <cylinderGeometry args={[0.07, 0.13, 0.14, 8]} />
+              <meshStandardMaterial map={woodTex} roughness={0.88} />
+            </mesh>
+          </group>
+          {/* two horizontal rails with grain texture */}
+          <mesh position={s3(0, 0.52, 0.78)}>
+            <boxGeometry args={[0.08, 0.11, 1.62]} />
+            <meshStandardMaterial map={railTex} roughness={0.9} />
           </mesh>
-          <mesh position={s3(0, 0.5, 0.78)} rotation={[0, 0, 0]}>
-            <boxGeometry args={[0.06, 0.1, 1.6]} />
-            <meshStandardMaterial color="#e0b98a" roughness={1} />
-          </mesh>
-          <mesh position={s3(0, 0.25, 0.78)}>
-            <boxGeometry args={[0.06, 0.1, 1.6]} />
-            <meshStandardMaterial color="#e0b98a" roughness={1} />
+          <mesh position={s3(0, 0.24, 0.78)}>
+            <boxGeometry args={[0.08, 0.11, 1.62]} />
+            <meshStandardMaterial map={railTex} roughness={0.9} />
           </mesh>
         </group>
       ))}

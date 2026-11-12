@@ -81,6 +81,12 @@ export default function App() {
   // generation whose death card the player hid (it shrinks to a pill; a new death shows it again)
   const [deathHidden, setDeathHidden] = useState<number | null>(null);
   const [hint, setHint] = useState(true);
+  // the opening camera fly-in runs for ~5.4s; hold back pop-ups until it settles
+  const [introDone, setIntroDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setIntroDone(true), 5600);
+    return () => clearTimeout(t);
+  }, []);
   const [hurt, setHurt] = useState(0);
   const [combo, setCombo] = useState(0);
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -312,8 +318,7 @@ export default function App() {
         />
       </div>
 
-      {rampage && <div className="rage-vignette" />}
-      {loading && <div className="loading-pill glass">Waking the Totem on testnet…</div>}
+      {introDone && rampage && <div className="rage-vignette" />}
 
       {/* ---------- top-left: identity ---------- */}
       <div className="hud-tl glass">
@@ -501,19 +506,19 @@ export default function App() {
 
       {/* ---------- toasts ---------- */}
       <div className="toasts">
-        {toasts.map((t) => (
+        {introDone && toasts.map((t) => (
           <div key={t.id} className={`toast k-${t.kind}`}>{t.text}</div>
         ))}
       </div>
 
-      {hint && view.alive && (
+      {introDone && hint && view.alive && (
         <div className="hint glass">
           <b>Say hi to {view.name.split(" ")[0]}!</b> Tap it to pet · pick 🎋 and tap the grass to feed · ⚽ to play · shake the trees · drag to look around
         </div>
       )}
 
       {/* ---------- rampage ---------- */}
-      {rampage && (
+      {introDone && rampage && (
         <div className="rampage-card beam">
           <div className="rc-title">🔥 RAMPAGE</div>
           <div className="rc-sub">
@@ -578,12 +583,12 @@ export default function App() {
       )}
 
       {/* ---------- death ---------- */}
-      {!view.alive && deathHidden === view.generation && (
+      {introDone && !view.alive && deathHidden === view.generation && (
         <button className="death-pill glass" onClick={() => setDeathHidden(null)}>
           🪦 {graves[graves.length - 1]?.name ?? view.name} · tap for details
         </button>
       )}
-      {!view.alive && deathHidden !== view.generation && (
+      {introDone && !view.alive && deathHidden !== view.generation && (
         <div className="death-card glass">
           <button className="dc-close" aria-label="Hide" onClick={() => setDeathHidden(view.generation)}>✕</button>
           <div className="dc-title">🪦 {graves[graves.length - 1]?.name ?? view.name}</div>

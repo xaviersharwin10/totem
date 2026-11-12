@@ -88,9 +88,33 @@ function CameraRig({ follow }: { follow: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const tmp = useRef(new THREE.Vector3());
-  useFrame((_, dt) => {
+  const introStart = useRef<number | null>(null);
+  const INTRO = 5.4; // seconds of cinematic reveal on load
+  useFrame((state, dt) => {
     const c = controls.current;
     if (!c) return;
+
+    // ---- cinematic intro: a descending orbit that settles into the play view ----
+    if (introStart.current === null) introStart.current = state.clock.elapsedTime;
+    const t = state.clock.elapsedTime - introStart.current;
+    if (t < INTRO) {
+      c.enabled = false;
+      const k = t / INTRO;
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOut
+      const az = (1 - e) * 2.4; // sweep ~140° -> 0
+      const R = 27 - (27 - 13) * e; // dolly in
+      const h = 16 - (16 - 7.2) * e; // descend
+      camera.position.set(Math.sin(az) * R, h, Math.cos(az) * R);
+      camera.lookAt(0, 1, 0);
+      c.target.set(0, 1, 0);
+      return;
+    }
+    if (!c.enabled) {
+      c.enabled = true;
+      c.target.set(0, 1, 0);
+      c.update();
+    }
+
     const want = follow ? tmp.current.copy(world.panda.pos).setY(1.2) : tmp.current.set(0, 1, 0);
     const before = c.target.clone();
     c.target.lerp(want, Math.min(1, dt * (follow ? 3 : 1.5)));

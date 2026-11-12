@@ -101,7 +101,7 @@ async function viewAt<T>(contract: string, method: string, args: object = {}): P
   });
   const out = await rpcForward(body);
   const j = JSON.parse(out.body);
-  if (!j.result?.result) throw new Error(j.error?.cause?.name ?? j.result?.error ?? "view failed");
+  if (!j.result?.result) throw new Error(`${method}: ${j.error?.cause?.name ?? j.error?.message ?? j.result?.error ?? "view failed"}`.slice(0, 200));
   return JSON.parse(Buffer.from(j.result.result).toString());
 }
 const view = <T>(m: string, a: object = {}) => viewAt<T>(CONTRACT_ID, m, a);
@@ -237,9 +237,10 @@ function send(chatId: string, html: string, buttons: Button[] = []) {
     });
   queues.set(chatId, next);
 }
-const broadcast = (html: string, buttons: Button[] = []) => {
+const broadcastAll = (html: string, buttons: Button[] = []) => {
   for (const [id, c] of Object.entries(state.chats)) if (c.alerts) send(id, html, buttons);
 };
+const broadcast = broadcastAll;
 
 // ------------------------------------------------------------------ commands
 
@@ -252,7 +253,9 @@ This chat now gets the alarms: starving, Rampage, every bite, rescues, death, ha
 /watch <i>account.testnet</i> personal alerts for an account (shield, Blessings, Keeper votes)
 /unwatch <i>account</i> · /me your watched accounts
 /lives the lineage · /ask <i>question</i> talk to the Totem
-/alerts on|off · /rescue the one-tap rescue link`;
+/alerts on|off · /rescue the one-tap rescue link
+
+🔔 <b>Your own alerts in one tap:</b> open the farm, connect your wallet and press 🔔. No typing account names.`;
 
 const asked = new Map<string, number>();
 
@@ -433,6 +436,39 @@ async function readWorld() {
   return { t, s, props: live, keepers };
 }
 
+// Quiet lives: on testnet a Totem-day is 2 minutes and the Keepers' bot hatches
+// a new egg ~90 s after each death, so an untouched panda would page the group
+// every few minutes forever. Life alarms (starving, Rampage, bites, death) go out
+// only for a life someone has fed or staked in; hatches and hatch votes after an
+// untouched life are announced at most once an hour.
+const touchedGens = new Set<number>();
+async function touched(t: Totem & { living_staked?: string }): Promise<boolean> {
+  if (touchedGens.has(t.generation)) return true;
+  let yes = BigInt(t.living_staked ?? "0") > 0n;
+  if (!yes) {
+    try {
+      yes = (await history()).events.some((e) => e.kind === "feed" && e.generation === t.generation);
+    } catch {
+      yes = true; // can't tell: better one alarm too many than a silent death
+    }
+  }
+  if (yes) touchedGens.add(t.generation);
+  return yes;
+}
+let lastQuietStarve = 0;
+// an untouched life may still call for a rescue now and then: that's the invitation
+const quietStarveOk = () => {
+  if (Date.now() - lastQuietStarve < 3_600_000) return false;
+  lastQuietStarve = Date.now();
+  return true;
+};
+let lastQuietHatch = 0;
+const quietHatchOk = () => {
+  if (Date.now() - lastQuietHatch < 3_600_000) return false;
+  lastQuietHatch = Date.now();
+  return true;
+};
+
 async function tick() {
   const { t, s, props, keepers } = await readWorld();
   const open = new Map(props.filter((p) => p.status === "InProgress").map((p) => [p.id, p]));
@@ -441,8 +477,13 @@ async function tick() {
   if (prev) {
     const p = prev.t;
     const burnedNow = BigInt(s.total_burned) - BigInt(prev.s.total_burned);
-    if (t.generation > p.generation) {
-      broadcast(`🥚 <b>${esc(t.lineage_name)} hatched!</b> The Keepers voted it into the world. It's hungry already: be its first feeder.`, [links.farm]);
+    // was the life we were watching (p) one anybody cared about?
+    // life alarms only for the life we watched, and only if someone cared about it
+    const sameGen = t.generation === p.generation;
+    const cared = await touched(p);
+    const broadcast = (html: string, buttons: Button[] = []) => (sameGen && cared ? broadcastAll(html, buttons) : undefined);
+    if (t.generation > p.generation && (cared || quietHatchOk())) {
+      broadcastAll(`🥚 <b>${esc(t.lineage_name)} hatched!</b> The Keepers voted it into the world. It's hungry already: be its first feeder.`, [links.farm]);
     } else if (p.alive && !t.alive) {
       const life = (await view<Life[]>("get_lineage", { limit: 100 })).find((l) => l.generation === t.generation);
       broadcast(
@@ -462,8 +503,8 @@ async function tick() {
           `🔥 <b>RAMPAGE!</b> ${esc(t.lineage_name)}'s belly is empty. In ${secs(t.seconds_until_next_bite)} it bites: ${BigInt(t.reserve) > 0n ? `−15% of its ${tokens(t.reserve)} $TOTEM treasury, ` : ""}−15% of every unshielded stake, −1 level. ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} and it's gone.`,
           [links.rescue]
         );
-      else if (t.mood === "starving" && p.mood !== "starving" && p.mood !== "rampage")
-        broadcast(`⚠️ <b>${esc(t.lineage_name)} is starving</b> (${Math.round(t.fullness_bp / 100)}%). Rampage in ${secs(t.seconds_until_rampage)}, then it starts eating its own treasury. ${tokens(t.fill_amount)} $TOTEM fills it.`, [links.rescue]);
+      else if (t.mood === "starving" && p.mood !== "starving" && p.mood !== "rampage" && (cared || quietStarveOk()))
+        broadcastAll(`⚠️ <b>${esc(t.lineage_name)} is starving</b> (${Math.round(t.fullness_bp / 100)}%). Rampage in ${secs(t.seconds_until_rampage)}, then it starts eating its own treasury. ${tokens(t.fill_amount)} $TOTEM fills it.`, [links.rescue]);
       if (p.mood === "rampage" && t.mood !== "rampage") {
         let hero = "";
         try {
@@ -478,14 +519,16 @@ async function tick() {
       if (t.form !== p.form) broadcast(`🐉 ${esc(t.lineage_name)} evolved into a <b>${esc(t.form)}</b>!`);
     }
     // DAO votes
+    const quietVote = (pr: Proposal) => kindOf(pr) === "hatch" && !cared && !t.alive;
     for (const [id, pr] of open)
-      if (!prev.open.has(id))
-        broadcast(`🗳 <b>Vote open #${id}:</b> ${proposalTitle(pr, t)}. ${keepers.length} Keepers, ${needed} yes votes needed. Proposed by ${esc(who(pr.proposer))}.`, [links.tribe]);
+      if (!prev.open.has(id) && !quietVote(pr))
+        broadcastAll(`🗳 <b>Vote open #${id}:</b> ${proposalTitle(pr, t)}. ${keepers.length} Keepers, ${needed} yes votes needed. Proposed by ${esc(who(pr.proposer))}.`, [links.tribe]);
     for (const [id, pr] of prev.open) {
       if (open.has(id)) continue;
       const now = props.find((x) => x.id === id);
-      if (now?.status === "Approved") broadcast(`✅ <b>Vote #${id} passed:</b> ${proposalTitle(pr, t)}.`);
-      else if (now) broadcast(`❌ Vote #${id} ended: ${now.status.toLowerCase()}.`);
+      if (kindOf(pr) === "hatch" && !cared) continue; // an untouched life's auto-hatch
+      if (now?.status === "Approved") broadcastAll(`✅ <b>Vote #${id} passed:</b> ${proposalTitle(pr, t)}.`);
+      else if (now) broadcastAll(`❌ Vote #${id} ended: ${now.status.toLowerCase()}.`);
     }
   }
   prev = { t, s, open };

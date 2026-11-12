@@ -232,13 +232,14 @@ near contract call-function as-read-only $C nft_token json-args '{"token_id":"to
 
 The bot runs inside the hosted app. **Don't run `npm run bot` with the real token on your machine.** Telegram allows one poller per token, and the two would fight. `npm run bot -- --dry-run` is safe; it doesn't connect to Telegram.
 
-- [ ] DM [@Babao_panda_bot](https://t.me/Babao_panda_bot) `/start`. **See:** a welcome and the command menu.
+- [ ] DM [@Babao_panda_bot](https://t.me/Babao_panda_bot) `/start`. **See:** a welcome, the command menu, and a pointer to the app's 🔔 button. (A typed `/start` doesn't link your account; only the 🔔 button's link does.)
 - [ ] `/status`. **See:** name, level, mood, a belly bar, countdowns, the fill amount, the Treasury and the total burned, with buttons that open the app.
 - [ ] `/watch <your account>` (up to 3), then `/me`. **See:** stake, shield time left, Blessings and Keeper status. `/unwatch <account>` removes one.
 - [ ] `/lives` lists recent lives. `/ask how are you?` answers in BaoBao's voice (one question every 8 s).
 - [ ] `/rescue` gives a one-tap rescue button. `/alerts off` mutes tribe alarms for this chat; `/alerts on` brings them back.
 - [ ] **Group:** add the bot to a group. It introduces itself and subscribes the group.
-- [ ] **Alarms through a full life** (hatch, then let it starve). **See:** in order:
+- [ ] **Quiet lives:** a life nobody feeds or stakes in stays quiet: at most one "⚠️ starving" rescue invitation and one "🥚 hatched" an hour, no Rampage, bite, death or auto-hatch vote messages. As soon as someone feeds that life, its alarms come back.
+- [ ] **Alarms through a full life** (hatch, **feed it once**, then let it starve). **See:** in order:
   1. "🥚 … hatched"
   2. "⚠️ starving"
   3. "🔥 RAMPAGE"

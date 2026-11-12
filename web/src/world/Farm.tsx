@@ -183,11 +183,11 @@ function FloatingRocks() {
   const g = useRef<THREE.Group>(null!);
   const rocks = useMemo(() => {
     const r = rand(31);
-    return Array.from({ length: 7 }, () => ({
-      x: (r() - 0.5) * 18,
-      z: (r() - 0.5) * 18,
-      y: -5.0 - r() * 3.5,
-      s: 0.35 + r() * 0.6,
+    return Array.from({ length: 13 }, () => ({
+      x: (r() - 0.5) * 20,
+      z: (r() - 0.5) * 20,
+      y: -4.5 - r() * 4.5,
+      s: 0.4 + r() * 0.9,
       p: r() * 6,
       spin: 0.1 + r() * 0.2,
     }));
@@ -386,12 +386,6 @@ function Rocks() {
     [2.0, 9.5, 0.35],
     [-1.4, -9.6, 0.45],
     [-3.2, -3.4, 0.3],
-    [6.4, -8.2, 0.42],
-    [-7.8, 6.2, 0.36],
-    [4.2, 8.6, 0.3],
-    [-5.6, -7.4, 0.48],
-    [9.8, -1.2, 0.34],
-    [0.8, -6.6, 0.28],
   ];
   return (
     <group>

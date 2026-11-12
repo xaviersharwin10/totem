@@ -461,10 +461,7 @@ button { font-family: inherit; }
 }
 .pm-head { display: flex; justify-content: space-between; align-items: center; }
 /* crystal-ball identity: violet→gold gradient title, distinct from the rampage card */
-.pm-title {
-  background: linear-gradient(100deg, #8b6fd8 10%, #b06ad8 55%, #f2a91c 100%);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
+.pm-title { color: var(--ink); }
 .pm-desc { margin: -4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); line-height: 1.5; }
 
 /* ── active/live betting box (violet mystic beam — the market's own identity) ── */

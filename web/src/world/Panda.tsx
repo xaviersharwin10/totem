@@ -12,6 +12,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { Form, Mood } from "../engine";
 import { addBurst, bump, OBSTACLES, ROAM_RADIUS, world } from "./store";
+import { findPath, step, walkableNear } from "./nav";
 import { Rich, bubbleText } from "../rich";
 
 export interface PandaLook {
@@ -66,6 +67,15 @@ export function Panda({
     actStart: 0,
     lastKick: 0,
     speed: 0,
+    // unsticking: time spent pushing without getting anywhere, and the escape
+    stuck: 0,
+    escapeUntil: 0,
+    escapeHeading: 0,
+    // the planned route (world/nav.ts) and what it was planned for
+    path: null as { x: number; z: number }[] | null,
+    pathGoal: { x: 0, z: 0 },
+    pathEnd: { x: 0, z: 0 },
+    pathAt: 0,
   });
 
   // ---- materials (tinted live for rampage / death) ----
@@ -136,8 +146,9 @@ export function Panda({
         const r = Math.sqrt(Math.random()) * range;
         const x = Math.cos(a) * r;
         const z = Math.sin(a) * r;
-        if (OBSTACLES.every(([ox, oz, or]) => Math.hypot(x - ox, z - oz) > or + 0.8)) {
+        if (Math.hypot(x, z) < ROAM_RADIUS - 0.4 && OBSTACLES.every(([ox, oz, or]) => Math.hypot(x - ox, z - oz) > or + 0.8)) {
           b.target.set(x, 0, z);
+          b.path = null;
           return;
         }
       }
@@ -194,31 +205,52 @@ export function Panda({
     let speed = 0;
     const lookAtCam = b.act === "sit" || b.act === "idle";
     if (b.act === "wander" || b.act === "stomp" || b.act === "food" || b.act === "ball") {
-      if (b.act === "ball") b.target.copy(world.ball.pos);
-      const to = new THREE.Vector3().subVectors(b.target, P.pos).setY(0);
-      const dist = to.length();
-      const reach = b.act === "ball" ? 0.75 * size : b.act === "food" ? 0.9 * size : 0.3;
-      if (dist > reach) {
-        to.normalize();
-        // steer around obstacles
-        for (const [ox, oz, or] of OBSTACLES) {
-          const dx = P.pos.x - ox;
-          const dz = P.pos.z - oz;
-          const d = Math.hypot(dx, dz);
-          const lim = or + 1.1;
-          if (d < lim) to.add(new THREE.Vector3(dx / d, 0, dz / d).multiplyScalar((lim - d) * 1.6));
+      // where this act wants to go (the ball may be past the walkable edge)
+      const goal = b.act === "ball" ? walkableNear(world.ball.pos.x, world.ball.pos.z) : { x: b.target.x, z: b.target.z };
+      // plan a route round the obstacles; re-plan when the goal moves (the rolling ball)
+      if (!b.path || Math.hypot(goal.x - b.pathGoal.x, goal.z - b.pathGoal.z) > 0.6 || t - b.pathAt > (b.act === "ball" ? 0.8 : 1.5)) {
+        const plan = findPath(P.pos, goal);
+        b.path = plan.points;
+        b.pathGoal = goal;
+        b.pathEnd = plan.end;
+        b.pathAt = t;
+        if (b.act === "food" && !plan.reached) {
+          // the food landed somewhere walled off: it rolls to the closest spot the panda can reach
+          const f = world.foods.find((x) => x.id === b.foodId);
+          if (f) f.pos.set(plan.end.x, 0, plan.end.z);
+          b.target.set(plan.end.x, 0, plan.end.z);
+          b.pathGoal = plan.end;
         }
-        to.normalize();
-        const want = Math.atan2(to.x, to.z);
+      }
+      while (b.path.length > 1 && Math.hypot(b.path[0].x - P.pos.x, b.path[0].z - P.pos.z) < 0.35) b.path.shift();
+      const wp = b.path[0];
+      const toEnd = Math.hypot(b.pathEnd.x - P.pos.x, b.pathEnd.z - P.pos.z);
+      const toTarget = Math.hypot(b.target.x - P.pos.x, b.target.z - P.pos.z);
+      const ballDist = Math.hypot(world.ball.pos.x - P.pos.x, world.ball.pos.z - P.pos.z);
+      const reach = b.act === "ball" ? 0.75 * size : b.act === "food" ? 0.9 * size : 0.3;
+      const arrived =
+        b.act === "ball"
+          ? ballDist < reach || toEnd < 0.4 // at the ball, or as close as it can get
+          : b.act === "food"
+            ? toTarget <= reach
+            : toEnd <= 0.3;
+      if (!arrived) {
+        const want = Math.atan2(wp.x - P.pos.x, wp.z - P.pos.z);
         let dh = want - P.heading;
         dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-        P.heading += dh * Math.min(1, dt * 6);
-        speed = b.act === "stomp" ? 3.2 : b.act === "ball" ? 2.8 : b.act === "food" ? 2.6 : 1.4;
+        P.heading += dh * Math.min(1, dt * 7);
+        // slow down for sharp turns so it doesn't orbit a waypoint
+        const turn = Math.max(0.35, Math.cos(Math.min(Math.abs(dh), Math.PI / 2)));
+        speed = (b.act === "stomp" ? 3.2 : b.act === "ball" ? 2.8 : b.act === "food" ? 2.6 : 1.4) * turn;
         if (mood === "hungry") speed *= 0.6;
+      } else if (b.act === "ball" && ballDist > reach + 2) {
+        setAct("sit", 1.2); // the ball stopped somewhere it can't get to: lose interest
       } else if (b.act === "ball") {
         if (t - b.lastKick > 0.6) {
           b.lastKick = t;
           const dir = new THREE.Vector3(Math.sin(P.heading), 0, Math.cos(P.heading));
+          // a ball out past the walkable edge gets kicked back towards the middle
+          if (Math.hypot(world.ball.pos.x, world.ball.pos.z) > ROAM_RADIUS - 0.3) dir.set(-world.ball.pos.x, 0, -world.ball.pos.z).normalize();
           dir.x += (Math.random() - 0.5) * 0.8;
           dir.z += (Math.random() - 0.5) * 0.8;
           dir.normalize().multiplyScalar(5 + Math.random() * 3);
@@ -229,7 +261,7 @@ export function Panda({
       } else if (b.act === "wander" || b.act === "stomp") {
         b.until = t; // arrived, choose again
       }
-    }
+    } else b.path = null;
     if (b.act === "roll") speed = 2.2;
 
     // eat
@@ -254,28 +286,42 @@ export function Panda({
       }
     }
 
+    // escaping a wedge: walk towards open ground for a moment, then think again
+    if (t < b.escapeUntil && mood !== "dead") {
+      let dh = b.escapeHeading - P.heading;
+      dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+      P.heading += dh * Math.min(1, dt * 8);
+      speed = 2.2;
+    }
+
     // move
     if (speed > 0) {
-      P.pos.x += Math.sin(P.heading) * speed * dt;
-      P.pos.z += Math.cos(P.heading) * speed * dt;
-      const d = Math.hypot(P.pos.x, P.pos.z);
-      if (d > ROAM_RADIUS) P.pos.multiplyScalar(ROAM_RADIUS / d);
-      for (const [ox, oz, or] of OBSTACLES) {
-        const dx = P.pos.x - ox;
-        const dz = P.pos.z - oz;
-        const dd = Math.hypot(dx, dz);
-        const lim = or + 0.55;
-        if (dd < lim) {
-          P.pos.x = ox + (dx / dd) * lim;
-          P.pos.z = oz + (dz / dd) * lim;
-        }
-      }
+      const px = P.pos.x;
+      const pz = P.pos.z;
+      const next = step(P.pos.x, P.pos.z, P.pos.x + Math.sin(P.heading) * speed * dt, P.pos.z + Math.cos(P.heading) * speed * dt);
+      P.pos.x = next.x;
+      P.pos.z = next.z;
       b.walk += dt * speed * 4.2;
-    }
+
+      // stuck: pushing on but barely moving (a tree, the edge, or both)
+      const moved = Math.hypot(P.pos.x - px, P.pos.z - pz);
+      if (t >= b.escapeUntil && moved < speed * dt * 0.3) b.stuck += dt;
+      else b.stuck = Math.max(0, b.stuck - dt * 2);
+      if (b.stuck > 0.8) {
+        b.stuck = 0;
+        // head for the middle of the island, give or take, away from the nearest obstacle
+        const a = Math.atan2(-P.pos.x, 1 - P.pos.z) + (Math.random() - 0.5) * 1.2;
+        b.escapeHeading = a;
+        b.escapeUntil = t + 0.9;
+        b.path = null; // re-plan from wherever the escape leaves us
+        if (b.act === "ball") setAct("sit", 1.5);
+        else b.until = t + 0.9; // wander / stomp: pick a new spot after the escape
+      }
+    } else b.stuck = 0;
     b.speed = THREE.MathUtils.lerp(b.speed, speed, Math.min(1, dt * 8));
 
     // face the camera when sitting/idle
-    if (lookAtCam) {
+    if (lookAtCam && t >= b.escapeUntil) {
       const cam = state.camera.position;
       const want = Math.atan2(cam.x - P.pos.x, cam.z - P.pos.z);
       let dh = want - P.heading;

@@ -142,6 +142,8 @@ export default function App() {
 
   const feedAt = async (x: number, z: number) => {
     if (!view.alive || game.busy) return;
+    // on live every feed is a transaction: drop mode is one-shot, so later taps don't sign again
+    if (game.mode === "live") setTool("pet");
     if (game.mode === "live") addBurst("text", new THREE.Vector3(x, 1.2, z), "signing…", "#ffffff");
     try {
       const r = await game.feed(amount);
@@ -405,7 +407,7 @@ export default function App() {
       {/* ---------- the dock ---------- */}
       <Dock>
         <DockItem active={tool === "pet"} label="Pet (1)" onClick={() => setTool("pet")}>✋</DockItem>
-        <DockItem active={tool === "bamboo"} label="Drop bamboo (2)" onClick={() => setTool("bamboo")}>🎋</DockItem>
+        <DockItem active={tool === "bamboo"} label={game.mode === "live" ? "Drop bamboo: tap the grass once (2)" : "Drop bamboo (2)"} onClick={() => setTool("bamboo")}>🎋</DockItem>
         <DockItem active={tool === "ball"} label="Throw ball (3)" onClick={() => setTool("ball")}>⚽</DockItem>
         <div className="dock-sep" />
         {([10, 50, "fill"] as Amount[]).map((a) => (
@@ -415,7 +417,8 @@ export default function App() {
             label={a === "fill" ? `Fill up (${fmt(view.fillAmount)})` : `${a} $TOTEM`}
             onClick={() => {
               setAmount(a);
-              setTool("bamboo");
+              // practice: tapping the grass drops this much. Live: only sets the FEED amount
+              if (game.mode === "practice") setTool("bamboo");
             }}
             small
           >

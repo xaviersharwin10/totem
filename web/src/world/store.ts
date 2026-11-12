@@ -115,22 +115,33 @@ export function throwBall(x: number, z: number) {
   world.ball.vel.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2);
 }
 
-export function clampToRoam(x: number, z: number) {
-  const d = Math.hypot(x, z);
-  if (d > ROAM_RADIUS) {
-    x = (x / d) * ROAM_RADIUS;
-    z = (z / d) * ROAM_RADIUS;
-  }
-  // push out of obstacles
-  for (const [ox, oz, r] of OBSTACLES) {
-    const dx = x - ox;
-    const dz = z - oz;
-    const dd = Math.hypot(dx, dz);
-    if (dd < r + 0.6) {
-      const k = (r + 0.6) / Math.max(dd, 0.001);
-      x = ox + dx * k;
-      z = oz + dz * k;
+export function clampToRoam(x: number, z: number, pad = 0.6) {
+  // Trees sit on the rim, so pushing out of one can push past the edge and the
+  // edge back into the tree: settle both together so the spot is really free.
+  for (let i = 0; i < 4; i++) {
+    const d = Math.hypot(x, z);
+    if (d > ROAM_RADIUS) {
+      x = (x / d) * ROAM_RADIUS;
+      z = (z / d) * ROAM_RADIUS;
     }
+    let moved = false;
+    for (const [ox, oz, r] of OBSTACLES) {
+      const dx = x - ox;
+      const dz = z - oz;
+      const dd = Math.hypot(dx, dz);
+      if (dd < r + pad) {
+        const k = (r + pad) / Math.max(dd, 0.001);
+        x = ox + dx * k;
+        z = oz + dz * k;
+        moved = true;
+      }
+    }
+    if (!moved && Math.hypot(x, z) <= ROAM_RADIUS + 1e-6) break;
+  }
+  // still wedged between a rim tree and the edge: step towards the middle
+  if (Math.hypot(x, z) > ROAM_RADIUS + 1e-6 || OBSTACLES.some(([ox, oz, r]) => Math.hypot(x - ox, z - oz) < r + pad - 1e-3)) {
+    x *= 0.8;
+    z *= 0.8;
   }
   return { x, z };
 }

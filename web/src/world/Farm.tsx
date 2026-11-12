@@ -35,7 +35,10 @@ export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => 
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
-        onPointerDown={(e) => {
+        onClick={(e) => {
+          // a tap, not the end of a drag to look around (that used to drop food and,
+          // on live, open a transaction)
+          if (e.delta > 6) return;
           e.stopPropagation();
           onGround(e.point);
         }}

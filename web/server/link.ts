@@ -78,8 +78,9 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
 export async function linkHandler(req: IncomingMessage, res: ServerResponse) {
   try {
     if (req.method === "GET") {
+      // a token means alerts are on, even if Telegram's getMe blipped just now
       const name = await botUsername();
-      return send(res, 200, { enabled: !!name, bot: name });
+      return send(res, 200, { enabled: !!name || !!process.env.TELEGRAM_BOT_TOKEN, bot: name });
     }
     if (req.method !== "POST") return send(res, 405, { error: "POST only" });
     const name = await botUsername();

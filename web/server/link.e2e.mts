@@ -33,6 +33,9 @@ function ethProof(account: string, message: string, recipient: string) {
 }
 const post = async (path: string, b: unknown) => { const r = await fetch(`${BASE}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }); return { status: r.status, j: (await r.json()) as any }; };
 const codeOf = (url: string) => url?.split("start=link_")[1] ?? "";
+// codes live in a file next to the server: only checkable when the server runs on this machine
+const local = /\/\/(127\.0\.0\.1|localhost)[:/]/.test(BASE + "/");
+const redeem = (code: string, want: string | null) => (local ? redeemLinkCode(code) === want : !!code);
 let pass = 0, fail = 0; const check = (name: string, ok: boolean, info = "") => { console.log(`${ok ? "PASS" : "FAIL"}  ${name}${info ? "  (" + info + ")" : ""}`); ok ? pass++ : fail++; };
 
 const H = "totem-grumbo-keeper.testnet";
@@ -41,15 +44,15 @@ const linkMsg = (a: string) => `Send BaoBao's Telegram alerts about ${a}`;
 let r = await post("/api/link", await nearProof(H, linkMsg(H), "totem-telegram"));
 check("a NEAR account gets a one-time t.me link", r.status === 200 && /^https:\/\/t\.me\/\w+\?start=link_[\w-]{16}$/.test(r.j.url), r.j.url ?? r.j.error);
 const code = codeOf(r.j.url);
-check("the bot swaps the code for that account", redeemLinkCode(code) === H);
-check("the code works only once", redeemLinkCode(code) === null);
+check(local ? "the bot swaps the code for that account" : "a code was issued (swap checked on local runs only)", redeem(code, H));
+if (local) check("the code works only once", redeemLinkCode(code) === null);
 r = await post("/api/link", await nearProof(H, linkMsg("someone-else.testnet"), "totem-telegram"));
 check("a signature over another account's message is refused", r.status === 401, r.j.error);
 r = await post("/api/link", await nearProof(H, `Enter the TOTEM Den as ${H}`, "totem-den"));
 check("a Den signature can't be reused for Telegram", r.status === 401, r.j.error);
 
 r = await post("/api/link", ethProof(ethAccount, linkMsg(ethAccount), "totem-telegram"));
-check("a MetaMask (0x) account links with personal_sign", r.status === 200 && redeemLinkCode(codeOf(r.j.url)) === ethAccount, `${ethAccount.slice(0, 10)}… ${r.j.error ?? "ok"}`);
+check("a MetaMask (0x) account links with personal_sign", r.status === 200 && redeem(codeOf(r.j.url), ethAccount), `${ethAccount.slice(0, 10)}… ${r.j.error ?? "ok"}`);
 const other = "0x" + "ab".repeat(20);
 r = await post("/api/link", ethProof(other, linkMsg(other), "totem-telegram"));
 check("an Ethereum key can't claim someone else's 0x account", r.status === 401, r.j.error);

@@ -75,7 +75,6 @@ export function Island({ onGround, rampage }: { onGround: (p: THREE.Vector3) => 
       <Fence />
       <Flowers />
       <Bushes />
-      <Crystals />
       <Rocks />
     </group>
   );
@@ -292,53 +291,6 @@ function Bushes() {
           </group>
         );
       })}
-    </group>
-  );
-}
-
-/** Glowing crystal clusters (amethyst / aqua), gently pulsing — from the reference. */
-function Crystals() {
-  const g = useRef<THREE.Group>(null!);
-  const clusters = useMemo(() => {
-    const r = rand(53);
-    const spots: [number, number, number][] = [
-      [-3.4, 3.8, 0], [3.2, 2.6, 1], [-5.6, 0.6, 0], [1.4, -1.8, 1], [4.8, 0.4, 0], [-1.6, 6.2, 1],
-    ];
-    return spots.map(([x, z, kind]) => ({
-      x, z,
-      color: kind ? "#7fe3ff" : "#b06cff",
-      emissive: kind ? "#3fb8ff" : "#8a3cff",
-      shards: Array.from({ length: 3 }, () => ({
-        dx: (r() - 0.5) * 0.5,
-        dz: (r() - 0.5) * 0.5,
-        h: 0.5 + r() * 0.7,
-        rot: r() * Math.PI,
-        tilt: (r() - 0.5) * 0.3,
-      })),
-      p: r() * 6,
-    }));
-  }, []);
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    g.current.children.forEach((c, i) => {
-      c.traverse((o) => {
-        const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-        if (m && m.emissiveIntensity !== undefined) m.emissiveIntensity = 0.5 + Math.sin(t * 1.6 + clusters[i].p) * 0.3;
-      });
-    });
-  });
-  return (
-    <group ref={g}>
-      {clusters.map((cl, i) => (
-        <group key={i} position={s3(cl.x, 0, cl.z)}>
-          {cl.shards.map((sh, j) => (
-            <mesh key={j} position={s3(sh.dx, sh.h / 2, sh.dz)} rotation={[sh.tilt, sh.rot, sh.tilt]}>
-              <coneGeometry args={[0.12, sh.h, 5]} />
-              <meshStandardMaterial color={cl.color} emissive={cl.emissive} emissiveIntensity={0.5} roughness={0.2} metalness={0.1} flatShading />
-            </mesh>
-          ))}
-        </group>
-      ))}
     </group>
   );
 }

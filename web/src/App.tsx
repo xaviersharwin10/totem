@@ -259,6 +259,10 @@ export default function App() {
   // keyboard shortcuts
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
+      // typing in a text box (chat, the Den's wall, a guest code) is not a shortcut
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === "1") setTool("pet");
       if (e.key === "2") setTool("bamboo");
       if (e.key === "3") setTool("ball");

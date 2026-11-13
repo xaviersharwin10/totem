@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fmt, PredictMarket, PredictBet } from "./engine";
 import { toTokens } from "./chain/config";
 import type { Game } from "./game";
+import { friendly } from "./errors";
 
 interface Props {
   game: Game;
@@ -149,7 +150,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
       await game.predict(side, amount);
       toast(`🔮 Bet ${amount} $TOTEM on "${side}"`, "info");
     } catch (e) {
-      toast(e instanceof Error ? e.message : String(e), "info");
+      toast(friendly(e), "info");
     }
   };
 
@@ -158,7 +159,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
       await game.claimPrediction(marketId);
       toast("🏆 Winnings claimed!", "level_up");
     } catch (e) {
-      toast(e instanceof Error ? e.message : String(e), "info");
+      toast(friendly(e), "info");
     }
   };
 
@@ -299,14 +300,24 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               </div>
             )}
 
-            {/* Bet button */}
-            <button
-              className={`press-btn ${side === "survive" ? "survive-btn" : "danger-btn"}`}
-              onClick={doBet}
-              disabled={game.predictBusy || !game.accountId}
-            >
-              Bet {amount} on {side === "survive" ? "🛡 Survive" : "💀 Die"}
-            </button>
+            {/* Bet button (or the faucet first, when there's nothing to bet with) */}
+            {game.accountId && game.balance !== null && game.balance < amount ? (
+              <button
+                className="press-btn"
+                onClick={() => game.faucet().then(() => toast("🚰 +1,000 test $TOTEM: now place your bet", "info")).catch((e) => toast(friendly(e), "info"))}
+                disabled={game.busy}
+              >
+                🚰 Get test $TOTEM first{game.balance > 0 ? ` (you have ${fmt(game.balance)})` : ""}
+              </button>
+            ) : (
+              <button
+                className={`press-btn ${side === "survive" ? "survive-btn" : "danger-btn"}`}
+                onClick={doBet}
+                disabled={game.predictBusy || !game.accountId}
+              >
+                Bet {amount} on {side === "survive" ? "🛡 Survive" : "💀 Die"}
+              </button>
+            )}
 
             {!game.accountId && (
               <div className="pm-connect-note">Connect a wallet or play as guest to bet</div>

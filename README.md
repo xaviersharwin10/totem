@@ -503,6 +503,7 @@ All 14 checks pass. Two parameters were tuned from this model (Blessing period 7
 | Gas relayer for free guests (NEP-366) | [`totem-grumbo-relay.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-relay.testnet) |
 | Hosted app | [totem-x2kg.onrender.com](https://totem-x2kg.onrender.com) |
 | Telegram bot | [@Babao_panda_bot](https://t.me/Babao_panda_bot) |
+| Uptime | UptimeRobot + a GitHub Actions cron ping the app every 10 min, so the free Render instance stays warm for the demo |
 
 Govern through the DAO:
 

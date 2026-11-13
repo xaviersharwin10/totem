@@ -371,7 +371,7 @@ function Bushes() {
         ];
         const col = r() > 0.5 ? "#5fae44" : "#6cc04a";
         return (
-          <group key={i} position={s3(x, 0, z)} scale={s}>
+          <group key={i} position={s3(x, 0, z)} scale={s} onPointerDown={(e) => e.stopPropagation()}>
             {blobs.map(([bx, by, bz, br], j) => (
               <mesh key={j} position={s3(bx, by, bz)} castShadow>
                 <icosahedronGeometry args={[br, 0]} />
@@ -509,7 +509,7 @@ function Tree({ idx, x, z, sc, color, onShake }: { idx: number; x: number; z: nu
     const n = 1 + Math.floor(Math.random() * 2);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
-      dropFood(x + Math.cos(a) * 1.6, z + Math.sin(a) * 1.6, "apple", 1);
+      dropFood(x + Math.cos(a) * 1.6, z + Math.sin(a) * 1.6, "apple", 1, 2.8 * sc);
     }
     addBurst("spark", new THREE.Vector3(x, 3 * sc, z), undefined, "#9be37a");
     onShake();
@@ -1126,7 +1126,20 @@ export function Clouds() {
   const g = useRef<THREE.Group>(null!);
   const clouds = useMemo(() => {
     const r = rand(5);
-    return Array.from({ length: 7 }, () => ({ a: r() * Math.PI * 2, d: 14 + r() * 8, y: 7 + r() * 4, s: 0.8 + r() * 0.8 }));
+    return Array.from({ length: 7 }, (_, i) => {
+      const ri = rand(500 + i * 37);
+      const nBlobs = 4 + Math.floor(ri() * 3); // 4–6 blobs per cloud
+      const blobs: [number, number, number, number][] = [[0, 0, 0, 0.9 + ri() * 0.4]];
+      for (let b = 1; b < nBlobs; b++) {
+        blobs.push([
+          (ri() - 0.5) * 2.4,
+          (ri() - 0.5) * 0.5,
+          (ri() - 0.5) * 1.4,
+          0.45 + ri() * 0.55,
+        ]);
+      }
+      return { a: r() * Math.PI * 2, d: 14 + r() * 8, y: 7 + r() * 4, s: 0.9 + r() * 0.8, blobs };
+    });
   }, []);
   useFrame((_, dt) => {
     g.current.children.forEach((c, i) => {
@@ -1138,10 +1151,10 @@ export function Clouds() {
     <group ref={g}>
       {clouds.map((c, i) => (
         <group key={i} scale={c.s}>
-          {[[0, 0, 0, 1.2], [1.1, -0.2, 0.2, 0.9], [-1.1, -0.25, -0.1, 0.85], [0.4, 0.5, 0, 0.8]].map(([x, y, z, r], k) => (
+          {c.blobs.map(([x, y, z, r], k) => (
             <mesh key={k} position={s3(x, y, z)}>
-              <sphereGeometry args={[r, 14, 10]} />
-              <meshStandardMaterial color="#ffffff" roughness={1} />
+              <sphereGeometry args={[r, 12, 10]} />
+              <meshStandardMaterial color="#ffffff" roughness={1} transparent opacity={0.82} depthWrite={false} />
             </mesh>
           ))}
         </group>

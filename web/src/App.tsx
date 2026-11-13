@@ -209,7 +209,7 @@ export default function App() {
     try {
       const r = await game.feed(amount);
       const size = 0.8 + Math.min(1.4, Math.log10(r.accepted + 1) * 0.55);
-      dropFood(x, z, "bamboo", size);
+      dropFood(x, z, "bamboo", size, 2.5 + Math.random() * 0.8);
       sfx.feed(combo + 1);
       addBurst("text", new THREE.Vector3(x, 2, z), `+${fmt(r.accepted)} 🎋`, "#7be37a");
       addBurst("text", new THREE.Vector3(x + 0.6, 1.4, z), `🔥 ${fmt(r.burn)} burned`, "#ff8a4d");

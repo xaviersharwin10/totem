@@ -40,6 +40,15 @@ export const OBSTACLES: [number, number, number][] = [
   [6.6, -7.6, 1.0],
   [8.6, -1.6, 1.0],
   [-4.8, 4.6, 1.0], // graveyard
+  [-2.4, 5.6, 0.9], // bushes
+  [6.2, -0.4, 0.8],
+  [-6.4, 2.2, 0.9],
+  [0.6, 5.2, 0.7],
+  [3.6, -5.2, 0.85],
+  [-4.2, -6.2, 0.75],
+  [8.4, -2.8, 0.7],
+  [-8.2, -1.2, 0.8],
+  [2.2, 4.2, 0.6],
 ];
 
 export const ROAM_RADIUS = 8.6;
@@ -86,13 +95,13 @@ export function useWorld(): number {
   );
 }
 
-export function dropFood(x: number, z: number, kind: Food["kind"], size = 1) {
+export function dropFood(x: number, z: number, kind: Food["kind"], size = 1, startY?: number) {
   const p = clampToRoam(x, z);
   world.foods.push({
     id: world.nextId++,
     kind,
     pos: new THREE.Vector3(p.x, 0, p.z),
-    y: 6 + Math.random() * 2,
+    y: startY ?? 6 + Math.random() * 2,
     vy: 0,
     size,
     bornAt: performance.now(),

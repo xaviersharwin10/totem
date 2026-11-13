@@ -67,7 +67,8 @@ function MarketRow({
   const myD = myBet ? toTokens(myBet.die) : 0;
 
   const claimedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
-  const alreadyClaimed = claimedIds.includes(m.market_id);
+  const betIds: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
+  const alreadyClaimed = claimedIds.includes(m.market_id) && betIds.includes(m.market_id);
 
   const wonSurvive = m.resolved && m.outcome === true && myS > 0;
   const wonDie = m.resolved && m.outcome === false && myD > 0;
@@ -162,7 +163,15 @@ export function PredictPanel({ game, onClose, toast }: Props) {
   for (const rm of game.recentMarkets) {
     if (!allMarkets.find((x) => x.market_id === rm.market_id)) allMarkets.push(rm);
   }
-  const resolvedMarkets = allMarkets.filter((mk) => mk.resolved);
+  const resolvedMarkets = allMarkets.filter((mk) => mk.resolved).sort((a, b) => b.market_id - a.market_id);
+  // markets you can still claim always stay in view; the rest fold into one strip
+  const canClaim = (mk: PredictMarket) => {
+    const b = game.pastBets.get(mk.market_id);
+    if (!b || !mk.resolved) return false;
+    return mk.outcome ? toTokens(b.survive) > 0 : toTokens(b.die) > 0;
+  };
+  const claimable = resolvedMarkets.filter(canClaim);
+  const folded = resolvedMarkets.filter((mk) => !canClaim(mk));
 
   const betForMarket = (marketId: number): PredictBet | null => {
     if (game.myBet && game.activeMarket?.market_id === marketId) return game.myBet;
@@ -211,7 +220,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
         {game.mode === "live" && inRampage && (
           <div className="pm-live-box">
             <div className="pm-live-head">
-              <span className="pm-live-label">🔥 Rampage · Market #{m.market_id}</span>
+              <span className="pm-live-label">🔥 Rampage · {m.market_id > 0 ? `Market #${m.market_id}` : "market opening…"}</span>
               <span className="pm-live-dot">● live</span>
             </div>
 
@@ -319,12 +328,12 @@ export function PredictPanel({ game, onClose, toast }: Props) {
           </div>
         )}
 
-        {/* ── Past markets ── */}
-        {resolvedMarkets.length > 0 && (
+        {/* ── Winnings waiting to be claimed: always open ── */}
+        {claimable.length > 0 && (
           <>
-            <div className="pm-section-title">Recent outcomes</div>
+            <div className="pm-section-title">🏆 Your winnings</div>
             <div className="pm-list">
-              {resolvedMarkets.map((market) => (
+              {claimable.map((market) => (
                 <MarketRow
                   key={market.market_id}
                   m={market}
@@ -336,6 +345,35 @@ export function PredictPanel({ game, onClose, toast }: Props) {
               ))}
             </div>
           </>
+        )}
+
+        {/* ── Past markets: one compact strip, open for details ── */}
+        {folded.length > 0 && (
+          <details className="pm-past">
+            <summary>
+              <span className="pm-section-title">Recent outcomes</span>
+              <span className="pm-past-chips">
+                {folded.slice(0, 8).map((mk) => (
+                  <span key={mk.market_id} className={`pm-past-chip ${mk.outcome ? "s" : "d"}`} title={`Market #${mk.market_id}: ${mk.outcome ? "survived" : "died"}`}>
+                    {mk.outcome ? "🛡" : "💀"}
+                  </span>
+                ))}
+              </span>
+              <span className="pm-past-more">{folded.length} ▾</span>
+            </summary>
+            <div className="pm-list">
+              {folded.slice(0, 10).map((market) => (
+                <MarketRow
+                  key={market.market_id}
+                  m={market}
+                  myBet={betForMarket(market.market_id)}
+                  accountId={game.accountId}
+                  onClaim={() => doClaim(market.market_id)}
+                  busy={game.predictBusy}
+                />
+              ))}
+            </div>
+          </details>
         )}
       </div>
     </div>

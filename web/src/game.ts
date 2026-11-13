@@ -432,7 +432,8 @@ export function useGame(): Game {
       if (near.accountId) {
         const storedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
         const claimedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
-        const allTrackedIds = [...new Set([...storedIds, ...claimedIds])];
+        // claimed ids are only real if this browser bet on them (see `zeroed` below)
+        const allTrackedIds = [...new Set([...storedIds, ...claimedIds.filter((id) => storedIds.includes(id))])];
         const allMarkets = [...(recent ?? []), ...backfill];
         if (mkt) allMarkets.unshift(mkt);
         const missingIds = allTrackedIds.filter((id) => !allMarkets.find((m) => m.market_id === id));
@@ -458,9 +459,12 @@ export function useGame(): Game {
         // When both sides are 0 the user claimed their winnings; move them to the
         // claimed list (so the badge shows) but keep them in predict_ids so the
         // market row stays visible.
-        const zeroed = toFetch.filter((_, i) => {
+        // Only markets this browser actually bet on: every other market also
+        // returns a 0/0 bet, and used to be marked "claimed" (and then fetched
+        // and listed forever).
+        const zeroed = toFetch.filter((m, i) => {
           const b = bets[i];
-          return b && BigInt(b.survive) === 0n && BigInt(b.die) === 0n;
+          return storedIds.includes(m.market_id) && b && BigInt(b.survive) === 0n && BigInt(b.die) === 0n;
         }).map((m) => m.market_id);
         if (zeroed.length) {
           const alreadyClaimed: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");

@@ -847,6 +847,9 @@ button { font-family: inherit; }
   .dc-title { font-size: 19px; }
   .dc-sub { margin: 4px 0 8px; font-size: 12.5px; }
   .death-pill { top: 56px; font-size: 12.5px; padding: 7px 12px; }
+  .tour-body { min-height: 0; }
+  .sheet-bg { padding: 8px; }
+}
 
 /* ---------- Path titles ---------- */
 .acct { flex-wrap: wrap; gap: 4px; }

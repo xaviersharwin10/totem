@@ -136,7 +136,39 @@ async function tick() {
   }
 }
 
+// ---------------------------------------------------------------- market opener
+//
+// A Rampage (and the prediction market that opens with it) is written to the
+// contract lazily, by the next transaction. With few visitors nobody may send
+// one, so the app would show a Rampage while the 🔮 market doesn't exist yet.
+// When the live view says Rampage and there's no open market for this life,
+// the relayer sends a free `poke`, which settles the Rampage and opens it.
+const OPENER = process.env.PREDICT_OPENER !== "0" && relayerConfigured();
+let lastPoke = 0;
+interface Market {
+  gen: number;
+  resolved: boolean;
+}
+async function openMarketIfNeeded() {
+  const t = await view<{ alive: boolean; generation: number; mood: string }>(CONTRACT_ID, "get_totem");
+  if (!t.alive || t.mood !== "rampage" || Date.now() - lastPoke < 30_000) return;
+  const m = await view<Market | null>(CONTRACT_ID, "get_active_predict_market").catch(() => null);
+  if (m && !m.resolved && m.gen === t.generation) return; // already open
+  lastPoke = Date.now();
+  await getRelayer().signAndSendTransaction({ receiverId: CONTRACT_ID, actions: [actions.functionCall("poke", {}, 100_000_000_000_000n, 0n)] });
+  const after = await view<Market | null>(CONTRACT_ID, "get_active_predict_market").catch(() => null);
+  console.log(`market opener: poked; market ${after && !after.resolved ? `#${(after as Market & { market_id: number }).market_id} open` : "still closed"}`);
+}
+
 export function startAutoHatch() {
+  if (OPENER) {
+    console.log("market opener: on (pokes when a Rampage has no open 🔮 market)");
+    const loopM = () =>
+      openMarketIfNeeded()
+        .catch((e) => console.error("market opener:", e instanceof Error ? e.message : e))
+        .finally(() => setTimeout(loopM, 10_000));
+    loopM();
+  }
   if (!ENABLED) {
     console.log("auto-hatch: off" + (process.env.AUTO_HATCH === "0" ? "" : " (needs KEEPER_KEYS and the relayer key)"));
     return;

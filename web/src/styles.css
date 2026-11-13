@@ -674,3 +674,12 @@ button { font-family: inherit; }
 .den-at { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-left: 4px; }
 .den-ghost { color: var(--ink) !important; }
 
+
+/* Rampage bet prompt */
+.bet-banner { position: absolute; left: 50%; top: 84px; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 10px 14px; border-radius: 16px; max-width: min(560px, calc(100vw - 32px)); border: 2px solid #ff5d6c; animation: bet-pulse 1.6s ease-in-out infinite; }
+.bet-banner .bet-title { font-weight: 900; font-size: 15px; color: #ff5d6c; }
+.bet-banner .bet-sub { font-size: 12px; opacity: 0.85; }
+.bet-banner .press-btn { padding: 6px 14px; }
+.bet-banner .bet-x { border: 0; background: transparent; cursor: pointer; font-size: 14px; opacity: 0.6; color: inherit; }
+@keyframes bet-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 93, 108, 0.35); } 50% { box-shadow: 0 0 0 8px rgba(255, 93, 108, 0); } }
+@media (prefers-reduced-motion: reduce) { .bet-banner { animation: none; } }

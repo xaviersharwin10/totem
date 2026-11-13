@@ -35,7 +35,7 @@ export const RPC_URLS = process.env.RELAYER_RPC_URL
   : ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"];
 export const rpcProvider = () => new FailoverRpcProvider(RPC_URLS.map((url) => new JsonRpcProvider({ url })));
 // Zero-deposit game actions a guest may do for free.
-const ALLOWED = new Set(["faucet", "feed", "poke", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing"]);
+const ALLOWED = new Set(["faucet", "feed", "poke", "stake", "unstake", "withdraw", "claim_badge", "claim_blessing", "predict", "claim_prediction"]);
 const MAX_GAS_PER_ACTION = 100_000_000_000_000n; // 100 Tgas
 const MAX_ACTIONS = 3;
 // Keepers vote for free too: only act_proposal on the tribe's DAO. The vote

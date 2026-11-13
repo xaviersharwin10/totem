@@ -137,6 +137,7 @@ const links = {
   rescue: { text: "🦸 Rescue it (free, no wallet)", url: `${APP_URL}/?rescue=1` },
   farm: { text: "🐼 Open the farm", url: `${APP_URL}/` },
   tribe: { text: "🏛 Vote in the Tribe", url: `${APP_URL}/?tribe=1` },
+  bet: { text: "🔮 Bet: will it survive?", url: `${APP_URL}/?predict=1` },
   treasury: (t: Totem) => ({ text: "🏦 Treasury on the explorer", url: `${EXPLORER}/address/${t.treasury}` }),
 };
 
@@ -501,7 +502,7 @@ async function tick() {
       else if (t.mood === "rampage" && p.mood !== "rampage")
         broadcast(
           `🔥 <b>RAMPAGE!</b> ${esc(t.lineage_name)}'s belly is empty. In ${secs(t.seconds_until_next_bite)} it bites: ${BigInt(t.reserve) > 0n ? `−15% of its ${tokens(t.reserve)} $TOTEM treasury, ` : ""}−15% of every unshielded stake, −1 level. ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} and it's gone.`,
-          [links.rescue]
+          [links.rescue, links.bet]
         );
       else if (t.mood === "starving" && p.mood !== "starving" && p.mood !== "rampage" && (cared || quietStarveOk()))
         broadcastAll(`⚠️ <b>${esc(t.lineage_name)} is starving</b> (${Math.round(t.fullness_bp / 100)}%). Rampage in ${secs(t.seconds_until_rampage)}, then it starts eating its own treasury. ${tokens(t.fill_amount)} $TOTEM fills it.`, [links.rescue]);

@@ -411,13 +411,30 @@ export function useGame(): Game {
         near.view<PredictMarket[]>("get_predict_markets", { limit: 10 }),
       ]);
       setActiveMarket(mkt);
-      setRecentMarkets(recent ?? []);
+
+      // track highest known market id so we can backfill when a new gen has no markets yet
+      const allKnown = [...(recent ?? [])];
+      if (mkt) allKnown.push(mkt);
+      const maxFromChain = allKnown.reduce((m, x) => Math.max(m, x.market_id), 0);
+      const storedMax = Number(localStorage.getItem("totem_predict_max_id") ?? "0");
+      const maxId = Math.max(maxFromChain, storedMax);
+      if (maxId > storedMax) localStorage.setItem("totem_predict_max_id", String(maxId));
+
+      // if current gen has no markets, backfill the last 5 resolved ones across all gens
+      let backfill: PredictMarket[] = [];
+      if ((recent ?? []).length === 0 && maxId > 0) {
+        const ids = Array.from({ length: Math.min(5, maxId) }, (_, i) => maxId - i);
+        const fetched = await Promise.all(
+          ids.map((id) => near.view<PredictMarket | null>("get_predict_market", { market_id: id }))
+        );
+        backfill = fetched.filter((m): m is PredictMarket => !!m && m.resolved);
+      }
+      setRecentMarkets([...(recent ?? []), ...backfill]);
+
       if (near.accountId) {
-        // also fetch any markets the user has bet on from localStorage (survives gen changes)
         const storedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
-        const allMarkets = [...(recent ?? [])];
+        const allMarkets = [...(recent ?? []), ...backfill];
         if (mkt) allMarkets.unshift(mkt);
-        // fetch stored markets not already in the list
         const missingIds = storedIds.filter((id) => !allMarkets.find((m) => m.market_id === id));
         const extra = await Promise.all(
           missingIds.map((id) => near.view<PredictMarket | null>("get_predict_market", { market_id: id }))
@@ -435,7 +452,6 @@ export function useGame(): Game {
         const map = new Map<number, PredictBet>();
         toFetch.forEach((m, i) => { if (bets[i]) map.set(m.market_id, bets[i]); });
         setPastBets(map);
-        // prune claimed markets (both bet sides are 0)
         const claimed = toFetch.filter((_, i) => {
           const b = bets[i];
           return b && BigInt(b.survive) === 0n && BigInt(b.die) === 0n;

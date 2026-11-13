@@ -189,7 +189,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
           </div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* ── Empty state: no active market, no past markets ── */}
         {game.mode === "live" && allMarkets.length === 0 && (
           <div className="pm-empty">
             <span className="pm-empty-orb">🔮</span>
@@ -316,7 +316,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
         {/* ── Past markets ── */}
         {resolvedMarkets.length > 0 && (
           <>
-            <div className="pm-section-title">Past markets</div>
+            <div className="pm-section-title">Recent outcomes</div>
             <div className="pm-list">
               {resolvedMarkets.map((market) => (
                 <MarketRow

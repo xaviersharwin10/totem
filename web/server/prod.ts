@@ -5,7 +5,7 @@
 //   npm run build && npm start        (PORT defaults to 8080)
 import "../bot/env";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rpcHandler } from "./rpc";
@@ -47,13 +47,29 @@ const TYPES: Record<string, string> = {
   ".wasm": "application/wasm",
 };
 
-function serveStatic(path: string, res: ServerResponse) {
+// The page's link-preview tags need absolute URLs (X ignores relative ones), so
+// the server writes this site's own address into index.html.
+const PUBLIC_URL = (process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? "").replace(/\/$/, "");
+function originOf(req: IncomingMessage): string {
+  if (PUBLIC_URL) return PUBLIC_URL;
+  const proto = String(req.headers["x-forwarded-proto"] ?? "http").split(",")[0];
+  return `${proto}://${req.headers.host ?? "localhost"}`;
+}
+let indexHtml: string | null = null;
+
+function serveStatic(path: string, res: ServerResponse, req: IncomingMessage) {
   let file = normalize(join(DIST, decodeURIComponent(path)));
   if (!file.startsWith(DIST)) file = join(DIST, "index.html");
   if (!existsSync(file) || statSync(file).isDirectory()) file = join(DIST, "index.html");
   const isIndex = file.endsWith("index.html");
   res.setHeader("content-type", TYPES[extname(file)] ?? "application/octet-stream");
-  res.setHeader("cache-control", isIndex ? "no-cache" : "public, max-age=31536000, immutable");
+  if (isIndex) {
+    res.setHeader("cache-control", "no-cache");
+    indexHtml ??= readFileSync(file, "utf8");
+    return res.end(indexHtml.replaceAll("__ORIGIN__", originOf(req)));
+  }
+  // og.jpg keeps a stable name for link previews: cache it for a day, not forever
+  res.setHeader("cache-control", file.endsWith("og.jpg") ? "public, max-age=86400" : "public, max-age=31536000, immutable");
   createReadStream(file).pipe(res);
 }
 
@@ -71,7 +87,7 @@ const server = createServer((req, res) => {
       });
     }
   }
-  serveStatic(url.pathname, res);
+  serveStatic(url.pathname, res, req);
 });
 
 const PORT = Number(process.env.PORT ?? 8080);

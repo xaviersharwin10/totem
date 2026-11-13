@@ -28,6 +28,7 @@ import { rpcForward } from "../server/rpc";
 import { history } from "../server/history";
 import { voiceReply } from "../server/voice";
 import { redeemLinkCode } from "../server/link";
+import { xPost, xMode } from "./x";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const DRY = process.argv.includes("--dry-run") || !TOKEN;
@@ -484,10 +485,19 @@ async function tick() {
     const sameGen = t.generation === p.generation;
     const cared = await touched(p);
     const broadcast = (html: string, buttons: Button[] = []) => (sameGen && cared ? broadcastAll(html, buttons) : undefined);
+    if (t.generation > p.generation && cared)
+      xPost(`🥚 ${t.lineage_name} just hatched on NEAR. The Keepers voted it into the world, and it's already hungry.\n\nBe its first feeder (free, no wallet):\n${APP_URL}/`, true);
     if (t.generation > p.generation && (cared || quietHatchOk())) {
       broadcastAll(`🥚 <b>${esc(t.lineage_name)} hatched!</b> The Keepers voted it into the world. It's hungry already: be its first feeder.`, [links.farm]);
     } else if (p.alive && !t.alive) {
       const life = (await view<Life[]>("get_lineage", { from: t.generation, limit: 1 })).find((l) => l.generation === t.generation);
+      if (sameGen && cared)
+        xPost(
+          `🪦 ${t.lineage_name} starved.\n\nIt reached Level ${t.max_level}${life?.lifespan_sec ? ` and lived ${secs(life.lifespan_sec)}` : ""}. Its treasury burned with it${life?.stats ? ` (${tokens(life.stats.burned)} $TOTEM gone for good)` : ""}.` +
+            (life?.top_feeders[0] ? `\nTop feeder: ${who(life.top_feeders[0][0])}.` : "") +
+            `\n\nThe Keepers vote on the next egg: ${APP_URL}/?tribe=1`,
+          true
+        );
       broadcast(
         `🪦 <b>${esc(t.lineage_name)} starved.</b> It reached Level ${t.max_level}${life?.lifespan_sec ? ` and lived ${secs(life.lifespan_sec)}` : ""}. Its treasury burned with it; the stakes are released. A gravestone NFT keeps its story forever.` +
           (life?.top_feeders[0] ? `\nTop feeder of this life: ${esc(who(life.top_feeders[0][0]))}. The top 3 shape the next egg.` : "") +
@@ -500,12 +510,16 @@ async function tick() {
           `⚔️ <b>BITE!</b> ${esc(t.lineage_name)} burned ${tokens(burnedNow > 0n ? burnedNow : 0n)} $TOTEM of its treasury and slashed every unshielded stake. Down to Level ${t.level}: <b>${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} from death</b>. Next bite in ${secs(t.seconds_until_next_bite)}.`,
           [links.rescue]
         );
-      else if (t.mood === "rampage" && p.mood !== "rampage")
+      else if (t.mood === "rampage" && p.mood !== "rampage") {
+        if (cared)
+          xPost(
+            `🔥 RAMPAGE! ${t.lineage_name}'s belly is empty.\n\nNext bite in ${secs(t.seconds_until_next_bite)}: it eats its own treasury and every unshielded stake. ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} and it's gone.\n\nRescue it (free, no wallet) or bet on whether it survives 👇\n${APP_URL}/?rescue=1`
+          );
         broadcast(
           `🔥 <b>RAMPAGE!</b> ${esc(t.lineage_name)}'s belly is empty. In ${secs(t.seconds_until_next_bite)} it bites: ${BigInt(t.reserve) > 0n ? `−15% of its ${tokens(t.reserve)} $TOTEM treasury, ` : ""}−15% of every unshielded stake, −1 level. ${t.bites_until_death} bite${t.bites_until_death === 1 ? "" : "s"} and it's gone.`,
           [links.rescue, links.bet]
         );
-      else if (t.mood === "starving" && p.mood !== "starving" && p.mood !== "rampage" && (cared || quietStarveOk()))
+      } else if (t.mood === "starving" && p.mood !== "starving" && p.mood !== "rampage" && (cared || quietStarveOk()))
         broadcastAll(`⚠️ <b>${esc(t.lineage_name)} is starving</b> (${Math.round(t.fullness_bp / 100)}%). Rampage in ${secs(t.seconds_until_rampage)}, then it starts eating its own treasury. ${tokens(t.fill_amount)} $TOTEM fills it.`, [links.rescue]);
       if (p.mood === "rampage" && t.mood !== "rampage") {
         let hero = "";
@@ -515,9 +529,11 @@ async function tick() {
         } catch {
           /* name stays unknown */
         }
+        if (cared) xPost(`🦸 Rescued! ${hero ? `${hero} fed` : "Someone fed"} ${t.lineage_name} and ended the Rampage. Belly back to ${Math.round(t.fullness_bp / 100)}%.\n\nOne panda the whole internet keeps alive: ${APP_URL}/`);
         broadcast(`🦸 <b>Rescued!</b> ${hero ? `<b>${esc(hero)}</b> fed` : "Someone fed"} ${esc(t.lineage_name)} and ended the Rampage${hero ? ", and earned the Hero badge" : ""}. Belly at ${Math.round(t.fullness_bp / 100)}%.`);
       }
       if (t.level > p.level) broadcast(`⬆️ ${esc(t.lineage_name)} reached <b>Level ${t.level}</b>. Bigger meals, bigger treasury${t.level >= 3 ? ", and Blessings now pay its feeders" : ""}.`);
+      if (t.form !== p.form && cared) xPost(`🐉 ${t.lineage_name} evolved into a ${t.form}!\n\nKeep it fed: ${APP_URL}/`);
       if (t.form !== p.form) broadcast(`🐉 ${esc(t.lineage_name)} evolved into a <b>${esc(t.form)}</b>!`);
     }
     // DAO votes
@@ -535,11 +551,28 @@ async function tick() {
   }
   prev = { t, s, open };
 
+  xDaily(t, s);
   await personalAlerts(t, open, keepers);
   await cheer(t).catch((e) => console.error("cheer:", e instanceof Error ? e.message : e));
   await quietCrowd(t).catch((e) => console.error("crowd:", e instanceof Error ? e.message : e));
   await missYou(t).catch((e) => console.error("miss-you:", e instanceof Error ? e.message : e));
   save();
+}
+
+// ------------------------------------------------------------------ X daily update
+//
+// Once a day, in the 14:00 UTC hour (morning in the Americas, evening in Asia).
+
+let lastDailyX = "";
+function xDaily(t: Totem, s: Stats) {
+  const now = new Date();
+  const day = now.toISOString().slice(0, 10);
+  if (now.getUTCHours() !== 14 || lastDailyX === day) return;
+  lastDailyX = day;
+  const status = t.alive
+    ? `${t.lineage_name} is ${t.mood === "rampage" ? "on a RAMPAGE" : t.mood}, Level ${t.level}, belly at ${Math.round(t.fullness_bp / 100)}%.`
+    : `${t.lineage_name} is gone. The Keepers are voting on the next egg.`;
+  xPost(`🐼 Daily from Panda Island\n\n${status}\nEvery meal burns $TOTEM: ${tokens(s.total_burned)} burned so far, forever.\n\nFeed it (free, no wallet): ${APP_URL}/`);
 }
 
 // ------------------------------------------------------------------ cheering the tribe on
@@ -713,7 +746,7 @@ async function pollTelegram() {
 }
 
 async function main() {
-  console.log(`TOTEM bot · ${CONTRACT_ID} · DAO ${DAO_ID} · app ${APP_URL} · ${DRY ? "DRY RUN (no Telegram)" : "live"}`);
+  console.log(`TOTEM bot · ${CONTRACT_ID} · DAO ${DAO_ID} · app ${APP_URL} · ${DRY ? "DRY RUN (no Telegram)" : "live"} · X ${xMode}`);
   if (!DRY) {
     const me = await tg<{ username: string }>("getMe", {});
     console.log(`signed in as @${me.username}; add it to the tribe's group, or DM it /start`);

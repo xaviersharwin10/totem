@@ -52,6 +52,7 @@ export interface Game {
   // prediction market
   activeMarket: PredictMarket | null;
   myBet: PredictBet | null;
+  pastBets: Map<number, PredictBet>;
   predict: (side: "survive" | "die", amount: number) => Promise<void>;
   claimPrediction: (marketId: number) => Promise<void>;
   recentMarkets: PredictMarket[];
@@ -174,6 +175,7 @@ export function useGame(): Game {
   const [activeMarket, setActiveMarket] = useState<PredictMarket | null>(null);
   const [myBet, setMyBet] = useState<PredictBet | null>(null);
   const [recentMarkets, setRecentMarkets] = useState<PredictMarket[]>([]);
+  const [pastBets, setPastBets] = useState<Map<number, PredictBet>>(new Map());
   const pushLive = (kind: GameEvent["kind"], text: string) => {
     liveEvents.current = [{ id: evId.current++, kind, text, ts: Date.now() }, ...liveEvents.current].slice(0, 60);
   };
@@ -410,14 +412,21 @@ export function useGame(): Game {
       ]);
       setActiveMarket(mkt);
       setRecentMarkets(recent ?? []);
-      if (mkt && near.accountId) {
-        const bet = await near.view<PredictBet>("get_predict_bet", {
-          market_id: mkt.market_id,
-          account_id: near.accountId,
-        });
-        setMyBet(bet);
+      if (near.accountId) {
+        const resolved = (recent ?? []).filter((m) => m.resolved);
+        const toFetch = mkt ? [mkt, ...resolved] : resolved;
+        const bets = await Promise.all(
+          toFetch.map((m) =>
+            near.view<PredictBet>("get_predict_bet", { market_id: m.market_id, account_id: near.accountId })
+          )
+        );
+        if (mkt) setMyBet(bets[0]);
+        const map = new Map<number, PredictBet>();
+        toFetch.forEach((m, i) => { if (bets[i]) map.set(m.market_id, bets[i]); });
+        setPastBets(map);
       } else {
         setMyBet(null);
+        setPastBets(new Map());
       }
     } catch {
       // ignore
@@ -525,6 +534,7 @@ export function useGame(): Game {
     currentLifespanSec,
     activeMarket: mode === "live" ? liveMarket : null,
     myBet: mode === "live" ? myBet : null,
+    pastBets: mode === "live" ? pastBets : new Map(),
     predict,
     claimPrediction,
     recentMarkets: mode === "live" ? recentMarkets : [],

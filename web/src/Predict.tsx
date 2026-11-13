@@ -1,6 +1,6 @@
 // Prediction market panel — bet $TOTEM on whether the Totem survives a Rampage.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fmt, PredictMarket, PredictBet } from "./engine";
 import { toTokens } from "./chain/config";
 import type { Game } from "./game";
@@ -119,18 +119,6 @@ function MarketRow({
 export function PredictPanel({ game, onClose, toast }: Props) {
   const [side, setSide] = useState<"survive" | "die">("survive");
   const [amount, setAmount] = useState(50);
-  // accumulate bets for all markets we've seen, so claim buttons persist after resolution
-  const [betCache, setBetCache] = useState<Map<number, PredictBet>>(new Map());
-
-  useEffect(() => {
-    if (game.activeMarket && game.myBet) {
-      setBetCache((prev) => {
-        const next = new Map(prev);
-        next.set(game.activeMarket!.market_id, game.myBet!);
-        return next;
-      });
-    }
-  }, [game.myBet, game.activeMarket]);
 
   const m = game.activeMarket;
   const inRampage = !!m && !m.resolved;
@@ -172,7 +160,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
 
   const betForMarket = (marketId: number): PredictBet | null => {
     if (game.myBet && game.activeMarket?.market_id === marketId) return game.myBet;
-    return betCache.get(marketId) ?? null;
+    return game.pastBets.get(marketId) ?? null;
   };
 
   const placed =

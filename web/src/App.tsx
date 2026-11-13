@@ -19,6 +19,7 @@ import { PredictPanel } from "./Predict";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
 import { AlertsPanel } from "./Alerts";
+import { MainnetPopup } from "./Mainnet";
 import { moonEmoji as moonIcon, moonLit, moonPhaseName, moonWaxing, nextFullMoon } from "./moon";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
@@ -594,6 +595,7 @@ export default function App() {
           onGuest={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}
         />
       )}
+      <MainnetPopup ready={!loading && game.mode === "live"} />
       {alertsOpen && game.mode === "live" && <AlertsPanel onClose={() => setAlertsOpen(false)} onConnect={() => game.connect().catch(() => undefined)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (

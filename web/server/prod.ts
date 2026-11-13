@@ -15,6 +15,7 @@ import { historyHandler } from "./history";
 import { autoHatchHandler, startAutoHatch } from "./autohatch";
 import { denHandler } from "./den";
 import { linkHandler } from "./link";
+import { waitlistHandler } from "./waitlist";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => unknown;
 const routes: [string, Handler][] = [
@@ -26,6 +27,7 @@ const routes: [string, Handler][] = [
   ["/api/autohatch", autoHatchHandler],
   ["/api/den", denHandler],
   ["/api/link", linkHandler],
+  ["/api/waitlist", waitlistHandler],
   ["/rpc", rpcHandler],
 ];
 

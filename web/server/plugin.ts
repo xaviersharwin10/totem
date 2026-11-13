@@ -14,6 +14,7 @@ import { historyHandler } from "./history";
 import { autoHatchHandler } from "./autohatch";
 import { denHandler } from "./den";
 import { linkHandler } from "./link";
+import { waitlistHandler } from "./waitlist";
 
 export function totemServer(): Plugin {
   return {
@@ -28,6 +29,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/autohatch", autoHatchHandler);
       s.middlewares.use("/api/den", denHandler);
       s.middlewares.use("/api/link", linkHandler);
+      s.middlewares.use("/api/waitlist", waitlistHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -39,6 +41,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/autohatch", autoHatchHandler);
       s.middlewares.use("/api/den", denHandler);
       s.middlewares.use("/api/link", linkHandler);
+      s.middlewares.use("/api/waitlist", waitlistHandler);
     },
   };
 }

@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNear } from "./chain/near";
-import { EXPLORER, toTokens } from "./chain/config";
+import { CONTRACT_ID, EXPLORER, toTokens } from "./chain/config";
 import { shortGuest } from "./chain/guest";
 import { fmt, fmtTime } from "./engine";
 
@@ -234,6 +234,14 @@ function line(e: HistoryEvent, receiptHasDeath: boolean): { icon: string; text: 
       return { icon: "✏️", text: `Named “${d.name}” by DAO vote` };
     case "evolve":
       return { icon: "🐉", text: `Evolved into a ${d.form} by DAO vote`, tone: "good" };
+    case "predict_opened":
+      return { icon: "🔮", text: `Prediction market #${d.market_id} opened: will it survive the Rampage?` };
+    case "predict_bet":
+      return { icon: "🔮", text: `${who(d.account)} bet ${tk(d.amount)} on “${d.side}”` };
+    case "predict_resolved":
+      return { icon: "🔮", text: `Market #${d.market_id} settled: it ${d.survived ? "survived" : "died"}`, tone: d.survived ? "good" : undefined };
+    case "predict_claimed":
+      return { icon: "🏆", text: `${who(d.account)} claimed ${tk(d.payout)} from market #${d.market_id}`, tone: "good" };
     default:
       return { icon: "•", text: `${e.kind}` };
   }
@@ -302,6 +310,32 @@ function Rows({ events }: { events: HistoryEvent[] }) {
   );
 }
 
+/** The life's own NFT: the gravestone (or the living Totem), with the art the contract draws. */
+function LifeNft({ l }: { l: Life }) {
+  const near = useNear();
+  const [media, setMedia] = useState<string | null>(null);
+  useEffect(() => {
+    let stop = false;
+    near
+      .view<{ metadata?: { media?: string | null } } | null>("nft_token", { token_id: l.totem_id })
+      .then((t) => !stop && setMedia(t?.metadata?.media ?? null))
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, [l.totem_id, l.alive, near]);
+  return (
+    <div className="life-nft">
+      {media ? <img src={media} alt={`${l.lineage_name} NFT`} /> : <div className="life-nft-blank">{l.alive ? "🐼" : "🪦"}</div>}
+      <div>
+        NFT <code>{l.totem_id}</code>: {l.alive ? "the living Totem, owned by the DAO. Its picture changes as it lives." : "now a gravestone NFT; its metadata is this frozen record."}
+        {l.founders.length > 0 && <> Founders: {l.founders.map(who).join(", ")}.</>}{" "}
+        <a href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${l.totem_id}`} target="_blank" rel="noreferrer">explorer ↗</a>
+      </div>
+    </div>
+  );
+}
+
 function LifeCard({ l, events, open, onToggle }: { l: Life; events: HistoryEvent[]; open: boolean; onToggle: () => void }) {
   const mine = events.filter((e) => e.generation === l.generation);
   return (
@@ -329,9 +363,7 @@ function LifeCard({ l, events, open, onToggle }: { l: Life; events: HistoryEvent
               ))}
             </div>
           )}
-          <div className="life-nft">
-            NFT <code>{l.totem_id}</code>: {l.alive ? "the living Totem, owned by the DAO" : "now a gravestone; its metadata is this frozen record"} · founders {l.founders.map(who).join(", ")}
-          </div>
+          <LifeNft l={l} />
           <Rows events={mine} />
           {mine.length === 0 && <div className="tribe-empty">This life is older than the indexed window; its record above is complete and on-chain.</div>}
         </div>

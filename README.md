@@ -49,6 +49,37 @@ The creature is named **BaoBao** (chosen by DAO vote). Every generation inherits
 
 ---
 
+## 🎮 Try It in 5 Minutes (no wallet needed)
+
+| Do | See |
+| :--- | :--- |
+| Open **https://totem-x2kg.onrender.com** | The 3D island loads in a few seconds. The panda, totem pole, graveyard and pond are built from code primitives — no external art assets. |
+| Tap **⚡ Play free, no wallet** | A `guest g1a2b3c4d` account with 0 NEAR appears — created silently, no popup. |
+| Pick 🎋 in the dock, tap the grass (or press `Space`) | Bamboo falls, BaoBao runs over and eats it. The belly bar rises. 🔥 Burned and the Treasury counter tick up. A real `feed` transaction went through the relayer. |
+| Stop feeding for ~2 minutes | The sky turns red — **RAMPAGE**. The 🔮 Prediction Market button pulses. Tap it to bet on survive or die. |
+| Tap **RESCUE** (or feed from the red screen) | The Rampage ends. A soulbound Hero NFT is minted to your guest account. BaoBao thanks you by name. |
+| Open **🏛 Tribe** | Open DAO proposals with live tallies, Keeper standings and your own path (*Nominate me* when you qualify). |
+| Open **🧾 History** | Live supply ledger: 1,000,000,000 minted − burned forever = `ft_total_supply`. Every feed, burn, bite and badge with **tx ↗** explorer links. |
+| Tap a **gravestone** in the graveyard | That generation's full life record: duration, level peak, top feeders, their NFT id, every event. |
+| Tap the panda or press **💬** | BaoBao answers in character with real chain data — who feeds it most, who its ancestors were, how full it is right now. |
+| Tap **🔑 Back up** in the wallet panel | A code to restore your guest account in any browser. |
+
+**Connect a real wallet:** click **Connect wallet** (top right) → Meteor, Intear, Nightly, Ledger, or any Ethereum wallet (0x accounts via EIP-191).  
+**Get test tokens:** press 🚰 in the right rail → +1,000 $TOTEM (testnet faucet, 1 per Totem-day per account).
+
+---
+
+## 🎯 Tracks
+
+| Track | Why TOTEM fits |
+| :--- | :--- |
+| **`memecoins`** | "Supply that reacts to the community, treasuries with rules, onchain rituals." Feeding is the ritual — it burns 50–70% of each meal. The treasury has hard rules; no admin can change them. All parameters are fixed at `new()`. $TOTEM's burn mechanic is purpose-built for platforms like [meme.cooking](https://meme.cooking) — each feed is an onchain ritual that visibly shrinks supply. |
+| **`nfts`** | "NFTs as accounts — assets that own money, ownership with behavior." The Totem owns a keyless treasury sub-account; its art and metadata change in real time; badges are soulbound credentials. |
+| **`social`** | "Shared budgets, programmable rewards, reputation-based access on Sputnik DAO and Trezu." The tribe's Sputnik DAO owns the Totem; Blessings are programmable payout periods; Badges are reputation tokens; Keepers govern. |
+| **`games`** | "Game loop with real economy, agent NPC, players never notice the chain." The treasury *is* the economy. BaoBao is an AI character on NEAR AI Cloud. Gasless guest accounts hide every chain interaction. Practice mode is the fast-forward simulator. |
+
+---
+
 ## 🏗️ Core Architecture & Key Features
 
 ### ⛓️ One Rust Contract — Token + Game + NFTs
@@ -209,37 +240,6 @@ Bot: [@Babao_panda_bot](https://t.me/Babao_panda_bot)
 
 ---
 
-## 🎮 Try It in 5 Minutes (no wallet needed)
-
-| Do | See |
-| :--- | :--- |
-| Open **https://totem-x2kg.onrender.com** | The 3D island loads in a few seconds. The panda, totem pole, graveyard and pond are built from code primitives — no external art assets. |
-| Tap **⚡ Play free, no wallet** | A `guest g1a2b3c4d` account with 0 NEAR appears — created silently, no popup. |
-| Pick 🎋 in the dock, tap the grass (or press `Space`) | Bamboo falls, BaoBao runs over and eats it. The belly bar rises. 🔥 Burned and the Treasury counter tick up. A real `feed` transaction went through the relayer. |
-| Stop feeding for ~2 minutes | The sky turns red — **RAMPAGE**. The 🔮 Prediction Market button pulses. Tap it to bet on survive or die. |
-| Tap **RESCUE** (or feed from the red screen) | The Rampage ends. A soulbound Hero NFT is minted to your guest account. BaoBao thanks you by name. |
-| Open **🏛 Tribe** | Open DAO proposals with live tallies, Keeper standings and your own path (*Nominate me* when you qualify). |
-| Open **🧾 History** | Live supply ledger: 1,000,000,000 minted − burned forever = `ft_total_supply`. Every feed, burn, bite and badge with **tx ↗** explorer links. |
-| Tap a **gravestone** in the graveyard | That generation's full life record: duration, level peak, top feeders, their NFT id, every event. |
-| Tap the panda or press **💬** | BaoBao answers in character with real chain data — who feeds it most, who its ancestors were, how full it is right now. |
-| Tap **🔑 Back up** in the wallet panel | A code to restore your guest account in any browser. |
-
-**Connect a real wallet:** click **Connect wallet** (top right) → Meteor, Intear, Nightly, Ledger, or any Ethereum wallet (0x accounts via EIP-191).  
-**Get test tokens:** press 🚰 in the right rail → +1,000 $TOTEM (testnet faucet, 1 per Totem-day per account).
-
----
-
-## 🎯 Tracks
-
-| Track | Why TOTEM fits |
-| :--- | :--- |
-| **`memecoins`** | "Supply that reacts to the community, treasuries with rules, onchain rituals." Feeding is the ritual — it burns 50–70% of each meal. The treasury has hard rules; no admin can change them. All parameters are fixed at `new()`. $TOTEM's burn mechanic is purpose-built for platforms like [meme.cooking](https://meme.cooking) — each feed is an onchain ritual that visibly shrinks supply. |
-| **`nfts`** | "NFTs as accounts — assets that own money, ownership with behavior." The Totem owns a keyless treasury sub-account; its art and metadata change in real time; badges are soulbound credentials. |
-| **`social`** | "Shared budgets, programmable rewards, reputation-based access on Sputnik DAO and Trezu." The tribe's Sputnik DAO owns the Totem; Blessings are programmable payout periods; Badges are reputation tokens; Keepers govern. |
-| **`games`** | "Game loop with real economy, agent NPC, players never notice the chain." The treasury *is* the economy. BaoBao is an AI character on NEAR AI Cloud. Gasless guest accounts hide every chain interaction. Practice mode is the fast-forward simulator. |
-
----
-
 ## ✅ Track Checklist (Official Prompts, Point by Point)
 
 ### Memecoins With Mechanics ([11-memecoins](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md))
@@ -341,32 +341,6 @@ Test: `selling_the_totem_mid_payout_moves_no_money_to_the_seller`
 
 ---
 
-## 📦 Libraries & Ecosystem Used (Q-005)
-
-All code was written for this hackathon. Third-party libraries and ecosystem tools used:
-
-| Layer | Library / Tool | Purpose |
-| :--- | :--- | :--- |
-| Contract | [near-sdk 5.x](https://github.com/near/near-sdk-rs) | NEAR Rust SDK |
-| Contract | [near-workspaces](https://github.com/near/near-workspaces-rs) | Sandbox integration tests |
-| Contract | [near-sdk-contract-tools](https://github.com/near/near-sdk-contract-tools) | NEP helpers |
-| Frontend | [React 18](https://react.dev) + [Vite](https://vitejs.dev) | Web framework + build |
-| Frontend | [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) + [Three.js](https://threejs.org) | 3D farm scene (no external art assets — all primitives) |
-| Frontend | [@hot-labs/near-connect](https://github.com/hot-labs/near-connect) | Wallet connection (NEAR docs marks NEAR Wallet Selector deprecated) |
-| Frontend | [Zustand](https://zustand-demo.pmnd.rs) | Client state |
-| Server | [Express.js](https://expressjs.com) | /rpc proxy, /api/voice, /api/guest, /api/relay, /api/den |
-| Server | [near-api-js](https://github.com/near/near-api-js) | NEAR RPC calls + tx signing |
-| Bot | [Grammy](https://grammy.dev) | Telegram bot framework |
-| Simulation | [Python / matplotlib](https://matplotlib.org) | 60-day agent-based model |
-| Ecosystem | [Sputnik DAO v2](https://github.com/near-daos/sputnik-dao-contract) | Tribe governance (not a fork — the deployed contract) |
-| Ecosystem | [NEAR AI Cloud](https://near.ai) | BaoBao's voice endpoint |
-| Ecosystem | [meme.cooking](https://meme.cooking) | $TOTEM's burn mechanic targets this launchpad |
-| Ecosystem | [Trezu](https://trezu.org) | DAO is Trezu-compatible on mainnet |
-
-No boilerplate or starter templates were used. The 3D scene, contract, simulation, and server are written from scratch.
-
----
-
 ## 📁 Repository Layout
 
 ```
@@ -392,6 +366,32 @@ No boilerplate or starter templates were used. The 3D scene, contract, simulatio
 ├── docs/             architecture.png
 └── RULES.md          final parameters
 ```
+
+---
+
+## 📦 Libraries & Ecosystem
+
+All code was written for this hackathon. Third-party libraries and ecosystem tools used:
+
+| Layer | Library / Tool | Purpose |
+| :--- | :--- | :--- |
+| Contract | [near-sdk 5.x](https://github.com/near/near-sdk-rs) | NEAR Rust SDK |
+| Contract | [near-workspaces](https://github.com/near/near-workspaces-rs) | Sandbox integration tests |
+| Contract | [near-sdk-contract-tools](https://github.com/near/near-sdk-contract-tools) | NEP helpers |
+| Frontend | [React 18](https://react.dev) + [Vite](https://vitejs.dev) | Web framework + build |
+| Frontend | [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) + [Three.js](https://threejs.org) | 3D farm scene (no external art assets — all primitives) |
+| Frontend | [@hot-labs/near-connect](https://github.com/hot-labs/near-connect) | Wallet connection (NEAR docs marks NEAR Wallet Selector deprecated) |
+| Frontend | [Zustand](https://zustand-demo.pmnd.rs) | Client state |
+| Server | [Express.js](https://expressjs.com) | /rpc proxy, /api/voice, /api/guest, /api/relay, /api/den |
+| Server | [near-api-js](https://github.com/near/near-api-js) | NEAR RPC calls + tx signing |
+| Bot | [Grammy](https://grammy.dev) | Telegram bot framework |
+| Simulation | [Python / matplotlib](https://matplotlib.org) | 60-day agent-based model |
+| Ecosystem | [Sputnik DAO v2](https://github.com/near-daos/sputnik-dao-contract) | Tribe governance (not a fork — the deployed contract) |
+| Ecosystem | [NEAR AI Cloud](https://near.ai) | BaoBao's voice endpoint |
+| Ecosystem | [meme.cooking](https://meme.cooking) | $TOTEM's burn mechanic targets this launchpad |
+| Ecosystem | [Trezu](https://trezu.org) | DAO is Trezu-compatible on mainnet |
+
+No boilerplate or starter templates were used. The 3D scene, contract, simulation, and server are written from scratch.
 
 ---
 
@@ -453,7 +453,7 @@ All 14 checks pass. Two parameters were tuned from this model (Blessing period 7
 - Moon: `november_2026_new_moon_on_the_10th_full_moon_on_the_24th`, `bhaskara_stays_close_to_the_true_curve`, `feeding_under_a_full_moon_mints_one_soulbound_moonlit_badge_per_cycle`
 - Prediction market: 6 `predict_*` tests
 
-**Sandbox tests** (`contract/tests/sandbox.rs`, near-workspaces) — 2 tests running the compiled wasm on a local NEAR node:
+**Sandbox tests** (`contract/tests/sandbox.rs`, near-workspaces) — 2 tests on a local NEAR node:
 - `a_whole_life_on_a_real_node` — treasury created keyless, faucet logs `ft_mint`, feed lands in treasury, transfers into treasury/contract fail, non-owner can't rename, real block time starves to death, only the DAO can hatch
 - `the_ledger_always_adds_up` — total supply = all holders + contract + treasury at all times
 

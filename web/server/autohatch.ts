@@ -151,7 +151,7 @@ interface Market {
 }
 async function openMarketIfNeeded() {
   const t = await view<{ alive: boolean; generation: number; mood: string }>(CONTRACT_ID, "get_totem");
-  if (!t.alive || t.mood !== "rampage" || Date.now() - lastPoke < 30_000) return;
+  if (!t.alive || t.mood !== "rampage" || Date.now() - lastPoke < 15_000) return;
   const m = await view<Market | null>(CONTRACT_ID, "get_active_predict_market").catch(() => null);
   if (m && !m.resolved && m.gen === t.generation) return; // already open
   lastPoke = Date.now();
@@ -166,7 +166,7 @@ export function startAutoHatch() {
     const loopM = () =>
       openMarketIfNeeded()
         .catch((e) => console.error("market opener:", e instanceof Error ? e.message : e))
-        .finally(() => setTimeout(loopM, 10_000));
+        .finally(() => setTimeout(loopM, 3_000));
     loopM();
   }
   if (!ENABLED) {

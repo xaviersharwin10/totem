@@ -303,7 +303,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
             <button
               className={`press-btn ${side === "survive" ? "survive-btn" : "danger-btn"}`}
               onClick={doBet}
-              disabled={game.busy || !game.accountId}
+              disabled={game.predictBusy || !game.accountId}
             >
               Bet {amount} on {side === "survive" ? "🛡 Survive" : "💀 Die"}
             </button>
@@ -326,7 +326,7 @@ export function PredictPanel({ game, onClose, toast }: Props) {
                   myBet={betForMarket(market.market_id)}
                   accountId={game.accountId}
                   onClaim={() => doClaim(market.market_id)}
-                  busy={game.busy}
+                  busy={game.predictBusy}
                 />
               ))}
             </div>

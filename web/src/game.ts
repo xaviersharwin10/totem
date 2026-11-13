@@ -30,6 +30,8 @@ export interface Game {
   freePlay: boolean; // the server has a relayer, so free guest play is offered
   balance: number | null; // $TOTEM, live only
   busy: boolean;
+  /** A bet or claim is in flight (separate from feeds, so a pending feed never greys out the bet button). */
+  predictBusy: boolean;
   connect: () => Promise<void>;
   playAsGuest: () => Promise<void>;
   /** One tap: (make a free guest if needed,) top up from the faucet if short, feed to full. */
@@ -164,6 +166,7 @@ export function useGame(): Game {
   const [live, setLive] = useState<{ t: ChainTotem; s: ChainStats; lineage: ChainLife[]; at: number } | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [predictBusy, setPredictBusy] = useState(false);
   const liveEvents = useRef<GameEvent[]>([]);
   const evId = useRef(1);
 
@@ -428,14 +431,31 @@ export function useGame(): Game {
     return () => clearInterval(t);
   }, [mode, refreshPredict]);
 
+  // A Rampage (and its market) is written to the contract by the next transaction,
+  // so for a few seconds the view can say "rampage" while get_active_predict_market
+  // still returns the last market (or none). Betting works anyway: `predict`
+  // settles first, which opens the market. So show it open right away, with empty
+  // pools, until the chain reports the real one.
+  const liveMarket: PredictMarket | null = (() => {
+    const t = live?.t;
+    const real = activeMarket && !activeMarket.resolved && t && activeMarket.gen === t.generation ? activeMarket : null;
+    if (real || !t || !t.alive || t.mood !== "rampage") return real ?? activeMarket;
+    return { market_id: -1, gen: t.generation, opened_at: "0", total_survive: "0", total_die: "0", resolved: false, outcome: null };
+  })();
+  // check the market as soon as a Rampage starts, not on the next 5 s tick
+  const rampageNow = mode === "live" && live?.t.mood === "rampage" && live?.t.alive;
+  useEffect(() => {
+    if (rampageNow) refreshPredict();
+  }, [rampageNow, refreshPredict]);
+
   const predict = async (side: "survive" | "die", amount: number) => {
     if (!near.accountId) await near.signIn();
-    setBusy(true);
+    setPredictBusy(true);
     try {
       await near.call("predict", { side, amount: toYocto(amount) });
       pushLive("feed", `🔮 you bet ${fmt(amount)} $TOTEM on "${side}"`);
     } finally {
-      setBusy(false);
+      setPredictBusy(false);
       refreshPredict();
       refreshBalance();
     }
@@ -443,12 +463,12 @@ export function useGame(): Game {
 
   const claimPrediction = async (marketId: number) => {
     if (!near.accountId) await near.signIn();
-    setBusy(true);
+    setPredictBusy(true);
     try {
       await near.call("claim_prediction", { market_id: marketId });
       pushLive("blessing", "🔮 prediction winnings claimed!");
     } finally {
-      setBusy(false);
+      setPredictBusy(false);
       refreshPredict();
       refreshBalance();
     }
@@ -477,6 +497,7 @@ export function useGame(): Game {
     freePlay: near.freePlay,
     balance,
     busy,
+    predictBusy,
     connect: near.signIn,
     playAsGuest: async () => {
       await near.playAsGuest();
@@ -500,7 +521,7 @@ export function useGame(): Game {
     explorer: `${EXPLORER}/address/${CONTRACT_ID}`,
     recordLifespanSec,
     currentLifespanSec,
-    activeMarket: mode === "live" ? activeMarket : null,
+    activeMarket: mode === "live" ? liveMarket : null,
     myBet: mode === "live" ? myBet : null,
     predict,
     claimPrediction,

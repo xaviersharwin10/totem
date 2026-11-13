@@ -59,8 +59,6 @@ export default function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   // opened from a Telegram "Place a bet" link (?predict=1)
   const [predictOpen, setPredictOpen] = useState(() => new URLSearchParams(location.search).has("predict"));
-  // the Rampage bet prompt can be dismissed per market
-  const [betHidden, setBetHidden] = useState<number | null>(null);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -585,21 +583,6 @@ export default function App() {
       {stakeOpen && game.mode === "live" && view && (
         <StakeSheet game={game} b={belly} onClose={() => setStakeOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
       )}
-      {/* Rampage: prompt everyone to bet on the outcome (the 🔮 market opens with the Rampage) */}
-      {game.mode === "live" && view.alive && view.mood === "rampage" && !predictOpen && (() => {
-        const m = game.activeMarket && !game.activeMarket.resolved ? game.activeMarket : null;
-        if (m && betHidden === m.market_id) return null;
-        return (
-          <div className="bet-banner glass" role="status">
-            <span className="bet-title">🔥 RAMPAGE! 🔮 Will BaoBao survive?</span>
-            <span className="bet-sub">
-              {m ? <>Bet $TOTEM on the outcome · next bite in {fmtTime(view.secondsUntilNextBite)}</> : <>The betting market is opening…</>}
-            </span>
-            <button className="press-btn" disabled={!m} onClick={() => setPredictOpen(true)}>🔮 Bet</button>
-            {m && <button className="bet-x" aria-label="Hide" onClick={() => setBetHidden(m.market_id)}>✕</button>}
-          </div>
-        );
-      })()}
       {predictOpen && game.mode === "live" && (
         <PredictPanel game={game} onClose={() => setPredictOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
       )}

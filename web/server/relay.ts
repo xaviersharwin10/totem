@@ -66,8 +66,32 @@ export function getRelayer(): Account {
     }
     key = JSON.parse(readFileSync(CREDS_FILE, "utf8")).private_key as string;
   }
-  relayer = new Account(RELAYER_ID, rpcProvider(), key as KeyPairString);
+  const acct = new Account(RELAYER_ID, rpcProvider(), key as KeyPairString);
+  // One key signs everything the relayer does (guest relays, the market opener's
+  // poke, hatch proposals). Two transactions signed at the same moment would
+  // reuse a nonce and one would fail, and a lagging RPC can hand back a stale
+  // nonce. So relayer transactions go out one at a time, and a stale nonce is
+  // retried once after a short pause.
+  const send = acct.signAndSendTransaction.bind(acct);
+  acct.signAndSendTransaction = ((args: Parameters<typeof send>[0]) =>
+    serial(async () => {
+      try {
+        return await send(args);
+      } catch (e) {
+        if (!/nonce/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`)) throw e;
+        await new Promise((r) => setTimeout(r, 1500));
+        return await send(args);
+      }
+    })) as typeof acct.signAndSendTransaction;
+  relayer = acct;
   return relayer;
+}
+
+let queue: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const p = queue.then(fn, fn);
+  queue = p.catch(() => undefined);
+  return p;
 }
 
 const NO_RELAYER = "Free play isn't set up on this server. Connect a wallet to play for now.";

@@ -539,16 +539,10 @@ export default function App() {
         {railMore && (
           <div className="rail-more">
             {game.mode === "live" && (
-              <button className={`icon-btn ${nftsOpen ? "on" : ""}`} onClick={() => { setNftsOpen((o) => !o); setRailMore(false); }} title="NFTs: the living Totem and your badges">🏅</button>
-            )}
-            {game.mode === "live" && (
               <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => { setDenOpen((o) => !o); setRailMore(false); }} title="The Den: for badge holders only">🗝</button>
             )}
             {game.mode === "live" && (
               <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => { setAlertsOpen((o) => !o); setRailMore(false); }} title="Get BaoBao's alerts on Telegram">🔔</button>
-            )}
-            {game.mode === "live" && (
-              <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => { setHistGen((h) => (h === null ? 0 : null)); setRailMore(false); }} title="On-chain history: every mint, burn, bite and life">🧾</button>
             )}
             <button className="icon-btn" onClick={() => { setSosOpen(true); setRailMore(false); }} title="Share / call for help">📣</button>
             <button className="icon-btn" onClick={() => { setDrawer((d) => !d); setRailMore(false); }} title="Activity log: recent feeds, bites and rescues">📜</button>
@@ -560,6 +554,12 @@ export default function App() {
         {/* core: always visible (live-gated ones hide in practice) */}
         {game.mode === "live" && (
           <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${nftsOpen ? "on" : ""}`} onClick={() => setNftsOpen((o) => !o)} title="NFTs: the living Totem and your badges">🏅</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
         )}
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
         {game.mode === "live" && (

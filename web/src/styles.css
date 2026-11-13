@@ -677,3 +677,19 @@ button { font-family: inherit; }
 .den-ghost { color: var(--ink) !important; }
 
 
+
+/* ---------- How to play (Tour.tsx) ---------- */
+.tour { max-width: 440px; background: rgba(255, 252, 247, 0.97) !important; backdrop-filter: blur(14px); }
+.tour-step { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 2px; }
+.tour-body { font-size: 13.5px; font-weight: 600; line-height: 1.5; min-height: 210px; }
+.tour-body p { margin: 6px 0 8px; }
+.tour-body ul { margin: 4px 0 8px; padding-left: 18px; }
+.tour-body li { margin: 3px 0; }
+.tour-moon { padding: 8px 10px; border-radius: 12px; background: rgba(255, 213, 74, 0.18); font-weight: 800; }
+.tour-dots { display: flex; justify-content: center; gap: 6px; margin: 8px 0 10px; }
+.tour-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.18); cursor: pointer; }
+.tour-dots button.on { width: 20px; border-radius: 4px; background: #3fbf63; }
+.tour-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tour-nav .press-btn { flex: 0 1 auto; min-width: 120px; }
+@media (max-width: 480px) { .tour-body { min-height: 0; } }
+.tour-nav .ghost-btn { color: var(--ink-soft); }

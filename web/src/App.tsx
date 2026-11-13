@@ -20,6 +20,7 @@ import { friendly } from "./errors";
 import { DenPanel } from "./Den";
 import { AlertsPanel } from "./Alerts";
 import { MainnetPopup } from "./Mainnet";
+import { Tour, tourSeen } from "./Tour";
 import { moonEmoji as moonIcon, moonLit, moonPhaseName, moonWaxing, nextFullMoon } from "./moon";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
@@ -90,6 +91,16 @@ export default function App() {
     const t = setTimeout(() => setIntroDone(true), 5600);
     return () => clearTimeout(t);
   }, []);
+  // "How to play": opens by itself on a first visit, once the fly-in settles; ❔ reopens it
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourDone, setTourDone] = useState(tourSeen);
+  useEffect(() => {
+    if (introDone && !tourDone) setTourOpen(true);
+  }, [introDone, tourDone]);
+  const closeTour = () => {
+    setTourOpen(false);
+    setTourDone(true);
+  };
   const [hurt, setHurt] = useState(0);
   const [combo, setCombo] = useState(0);
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -365,6 +376,10 @@ export default function App() {
           <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => setInfo("moon")} title="BaoBao follows the real moon">
             {moonIcon(moon.lit, moon.waxing)} {Math.round(moon.lit * 100)}%
             {moon.hunger !== undefined && moon.hunger > 1.005 && <> · hunger ×{moon.hunger.toFixed(2)}</>}
+            {!moon.moonlitNow && moon.phase !== "preview" && (() => {
+              const d = Math.max(1, Math.round((nextFullMoon(now) - now) / 86_400_000));
+              return d <= 5 ? <> · full moon in {d}d</> : null;
+            })()}
           </button>
         </div>
         {moon.moonlitNow && view.alive && <div className="moonlit-pill">🌕 Moonlit night: feed now to earn the Moonlit badge</div>}
@@ -467,6 +482,7 @@ export default function App() {
         {game.mode === "live" && (
           <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
         )}
+        <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => setTourOpen(true)} title="How to play">❔</button>
         <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
         <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
@@ -543,7 +559,7 @@ export default function App() {
         ))}
       </div>
 
-      {introDone && hint && view.alive && (
+      {introDone && hint && !tourOpen && view.alive && (
         <div className="hint glass">
           <b>Say hi to {view.name.split(" ")[0]}!</b> Tap it to pet · pick 🎋 and tap the grass to feed · ⚽ to play · shake the trees · drag to look around
         </div>
@@ -595,7 +611,19 @@ export default function App() {
           onGuest={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}
         />
       )}
-      <MainnetPopup ready={!loading && game.mode === "live"} />
+      <MainnetPopup ready={!loading && game.mode === "live" && tourDone && !tourOpen} />
+      {tourOpen && !loading && (
+        <Tour
+          name={view.name}
+          alive={view.alive}
+          onClose={closeTour}
+          onPlay={() => {
+            closeTour();
+            if (view.alive) setTool("bamboo");
+            setHint(true);
+          }}
+        />
+      )}
       {alertsOpen && game.mode === "live" && <AlertsPanel onClose={() => setAlertsOpen(false)} onConnect={() => game.connect().catch(() => undefined)} />}
       {sosOpen && !loading && <SosSheet view={view} onClose={() => setSosOpen(false)} toast={(t) => pushToast(t, "info")} />}
       {rescueOpen && (

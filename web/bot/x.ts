@@ -9,7 +9,7 @@
 //
 // Each post costs money on X's pay-per-use plan, so it is capped: at most
 // X_MAX_PER_DAY posts a day (default 12) and one every X_MIN_GAP_MIN minutes
-// (default 20; deaths and hatches may skip the gap). Posts over the cap are
+// (default 120: one post every two hours, ~360 a month at most). Posts over the cap are
 // dropped, not queued: a stale "RAMPAGE!" is worse than none.
 import { createHmac, randomBytes } from "node:crypto";
 
@@ -20,7 +20,7 @@ const TOKEN_SECRET = process.env.X_ACCESS_SECRET ?? "";
 const CONFIGURED = !!(KEY && SECRET && TOKEN && TOKEN_SECRET);
 const LIVE = CONFIGURED && process.env.X_POST === "live";
 const MAX_PER_DAY = Number(process.env.X_MAX_PER_DAY ?? 12);
-const MIN_GAP_MS = Number(process.env.X_MIN_GAP_MIN ?? 20) * 60_000;
+const MIN_GAP_MS = Number(process.env.X_MIN_GAP_MIN ?? 120) * 60_000;
 const URL_POST = "https://api.x.com/2/tweets";
 
 const enc = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
@@ -46,16 +46,15 @@ let queue: Promise<void> = Promise.resolve();
 export const xMode = !CONFIGURED ? "off (no keys)" : LIVE ? "LIVE" : "dry-run (set X_POST=live to post)";
 
 /**
- * Post `text` to X if the caps allow. `urgent` posts (a death, a hatch) skip
- * the minimum gap but still count toward the daily cap.
+ * Post `text` to X if the caps allow (one post per gap, no exceptions).
  */
-export function xPost(text: string, urgent = false): void {
+export function xPost(text: string): void {
   if (!CONFIGURED) return;
   queue = queue.then(async () => {
     const now = Date.now();
     while (sent.length && now - sent[0] > 86_400_000) sent.shift();
     if (sent.length >= MAX_PER_DAY) return console.log(`[x] daily cap (${MAX_PER_DAY}) reached, dropped: ${text.split("\n")[0]}`);
-    if (!urgent && sent.length && now - sent[sent.length - 1] < MIN_GAP_MS) return console.log(`[x] too soon after the last post, dropped: ${text.split("\n")[0]}`);
+    if (sent.length && now - sent[sent.length - 1] < MIN_GAP_MS) return console.log(`[x] too soon after the last post, dropped: ${text.split("\n")[0]}`);
     sent.push(now);
     if (!LIVE) return console.log(`[x dry-run] would post:\n${text}\n`);
     try {

@@ -486,7 +486,7 @@ async function tick() {
     const cared = await touched(p);
     const broadcast = (html: string, buttons: Button[] = []) => (sameGen && cared ? broadcastAll(html, buttons) : undefined);
     if (t.generation > p.generation && cared)
-      xPost(`🥚 ${t.lineage_name} just hatched on NEAR. The Keepers voted it into the world, and it's already hungry.\n\nBe its first feeder (free, no wallet):\n${APP_URL}/`, true);
+      xPost(`🥚 ${t.lineage_name} just hatched on NEAR. The Keepers voted it into the world, and it's already hungry.\n\nBe its first feeder (free, no wallet):\n${APP_URL}/`);
     if (t.generation > p.generation && (cared || quietHatchOk())) {
       broadcastAll(`🥚 <b>${esc(t.lineage_name)} hatched!</b> The Keepers voted it into the world. It's hungry already: be its first feeder.`, [links.farm]);
     } else if (p.alive && !t.alive) {
@@ -495,8 +495,7 @@ async function tick() {
         xPost(
           `🪦 ${t.lineage_name} starved.\n\nIt reached Level ${t.max_level}${life?.lifespan_sec ? ` and lived ${secs(life.lifespan_sec)}` : ""}. Its treasury burned with it${life?.stats ? ` (${tokens(life.stats.burned)} $TOTEM gone for good)` : ""}.` +
             (life?.top_feeders[0] ? `\nTop feeder: ${who(life.top_feeders[0][0])}.` : "") +
-            `\n\nThe Keepers vote on the next egg: ${APP_URL}/?tribe=1`,
-          true
+            `\n\nThe Keepers vote on the next egg: ${APP_URL}/?tribe=1`
         );
       broadcast(
         `🪦 <b>${esc(t.lineage_name)} starved.</b> It reached Level ${t.max_level}${life?.lifespan_sec ? ` and lived ${secs(life.lifespan_sec)}` : ""}. Its treasury burned with it; the stakes are released. A gravestone NFT keeps its story forever.` +

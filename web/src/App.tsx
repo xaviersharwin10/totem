@@ -363,6 +363,8 @@ export default function App() {
 
       {introDone && rampage && <div className="rage-vignette" />}
 
+      {/* top HUD: on a desktop the wrapper is invisible (display: contents); on a phone it stacks the cards */}
+      <div className="hud-top">
       {/* ---------- top-left: identity ---------- */}
       <div className="hud-tl glass">
         <div className="name-line">
@@ -467,6 +469,27 @@ export default function App() {
         </div>
       </div>
 
+      </div>
+
+      {/* bottom HUD: same trick, the rampage card, the menu row and the belly stack above the dock on a phone */}
+      <div className="hud-bottom">
+      {/* ---------- rampage ---------- */}
+      {introDone && rampage && (
+        <div className="rampage-card beam">
+          <div className="rc-title">🔥 RAMPAGE</div>
+          <div className="rc-sub">
+            {view.name} is starving. Every bite burns 15% of the Treasury and knocks a block off the totem pole.
+          </div>
+          <div className="rc-row">
+            <button className="press-btn danger-btn" onClick={() => { setAmount("fill"); feedNearPanda(); }}>🎋 RESCUE</button>
+            <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
+            {game.mode === "live" && (
+              <button className="ghost-btn" onClick={() => setPredictOpen(true)}>🔮 place a bet</button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ---------- right rail: menu actions ---------- */}
       <nav className="rail">
         {/* ── Core gameplay ── */}
@@ -530,6 +553,7 @@ export default function App() {
         )}
         {combo > 1 && <div className="combo">{combo}× combo!</div>}
       </div>
+      </div>
 
       {/* ---------- the dock ---------- */}
       <Dock>
@@ -568,23 +592,6 @@ export default function App() {
       {introDone && hint && !tourOpen && view.alive && (
         <div className="hint glass">
           <b>Say hi to {view.name.split(" ")[0]}!</b> Tap it to pet · pick 🎋 and tap the grass to feed · ⚽ to play · shake the trees · drag to look around
-        </div>
-      )}
-
-      {/* ---------- rampage ---------- */}
-      {introDone && rampage && (
-        <div className="rampage-card beam">
-          <div className="rc-title">🔥 RAMPAGE</div>
-          <div className="rc-sub">
-            {view.name} is starving. Every bite burns 15% of the Treasury and knocks a block off the totem pole.
-          </div>
-          <div className="rc-row">
-            <button className="press-btn danger-btn" onClick={() => { setAmount("fill"); feedNearPanda(); }}>🎋 RESCUE</button>
-            <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
-            {game.mode === "live" && (
-              <button className="ghost-btn" onClick={() => setPredictOpen(true)}>🔮 place a bet</button>
-            )}
-          </div>
         </div>
       )}
 

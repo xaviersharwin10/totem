@@ -85,7 +85,7 @@ button { font-family: inherit; }
 .stat-sub { font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 1px; white-space: nowrap; }
 
 /* ---------- right rail: menu actions ---------- */
-.rail { position: absolute; right: 16px; top: 300px; bottom: 24px; display: flex; flex-direction: column;
+.rail { position: absolute; right: 16px; top: 350px; bottom: 24px; display: flex; flex-direction: column;
   justify-content: flex-end; gap: 9px; z-index: 5; overflow-y: auto; scrollbar-width: none; }
 .rail::-webkit-scrollbar { display: none; }
 .icon-row { display: flex; gap: 8px; }
@@ -266,24 +266,8 @@ button { font-family: inherit; }
 .grave-tip { background: rgba(43,34,48,0.88); color: #fff; padding: 6px 10px; border-radius: 10px; font-size: 12px; white-space: nowrap; font-family: "Nunito", sans-serif; }
 
 /* ---------- phone ---------- */
-@media (max-width: 760px) {
-  .hud-tl { min-width: 0; left: 10px; right: 10px; top: 10px; padding: 10px 12px; }
-  .shiny { font-size: 20px; }
-  .hud-tr { top: 150px; right: 10px; left: 10px; width: auto; }
-  .stat-card { padding: 6px 10px; }
-  .stat-val { font-size: 18px; }
-  .rail { position: absolute; right: 10px; left: 10px; top: auto; bottom: 150px; transform: none;
-    flex-direction: row; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
-  .rail::-webkit-scrollbar { display: none; }
-  .rail .icon-btn { flex: none; }
-  .hud-hunger { left: 10px; right: 10px; width: auto; bottom: 96px; }
-  .dock { bottom: 10px; gap: 5px; padding: 8px; max-width: calc(100vw - 20px); overflow-x: auto; }
-  .dock-item { width: 44px; height: 44px; }
-  .dock-item.small { width: 40px; height: 40px; }
-  .press-btn { height: 44px; padding: 0 14px; font-size: 15px; }
-  .hint, .toasts { display: none; }
-  .info-pop { top: auto; bottom: 200px; right: 10px; left: 10px; width: auto; }
-}
+/* the wrappers only exist for phones: on a desktop their children keep their own absolute spots */
+.hud-top, .hud-bottom { display: contents; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
@@ -328,8 +312,8 @@ button { font-family: inherit; }
 @keyframes walletGlow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
 .guest-btn { height: auto; margin-top: 10px; width: 100%; font-size: 13.5px; padding: 9px 12px; background: linear-gradient(180deg, #ffe27a, #ffc93c) !important; color: #3a2400 !important; box-shadow: 0 4px 0 #c99000 !important; transform: none; }
 .guest-btn:active { box-shadow: 0 1px 0 #c99000 !important; }
-.restore-btn { display: block; width: 100%; margin-top: 8px; padding: 7px 10px; border: 1.5px dashed rgba(107,95,112,0.55); border-radius: 12px; background: rgba(255,255,255,0.55); color: var(--ink); font-weight: 800; font-size: 12px; cursor: pointer; }
-.restore-btn:hover { background: rgba(255,255,255,0.85); }
+.restore-btn { display: block; width: 100%; margin-top: 0; padding: 2px 4px; border: 0; background: none; color: var(--ink-soft); font-weight: 800; font-size: 11.5px; text-decoration: underline; cursor: pointer; }
+.restore-btn:hover { color: var(--ink); }
 .guest-note { font-size: 11px; font-weight: 800; color: #3f9d5a; }
 .sheet-bg { position: absolute; inset: 0; background: rgba(30,18,34,0.35); backdrop-filter: blur(2px); z-index: 20; display: grid; place-items: center; padding: 16px; animation: fadeIn 0.2s ease; }
 @keyframes fadeIn { from { opacity: 0; } }
@@ -703,3 +687,127 @@ button { font-family: inherit; }
 .tour-nav .press-btn { flex: 0 1 auto; min-width: 120px; }
 @media (max-width: 480px) { .tour-body { min-height: 0; } }
 .tour-nav .ghost-btn { color: var(--ink-soft); }
+
+/* ---------- phone layouts (last, so they win over the base rules above) ---------- */
+/* phone, portrait: one column on top, one stack above the dock, the panda in between */
+@media (max-width: 760px) and (min-height: 521px) {
+  .hud-top { display: flex; flex-direction: column; gap: 6px; position: absolute; z-index: 5;
+    top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; pointer-events: none; }
+  .hud-top > * { pointer-events: auto; }
+  .hud-tl, .hud-tr { position: static; min-width: 0; width: auto; }
+  .hud-tl { padding: 8px 12px; border-radius: 18px; }
+  .name-line { gap: 8px; }
+  .shiny { font-size: 19px; }
+  .mood-pill { font-size: 11.5px; padding: 2px 8px; }
+  .sub-line { margin-top: 5px; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 11px; padding: 2px 7px; }
+  .lives { margin-top: 5px; }
+  .lives .life { font-size: 14px; }
+  .lives-lbl { font-size: 11px; }
+  .xp, .streak-row { display: none; }
+  .moonlit-pill { margin-top: 4px; font-size: 11px; }
+  .hud-tr { gap: 6px; }
+  .resource-bar { gap: 6px; }
+  .stat-card { padding: 5px 10px; border-radius: 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+  .stat-card:hover { transform: none; }
+  .stat-lbl { font-size: 11px; }
+  .stat-val { font-size: 16px; }
+  .stat-sub { width: 100%; margin-top: -2px; }
+  .wallet { min-width: 0; padding: 7px 8px; gap: 6px; border-radius: 18px; }
+  .mode-switch button { padding: 4px 6px; font-size: 11.5px; }
+  .wallet-btn.primary { font-size: 14.5px; padding: 9px 12px; }
+  .guest-btn { margin-top: 2px; font-size: 12.5px; padding: 7px 10px; }
+  .restore-btn { margin-top: 0; padding: 4px 8px; border: 0; background: none; font-size: 11.5px; text-decoration: underline; color: var(--ink-soft); }
+  .explorer-link { display: none; }
+  .acct, .acct-bal { font-size: 12.5px; }
+
+  .hud-bottom { display: flex; flex-direction: column; gap: 6px; position: absolute; z-index: 5;
+    left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); pointer-events: none; }
+  .hud-bottom > * { pointer-events: auto; }
+  .rail, .hud-hunger, .rampage-card { position: static; }
+  .rail { flex-direction: row; justify-content: flex-start; gap: 6px; overflow-x: auto; overflow-y: visible; padding: 2px 2px 4px; transform: none; }
+  .rail .icon-btn { flex: none; width: 38px; height: 38px; border-radius: 12px; font-size: 16px; }
+  .hud-hunger { width: auto; padding: 8px 12px; border-radius: 18px; }
+  .hunger-head { font-size: 14px; }
+  .liquid { height: 14px; margin-top: 5px; }
+  .hunger-foot { margin-top: 5px; font-size: 11.5px; }
+  .sos-btn { margin-top: 6px; padding: 6px 10px; font-size: 12.5px; }
+  .rampage-card { width: auto; padding: 10px 12px; animation: none; transform: none; }
+  .rc-title { font-size: 19px; }
+  .rc-sub { font-size: 12px; margin: 2px 0 8px; }
+  .rc-row { gap: 8px; flex-wrap: wrap; }
+  .rc-row .press-btn { height: 38px; font-size: 14px; }
+
+  .dock { bottom: calc(8px + env(safe-area-inset-bottom)); gap: 4px; padding: 6px 8px; max-width: calc(100vw - 16px); border-radius: 20px; }
+  .dock-item { width: 42px; height: 42px; }
+  .dock-item.small { width: 36px; height: 36px; }
+  .dock-icon { font-size: 21px; }
+  .dock-sep { height: 30px; margin: 0; }
+  .dock .press-btn { height: 46px; padding: 0 14px; font-size: 15px; }
+  .kbd, .dock-tip { display: none; }
+  .hint { display: none; }
+  .toasts { top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; max-width: none; z-index: 12; align-items: center; }
+  .info-pop { top: auto; bottom: 200px; right: 8px; left: 8px; width: auto; z-index: 13; }
+  .drawer { top: 8px; bottom: 8px; right: 8px; width: calc(100vw - 16px); }
+  .chat { right: 8px; left: 8px; bottom: 8px; width: auto; max-height: 70vh; z-index: 13; }
+  .death-card { top: 55%; transform: translate(-50%, -50%); padding: 14px 16px; max-height: 48vh; overflow-y: auto; }
+  .dc-title { font-size: 21px; }
+}
+@media (max-width: 380px) and (min-height: 521px) {
+  .dock-item { width: 38px; height: 38px; }
+  .dock-item.small { width: 32px; height: 32px; }
+  .dock .press-btn { padding: 0 10px; font-size: 14px; }
+}
+
+/* phone, landscape: identity left, wallet right, belly bottom-left, dock bottom-centre, menu along the top */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud-tl { top: 8px; left: calc(8px + env(safe-area-inset-left)); min-width: 0; width: 230px; padding: 7px 11px; border-radius: 16px; }
+  .shiny { font-size: 17px; }
+  .mood-pill { font-size: 11px; padding: 2px 7px; }
+  .sub-line { margin-top: 4px; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 10.5px; padding: 2px 6px; }
+  .lives { margin-top: 4px; }
+  .lives .life { font-size: 13px; }
+  .lives-lbl { font-size: 10.5px; }
+  .xp, .streak-row, .moonlit-pill { display: none; }
+  .hud-tr { top: 8px; right: calc(8px + env(safe-area-inset-right)); width: 210px; gap: 5px; }
+  .stat-card { padding: 4px 9px; border-radius: 14px; }
+  .stat-lbl { font-size: 10.5px; }
+  .stat-val { font-size: 15px; }
+  .wallet { min-width: 0; padding: 6px 7px; gap: 5px; border-radius: 16px; }
+  .mode-switch button { padding: 3px 5px; font-size: 11px; }
+  .wallet-btn.primary { font-size: 13px; padding: 7px 10px; animation: none; }
+  .guest-btn { margin-top: 0; font-size: 11.5px; padding: 5px 8px; }
+  .restore-btn { margin-top: 0; padding: 2px; border: 0; background: none; font-size: 10.5px; text-decoration: underline; color: var(--ink-soft); }
+  .explorer-link { display: none; }
+  .acct, .acct-bal { font-size: 12px; }
+  .rail { top: 8px; bottom: auto; left: 250px; right: 230px; flex-direction: row; justify-content: center; gap: 5px; overflow-x: auto; transform: none; }
+  .rail .icon-btn { flex: none; width: 34px; height: 34px; border-radius: 11px; font-size: 15px; }
+  .hud-hunger { left: calc(8px + env(safe-area-inset-left)); bottom: 8px; width: 200px; padding: 6px 10px; border-radius: 16px; }
+  .hunger-head { font-size: 13px; }
+  .liquid { height: 12px; margin-top: 4px; }
+  .hunger-foot { margin-top: 4px; font-size: 10.5px; flex-direction: column; gap: 0; }
+  .sos-btn { margin-top: 5px; padding: 4px 8px; font-size: 11.5px; }
+  .dock { bottom: 8px; gap: 4px; padding: 5px 7px; border-radius: 18px; left: calc(50% + 10px); }
+  .dock-item { width: 38px; height: 38px; }
+  .dock-item.small { width: 32px; height: 32px; }
+  .dock-icon { font-size: 19px; }
+  .dock-sep { height: 28px; margin: 0; }
+  .dock .press-btn { height: 40px; padding: 0 12px; font-size: 14px; }
+  .kbd, .dock-tip, .hint { display: none; }
+  .rampage-card { top: 52px; width: min(380px, 50vw); padding: 8px 12px; }
+  .rc-title { font-size: 17px; }
+  .rc-sub { display: none; }
+  .rc-row { gap: 8px; }
+  .rc-row .press-btn { height: 34px; font-size: 13px; }
+  .toasts { top: 52px; left: 50%; transform: translateX(-50%); max-width: 45vw; z-index: 12; }
+  .info-pop { top: 8px; right: 8px; width: 280px; max-height: calc(100vh - 16px); overflow-y: auto; z-index: 13; }
+  .chat { max-height: calc(100vh - 16px); bottom: 8px; right: 8px; }
+  .death-card { top: 50%; transform: translate(-50%, -50%); padding: 12px 16px; width: min(400px, 52vw); max-height: calc(100vh - 16px); overflow-y: auto; }
+  .dc-title { font-size: 19px; }
+  .dc-sub { margin: 4px 0 8px; font-size: 12.5px; }
+  .death-pill { top: 56px; font-size: 12.5px; padding: 7px 12px; }
+  .tour-body { min-height: 0; }
+  .sheet-bg { padding: 8px; }
+}
+

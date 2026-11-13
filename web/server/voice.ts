@@ -126,9 +126,10 @@ interface Snapshot {
 }
 
 async function snapshot(accountId?: string): Promise<Snapshot> {
-  const [t, lineage, stats] = await Promise.all([
-    view<Totem>("get_totem"),
-    view<Life[]>("get_lineage", { limit: 50 }),
+  const t = await view<Totem>("get_totem");
+  // get_lineage counts from `from`: ask for the newest 50 lives
+  const [lineage, stats] = await Promise.all([
+    view<Life[]>("get_lineage", { from: Math.max(1, t.generation - 49), limit: 50 }),
     view<{ total_burned: string }>("get_stats"),
   ]);
   // a dead Totem keeps its gravestone name (a DAO rename only names the next egg)

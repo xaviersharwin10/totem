@@ -252,7 +252,9 @@ function useHistoryData(active: boolean) {
       try {
         const [h, l, s] = await Promise.all([
           fetch("/api/history").then((r) => r.json() as Promise<{ events?: HistoryEvent[]; error?: string }>),
-          near.view<Life[]>("get_lineage", { limit: 100 }),
+          near
+            .view<{ generation: number }>("get_totem")
+            .then((t) => near.view<Life[]>("get_lineage", { from: Math.max(1, t.generation - 99), limit: 100 })),
           near.view<Stats>("get_stats"),
         ]);
         if (stop) return;

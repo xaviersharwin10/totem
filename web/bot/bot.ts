@@ -322,7 +322,8 @@ async function command(chatId: string, raw: string, title?: string) {
         else for (const a of c.watch) send(chatId, await meText(a));
         break;
       case "/lives": {
-        const lives = (await view<Life[]>("get_lineage", { limit: 100 })).slice(-6).reverse();
+        const g = (await view<Totem>("get_totem")).generation;
+        const lives = (await view<Life[]>("get_lineage", { from: Math.max(1, g - 5), limit: 6 })).reverse();
         send(
           chatId,
           "<b>The lineage</b>\n" +
@@ -486,7 +487,7 @@ async function tick() {
     if (t.generation > p.generation && (cared || quietHatchOk())) {
       broadcastAll(`🥚 <b>${esc(t.lineage_name)} hatched!</b> The Keepers voted it into the world. It's hungry already: be its first feeder.`, [links.farm]);
     } else if (p.alive && !t.alive) {
-      const life = (await view<Life[]>("get_lineage", { limit: 100 })).find((l) => l.generation === t.generation);
+      const life = (await view<Life[]>("get_lineage", { from: t.generation, limit: 1 })).find((l) => l.generation === t.generation);
       broadcast(
         `🪦 <b>${esc(t.lineage_name)} starved.</b> It reached Level ${t.max_level}${life?.lifespan_sec ? ` and lived ${secs(life.lifespan_sec)}` : ""}. Its treasury burned with it; the stakes are released. A gravestone NFT keeps its story forever.` +
           (life?.top_feeders[0] ? `\nTop feeder of this life: ${esc(who(life.top_feeders[0][0]))}. The top 3 shape the next egg.` : "") +

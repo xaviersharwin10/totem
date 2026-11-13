@@ -179,10 +179,11 @@ export function useGame(): Game {
 
   const refresh = useCallback(async () => {
     try {
-      const [t, s, lineage] = await Promise.all([
-        near.view<ChainTotem>("get_totem"),
+      // get_lineage returns at most 100 lives counted from `from`: ask for the newest ones
+      const t = await near.view<ChainTotem>("get_totem");
+      const [s, lineage] = await Promise.all([
         near.view<ChainStats>("get_stats"),
-        near.view<ChainLife[]>("get_lineage", { limit: 100 }),
+        near.view<ChainLife[]>("get_lineage", { from: Math.max(1, t.generation - 99), limit: 100 }),
       ]);
       const p = prevLive.current;
       if (p) {

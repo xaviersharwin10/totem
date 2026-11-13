@@ -5,6 +5,9 @@ use near_sdk::{near, NearToken};
 pub const PROD_DAY_SECONDS: u64 = 86_400;
 /// Seconds in a demo Totem-day (fast clock for live demos).
 pub const DEMO_DAY_SECONDS: u64 = 120;
+/// On the demo clock a Rampage bites every 90 s (¼ day would be 30 s: too short to
+/// place a 🔮 bet through a wallet before a newborn dies at its first bite).
+pub const DEMO_BITE_SECONDS: u64 = 90;
 pub const NANOS_PER_SEC: u64 = 1_000_000_000;
 
 /// Fullness is tracked in basis points: 10_000 == 100%.
@@ -124,7 +127,11 @@ impl Config {
             rescue_multiplier: 2,
             level_thresholds: vec![1, 3, 6, 10],
             level_step_after: 5,
-            bite_interval_ns: day_ns / 4,
+            bite_interval_ns: if demo_mode {
+                DEMO_BITE_SECONDS * NANOS_PER_SEC
+            } else {
+                day_ns / 4
+            },
             bite_burn_bp: 1_500,
             stake_slash_bp: 1_500,
             poke_tip_bp: 100,

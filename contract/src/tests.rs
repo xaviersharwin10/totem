@@ -1503,3 +1503,11 @@ fn migrate_rejects_foreign_caller() {
     let r = std::panic::catch_unwind(Contract::migrate);
     assert!(r.is_err(), "only the contract account may call migrate");
 }
+
+#[test]
+fn the_testnet_clock_bites_every_90_seconds_and_production_every_quarter_day() {
+    let demo = crate::Config::defaults(true);
+    assert_eq!(demo.bite_interval_ns, 90 * 1_000_000_000, "long enough to bet before a newborn's first bite");
+    let prod = crate::Config::defaults(false);
+    assert_eq!(prod.bite_interval_ns, prod.day_length_ns / 4);
+}

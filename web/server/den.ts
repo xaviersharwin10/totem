@@ -19,7 +19,7 @@ import { rpcForward } from "./rpc";
 import { diaryEntry } from "./voice";
 import { verifyOwnership, type SignedProof } from "./auth";
 
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 export const DEN_RECIPIENT = "totem-den";
 const SECRET = process.env.DEN_SECRET ? Buffer.from(process.env.DEN_SECRET) : randomBytes(32);
 const SESSION_MS = 12 * 60 * 60 * 1000;

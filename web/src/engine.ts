@@ -90,7 +90,7 @@ const STARVING_BP = 3_000;
 const RESCUE_MULT = 2;
 const LEVEL_THRESHOLDS = [1, 3, 6, 10]; // cumulative Happy-days
 const LEVEL_STEP = 5;
-const BITE_INTERVAL_MS = DAY_MS / 4;
+const BITE_INTERVAL_MS = 90_000; // the testnet clock: a bite every 90 s (contract DEMO_BITE_SECONDS)
 const BITE_BURN = 0.15;
 const POKE_TIP = 0.01;
 

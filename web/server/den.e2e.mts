@@ -1,7 +1,7 @@
 // End-to-end Den security checks against a running server and real testnet keys:
 //   RUN_BOT=0 AUTO_HATCH=0 PORT=8096 npx tsx server/prod.ts &
 //   npx tsx server/den.e2e.mts http://localhost:8096
-// Needs the testnet keys of totem-grumbo-keeper (holds a badge: Welcome Back on totem-baobao) and keeper2 (holds none) in ~/.near-credentials.
+// Needs the testnet keys of totem-grumbo-keeper (holds a badge: Welcome Back on totem-panda) and keeper2 (holds none) in ~/.near-credentials.
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { KeyPair, KeyPairSigner, type KeyPairString } from "near-api-js";

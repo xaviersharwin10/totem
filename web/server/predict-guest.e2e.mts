@@ -7,7 +7,7 @@
 import { Account, JsonRpcProvider, KeyPair, KeyPairSigner, actions, encodeSignedDelegate } from "near-api-js";
 
 const BASE = process.argv[2] ?? "http://localhost:8096";
-const CONTRACT = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
+const CONTRACT = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 const provider = new JsonRpcProvider({ url: `${BASE}/rpc` });
 const view = async <T,>(method: string, args: Record<string, unknown> = {}) => (await provider.callFunction({ contractId: CONTRACT, method, args })) as T;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -27,7 +27,7 @@ import { homedir } from "node:os";
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
 import { deserialize } from "borsh";
 
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 const RELAYER_ID = process.env.RELAYER_ACCOUNT_ID ?? "totem-grumbo-relay.testnet";
 // Public testnet RPCs rate-limit per IP: fail over between them unless one is pinned.
 export const RPC_URLS = process.env.RELAYER_RPC_URL

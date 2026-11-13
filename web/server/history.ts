@@ -9,7 +9,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { rpcForward } from "./rpc";
 
-const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-baobao.testnet";
+const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 const NEARBLOCKS = process.env.NEARBLOCKS_API ?? "https://api-testnet.nearblocks.io";
 const ARCHIVAL = process.env.ARCHIVAL_RPC ?? "https://archival-rpc.testnet.fastnear.com";
 const REFRESH_MS = 12_000;

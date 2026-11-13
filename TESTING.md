@@ -9,9 +9,9 @@ Most of it runs against the **hosted app**, so no setup is needed. For what is d
 | **Rescue link** | https://totem-x2kg.onrender.com/?rescue=1 |
 | **Tribe link** | https://totem-x2kg.onrender.com/?tribe=1 |
 | **Telegram bot** | [@Babao_panda_bot](https://t.me/Babao_panda_bot) |
-| **Contract** | [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet) (token, NFTs, game) |
+| **Contract** | [`totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-panda.testnet) (token, NFTs, game) |
 | **DAO** | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
-| **Treasury** | `totem-<generation>.totem-baobao.testnet` (one keyless account per life) |
+| **Treasury** | `totem-<generation>.totem-panda.testnet` (one keyless account per life) |
 
 ---
 
@@ -26,7 +26,7 @@ The contract runs in demo mode: **1 Totem-day = 120 seconds**. Left alone, a Tot
 | 0 s | Belly 100% |
 | about 85 s | Below 30%: **starving** |
 | about 2 min | Belly 0%: **Rampage**. The screen turns red and the countdown to the first bite starts |
-| every 30 s after that | A **bite**: burns 15% of the Treasury, slashes unshielded stakes by 15%, and costs one level |
+| every 90 s after that | A **bite**: burns 15% of the Treasury, slashes unshielded stakes by 15%, and costs one level |
 | when the level reaches 0 | **Death**: the rest of the Treasury burns and the Totem NFT becomes a gravestone |
 
 A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching.
@@ -92,7 +92,7 @@ Free-play limits per IP address: 5 new guests per hour and 40 free actions per h
 - [ ] Shake a tree. **See:** apples fall and a toast explains that apples are free, but only $TOTEM bamboo fills the belly.
 - [ ] Tap the 💰 chest or the Treasury card. **See:** an explanation and a link to the treasury account.
 - [ ] Tap the totem pole. **See:** one carved block per level, explained.
-- [ ] **contract on explorer ↗** opens `totem-baobao.testnet` on testnet.nearblocks.io.
+- [ ] **contract on explorer ↗** opens `totem-panda.testnet` on testnet.nearblocks.io.
 
 ### 2. Play free as a guest
 
@@ -135,7 +135,7 @@ Hatch first, feed once, then stop feeding.
 - [ ] One transaction did all of it: create the guest, faucet and feed. Check that the guest has **0 NEAR** and owns the Hero NFT:
   ```bash
   near account view-account-summary g<hex>.totem-grumbo-relay.testnet network-config testnet now
-  near contract call-function as-read-only totem-baobao.testnet nft_tokens_for_owner \
+  near contract call-function as-read-only totem-panda.testnet nft_tokens_for_owner \
     json-args '{"account_id":"g<hex>.totem-grumbo-relay.testnet"}' network-config testnet now   # token id hero-<gen>-<n>
   ```
 
@@ -149,10 +149,10 @@ Let a Totem starve all the way (Level 1: one bite after the Rampage starts).
 - [ ] Hover a gravestone to see its name. Tap it. **See:** the 🧾 panel opens on **Lives** with that life expanded: stats, top feeders, the NFT id and its events.
 - [ ] The Totem NFT became a gravestone:
   ```bash
-  near contract call-function as-read-only totem-baobao.testnet nft_token json-args '{"token_id":"totem-<gen>"}' network-config testnet now
+  near contract call-function as-read-only totem-panda.testnet nft_token json-args '{"token_id":"totem-<gen>"}' network-config testnet now
   # metadata.extra contains "gravestone"
   ```
-- [ ] The treasury burned: `ft_balance_of totem-<gen>.totem-baobao.testnet` is 0.
+- [ ] The treasury burned: `ft_balance_of totem-<gen>.totem-panda.testnet` is 0.
 
 ### 7. Hatch by DAO vote
 
@@ -161,7 +161,7 @@ Keepers: `totem-grumbo-keeper`, `keeper2`, `keeper3` and one guest (4 Keepers; 3
 - [ ] With the Totem dead, press **🥚 Propose hatching …** on the death card. Anyone can do this, guests included; the game pays the bond. **See:** "Hatch vote is open · 0 of N Keeper votes".
 - [ ] As a Keeper, press **Vote yes**. **See:** the tally moves and "You voted yes ✅". A non-Keeper gets "Only Keepers can vote on that…".
 - [ ] Finish from the CLI if needed: `scripts/dao-propose.sh hatch` (it reuses the open vote). Auto-hatch also finishes any open hatch vote 90 s after the death. **See:** within seconds the app shows the new egg: name +1, new colours (from its on-chain traits), Level 1, full belly, and the death card is gone.
-- [ ] The new generation has a new treasury account `totem-<gen+1>.totem-baobao.testnet` with **no access keys** (check on the explorer).
+- [ ] The new generation has a new treasury account `totem-<gen+1>.totem-panda.testnet` with **no access keys** (check on the explorer).
 - [ ] **🏛 Tribe** panel: the **Votes** tab shows open proposals with tallies, **Decided** shows past ones, **Keepers** lists each Keeper and why they qualify, ending with "No council, no admin…".
 - [ ] With 1,000+ staked: **Nominate me** in Keepers opens an `AddMemberToRole` proposal.
 - [ ] Rename (Keepers): `scripts/dao-propose.sh rename <Name>`. The next generation hatches with that name.
@@ -191,17 +191,17 @@ Use a guest (gasless) with 1,000+ $TOTEM.
 - [ ] Press **🧾** (history). **See:** four boxes: launch supply **1,000,000,000**, faucet mints, burned and supply now. **launch + faucet − burned = supply now**, exactly.
 - [ ] Check supply now against the chain:
   ```bash
-  near contract call-function as-read-only totem-baobao.testnet ft_total_supply json-args '{}' network-config testnet now
+  near contract call-function as-read-only totem-panda.testnet ft_total_supply json-args '{}' network-config testnet now
   ```
 - [ ] **Ledger** tab: events newest first, each with `gen N · time ago · tx ↗`. Open a **tx ↗**. The explorer shows the same `EVENT_JSON` logs (standard NEP-141 `ft_mint`, `ft_burn`, `ft_transfer`).
 - [ ] Feed 10, wait about 15 s, reopen. **See:** "*you* fed 10 · 🔥 5 burned · 5 to the Reserve".
 - [ ] Filters: **Mints & burns** shows only feeds, faucet mints and burns. **Life & death** shows bites, deaths and hatches.
-- [ ] Treasury: tap the 💰 chest → the treasury link. On the explorer, `totem-<gen>.totem-baobao.testnet` has **no access keys**, and its $TOTEM balance equals `get_totem.reserve`.
+- [ ] Treasury: tap the 💰 chest → the treasury link. On the explorer, `totem-<gen>.totem-panda.testnet` has **no access keys**, and its $TOTEM balance equals `get_totem.reserve`.
 
 ### 11. The NFTs on chain
 
 ```bash
-C=totem-baobao.testnet; N="network-config testnet now"
+C=totem-panda.testnet; N="network-config testnet now"
 near contract call-function as-read-only $C nft_metadata json-args '{}' $N
 near contract call-function as-read-only $C nft_total_supply json-args '{}' $N
 near contract call-function as-read-only $C nft_tokens json-args '{"limit":50}' $N
@@ -276,15 +276,15 @@ Each of these must be **refused**. Use your own testnet account for the CLI ones
 
 - [ ] **Nobody but the DAO governs:** `rename`, `hatch` or `choose_evolution` from any normal account fails.
   ```bash
-  near contract call-function as-transaction totem-baobao.testnet rename json-args '{"name":"Hacked"}' \
+  near contract call-function as-transaction totem-panda.testnet rename json-args '{"name":"Hacked"}' \
     prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as you.testnet network-config testnet sign-with-keychain send
   ```
 - [ ] **No council:** a vote from a founder account (`totem-grumbo-tribe.testnet`) fails with `ERR_PERMISSION_DENIED`. `get_policy` on the DAO lists only the roles `all` and `keepers`.
 - [ ] **Hatching a living Totem** is refused.
-- [ ] **The treasury can't be paid or drained by hand:** `ft_transfer` to `totem-<gen>.totem-baobao.testnet` or to the contract itself fails, and the treasury has no keys to sign with.
+- [ ] **The treasury can't be paid or drained by hand:** `ft_transfer` to `totem-<gen>.totem-panda.testnet` or to the contract itself fails, and the treasury has no keys to sign with.
   ```bash
-  near contract call-function as-transaction totem-baobao.testnet ft_transfer \
-    json-args '{"receiver_id":"totem-<gen>.totem-baobao.testnet","amount":"1000000000000000000"}' \
+  near contract call-function as-transaction totem-panda.testnet ft_transfer \
+    json-args '{"receiver_id":"totem-<gen>.totem-panda.testnet","amount":"1000000000000000000"}' \
     prepaid-gas '30 Tgas' attached-deposit '1 yoctoNEAR' sign-as you.testnet network-config testnet sign-with-keychain send
   ```
 - [ ] **Soulbound badges:** `nft_transfer` of a `hero-`, `badge-` or `founder-` token fails with "badges are soulbound and cannot be transferred".

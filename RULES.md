@@ -58,7 +58,7 @@ Levels can go down: each bite removes one level and resets XP to that level's fl
 
 ## Rampage, bites & death
 
-While fullness is 0, the Totem bites every ¼ Totem-day (6 h in production, 30 s in demo). Each bite, in order:
+While fullness is 0, the Totem bites every ¼ Totem-day (6 h in production; 90 s on the testnet demo clock, so a newborn's Rampage is long enough to place a bet). Each bite, in order:
 
 1. Burns **15% of the Reserve**.
 2. Slashes **15% of every unshielded stake**, into the Reserve.

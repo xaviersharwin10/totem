@@ -46,7 +46,7 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 | The prompt asks for | TOTEM | Check it |
 |---|---|---|
 | A NEP-141 token with the mechanic in the contract, not a backend someone could switch off | Feeding, burning, bites, death, Blessings and the moon are all in [`contract/src/game.rs`](contract/src/game.rs) / [`moon.rs`](contract/src/moon.rs). The server only relays and reads | `cargo test` (53 unit + 2 sandbox) |
-| All parameters set at launch, readable by anyone, no admin key | `Config` is fixed at `new()`; there is no setter and no owner method touches the token | `get_config` on [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet) |
+| All parameters set at launch, readable by anyone, no admin key | `Config` is fixed at `new()`; there is no setter and no owner method touches the token | `get_config` on [`totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-panda.testnet) |
 | Supply that reacts to the community; treasuries with rules; onchain rituals | Every meal burns 50–70%; neglect makes it bite the treasury; **BaoBao follows the real moon** (full-moon rally nights) | App: feed and watch 🔥 Burned; tap the 🌙 chip |
 | Sybil resistance good enough for a demo, limits written plainly | [Below](#why-fake-accounts-dont-help) | `sybil_split_earns_identical_total` |
 | A page with the live state and a log of every mint and burn | 🧾 history: supply reconciliation (launch + faucet − burned = `ft_total_supply`) and every `ft_mint` / `ft_burn` with tx links | App → 🧾 |
@@ -56,7 +56,7 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 
 | The prompt asks for | TOTEM | Check it |
 |---|---|---|
-| An NFT that owns money through its own account | Each Totem NFT `totem-<gen>` has a keyless treasury sub-account `totem-<gen>.totem-baobao.testnet` holding its Reserve | Explorer: the account has no access keys |
+| An NFT that owns money through its own account | Each Totem NFT `totem-<gen>` has a keyless treasury sub-account `totem-<gen>.totem-panda.testnet` holding its Reserve | Explorer: the account has no access keys |
 | How control passes on transfer, and what stops the old owner keeping access | [Selling the Totem](#selling-the-totem-what-moves-and-what-the-seller-cant-keep): every seller trick and what stops it | `transferring_the_totem_moves_governance_with_it` |
 | Tests for the transfer path, including a sale in the middle of a payout | `selling_the_totem_mid_payout_moves_no_money_to_the_seller`: sold while a Blessing is reserved and the next period runs; seller gets nothing, caretaker paid in full, buyer gets governance only | `cargo test selling` |
 | A gated page only current holders can open | **🗝 The Den**: badge NFT holders only, enforced by the server (a signed proof of ownership, NEP-413 or MetaMask's personal_sign, + on-chain holdings on every request) | App → 🗝; `npx tsx web/server/den.e2e.mts` (9 checks) |
@@ -84,7 +84,7 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 ## How NEAR is used
 
 - **One Rust contract** holds the NEP-141 token, the game state, and the NEP-171 NFTs: the Totem itself (a dynamic NFT whose metadata shows its live level, mood and Reserve), its gravestones, and soulbound badges. Feeding is an internal debit plus a real burn — no cross-contract calls.
-- **The NFT owns the treasury, in its own account.** Each Totem NFT `totem-<gen>` has a treasury sub-account, `totem-<gen>.totem-baobao.testnet`, created by the contract with **no access keys and 0 NEAR** (a NEP-448 zero-balance account): nobody can ever sign for it. Its $TOTEM balance *is* the Reserve. Every meal pays into it, and bites, death, poke tips and Blessings take from it, as ordinary NEP-141 transfers and burns anyone can follow on the explorer. Direct transfers into it (or into the contract) are refused, so its balance always equals the Reserve. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers. The Treasury shown in the app is the Reserve plus the **living** Totem's stakes: stakes from a dead generation are reported separately (`released_stakes`, "stakes to withdraw"), so a dead Totem's Treasury is 0.
+- **The NFT owns the treasury, in its own account.** Each Totem NFT `totem-<gen>` has a treasury sub-account, `totem-<gen>.totem-panda.testnet`, created by the contract with **no access keys and 0 NEAR** (a NEP-448 zero-balance account): nobody can ever sign for it. Its $TOTEM balance *is* the Reserve. Every meal pays into it, and bites, death, poke tips and Blessings take from it, as ordinary NEP-141 transfers and burns anyone can follow on the explorer. Direct transfers into it (or into the contract) are refused, so its balance always equals the Reserve. No one can withdraw it except through Blessings and the poke tip. Stakes stay owned by their stakers. The Treasury shown in the app is the Reserve plus the **living** Totem's stakes: stakes from a dead generation are reported separately (`released_stakes`, "stakes to withdraw"), so a dead Totem's Treasury is 0.
 - **Lazy time model.** NEAR contracts can't run on a timer, so state is settled lazily: every mutating call first advances hunger, XP, rampage bites and death from the last-settled timestamp to now. View methods project the live state without writing.
 - **The tribe governs through a Sputnik DAO, with real separation of powers.** The DAO owns the Totem NFT, so hatch / rename / evolve happen only by DAO proposal (a `FunctionCall` to the contract); the DAO cannot touch the Treasury or change a game rule. Its policy (set by [`scripts/bootstrap-governance.sh`](scripts/bootstrap-governance.sh)):
   - **Everyone** may propose (0.1 NEAR bond, refunded when it passes; players without NEAR propose through the game, which pays the bond).
@@ -109,7 +109,7 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 | Burn share | 50% of every meal at new moon, up to 70% at full moon (scaled by how lit the moon is); the rest goes to the Reserve |
 | The moon | Hunger up to ×1.5 at full moon; Moonlit badge for a feed while ≥ 90% lit (once per lunar cycle). Phase from block time, no oracle |
 | Points | 1 per whole token fed, ×2 when rescuing (fullness < 30%), ×1.5 when staked, +50% (max +100) on a feed after 3+ Totem-days away |
-| Rampage bite | every ¼ Totem-day at 0%: burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level |
+| Rampage bite | every ¼ Totem-day at 0% (90 s on the testnet demo clock): burn 15% of the Reserve, slash 15% of unshielded stakes into it, −1 level |
 | Death | when a bite takes it to Level 0 (a newborn L1 dies at its first bite) |
 | Poke tip | 1% of the Reserve burned by the bites a `poke()` settles |
 | Staking | ×1.5 points while ≥ 100 staked; a feed ≥ 5 shields your stake for 2 days; 1.5-day unbonding, still slashable |
@@ -210,7 +210,7 @@ The Totem is a chubby panda living on a small 3D farm island (React Three Fiber,
 - **Do:** stop feeding for about 2 minutes. **See:** the sky turns red, the panda rampages, and a bite knocks the top block off the **totem pole** (one block per level). At Level 0 it dies, a **gravestone** appears in the graveyard, and you can hatch the next generation in new colours.
 - Also: ⚽ throw a ball it chases, shake trees for apples, tap the **treasure chest** (the Treasury) or the totem pole for an explanation, drag to orbit, 🎥 to follow the panda. One Totem-day = 2 minutes, with a matching day/night cycle.
 
-**Live on testnet by default.** The farm reads the deployed contract (`get_totem`, `get_stats`, `get_lineage`) every 3 s (through the dev server's `/rpc` proxy), so the panda, totem pole, Treasury chest and graveyard show the real Totem on `totem-baobao.testnet`.
+**Live on testnet by default.** The farm reads the deployed contract (`get_totem`, `get_stats`, `get_lineage`) every 3 s (through the dev server's `/rpc` proxy), so the panda, totem pole, Treasury chest and graveyard show the real Totem on `totem-panda.testnet`.
 
 Full manual test checklist (practice, live wallet flow, DAO, troubleshooting): **[TESTING.md](TESTING.md)**.
 
@@ -280,8 +280,8 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 | Contract → wasm + ABI | done |
 | NEP-171 NFTs: dynamic Totem → gravestone, soulbound Bronze/Silver/Gold, Hero, Founder badges | done, tested |
 | near-workspaces integration tests (sandbox: a whole life, keyless treasury account, ledger reconciliation) | done, 2 tests |
-| Treasury sub-account per Totem (keyless, zero-balance) | done, tested; live: [`totem-7.totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-baobao.testnet) |
-| Testnet deploy (demo mode, 2-minute day) | done: [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet), with the moon, welcome-back and prediction markets (the first 77 lives ran on the earlier [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet), kept as an archive) |
+| Treasury sub-account per Totem (keyless, zero-balance) | done, tested; live: [`totem-7.totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-panda.testnet) |
+| Testnet deploy (demo mode, 2-minute day) | done: [`totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-panda.testnet), with the moon, welcome-back and prediction markets (earlier lives ran on [`totem-grumbo.testnet`](https://testnet.nearblocks.io/address/totem-grumbo.testnet) and [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet), kept as archives; each move was a state-layout or clock change, which a fixed-at-launch contract can only get as a fresh deploy) |
 | Sputnik DAO owns the Totem; rename / evolve / hatch via proposals | done: hatch of Generation 2 executed by a DAO vote ([tx](https://testnet.nearblocks.io/txns/BWnntErjehHtN6yF9x5cZJkQ8H8a94v43YnMGQxnX2YC)) |
 | Keepers: a DAO role for accounts with ≥ 1,000 staked or a Silver/Gold badge; they govern the Totem on their own | done: a Keeper alone voted the rename to "Mochi" (proposal 2); later the Keepers named it **BaoBao** (proposal 16) |
 | Demo script | pending |
@@ -295,18 +295,18 @@ All 14 checks pass. Two parameters were tuned from this model: Blessing periods 
 
 | What | Account |
 |---|---|
-| TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-baobao.testnet) |
+| TOTEM contract (token + game + NFTs), demo mode: 1 Totem-day = 120 s | [`totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-panda.testnet) |
 | Tribe DAO (Sputnik v2, owns the Totem NFT and gravestones) | [`totem-tribe.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/totem-tribe.sputnik-v2.testnet) |
 | Genesis holder (founder; no DAO vote since the constitution) | [`totem-grumbo-tribe.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-tribe.testnet) |
-| The living Totem's treasury (keyless; its balance is the Reserve) | [`totem-7.totem-baobao.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-baobao.testnet) |
+| The living Totem's treasury (keyless; its balance is the Reserve) | [`totem-7.totem-panda.testnet`](https://testnet.nearblocks.io/address/totem-7.totem-panda.testnet) |
 | A Keeper (1,000 $TOTEM staked) | [`totem-grumbo-keeper.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-keeper.testnet) |
 | Gas relayer for free guests (NEP-366); guests are its zero-balance sub-accounts `g<hex>.totem-grumbo-relay.testnet` | [`totem-grumbo-relay.testnet`](https://testnet.nearblocks.io/address/totem-grumbo-relay.testnet) |
 
 Read the live state (no wallet needed):
 
 ```bash
-near contract call-function as-read-only totem-baobao.testnet get_totem json-args '{}' network-config testnet now
-near contract call-function as-read-only totem-baobao.testnet get_config json-args '{}' network-config testnet now
+near contract call-function as-read-only totem-panda.testnet get_totem json-args '{}' network-config testnet now
+near contract call-function as-read-only totem-panda.testnet get_config json-args '{}' network-config testnet now
 ```
 
 Govern it through the DAO (creates a proposal, then the Keepers whose keys are on this machine vote it through):

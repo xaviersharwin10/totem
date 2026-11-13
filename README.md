@@ -5,6 +5,8 @@ A community creature on NEAR that dies if the tribe ignores it. Feed it $TOTEM a
 > Built for the NEAR Hackathon (Nov 2026). Live on testnet, playable in the browser with no wallet:
 > **https://totem-x2kg.onrender.com**. What works and what doesn't is marked honestly under **Status** below.
 
+![TOTEM architecture: players use the web app, which talks to one TOTEM contract on NEAR holding the $TOTEM coin, the BaoBao NFT and badge NFTs; the tribe's DAO votes, and BaoBao's keyless treasury account holds its coins](docs/architecture.png)
+
 ## What it is
 
 

@@ -429,17 +429,20 @@ export function useGame(): Game {
         );
         backfill = fetched.filter((m): m is PredictMarket => !!m && m.resolved);
       }
-      setRecentMarkets([...(recent ?? []), ...backfill]);
-
       if (near.accountId) {
         const storedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
+        const claimedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
+        const allTrackedIds = [...new Set([...storedIds, ...claimedIds])];
         const allMarkets = [...(recent ?? []), ...backfill];
         if (mkt) allMarkets.unshift(mkt);
-        const missingIds = storedIds.filter((id) => !allMarkets.find((m) => m.market_id === id));
+        const missingIds = allTrackedIds.filter((id) => !allMarkets.find((m) => m.market_id === id));
         const extra = await Promise.all(
           missingIds.map((id) => near.view<PredictMarket | null>("get_predict_market", { market_id: id }))
         );
         extra.forEach((m) => { if (m) allMarkets.push(m); });
+        // include cross-gen + claimed markets from localStorage in the visible list
+        const resolvedExtra = (extra.filter(Boolean) as PredictMarket[]).filter((m) => m.resolved);
+        setRecentMarkets([...(recent ?? []), ...backfill, ...resolvedExtra]);
 
         const resolved = allMarkets.filter((m) => m.resolved);
         const toFetch = mkt ? [mkt, ...resolved] : resolved;
@@ -452,15 +455,20 @@ export function useGame(): Game {
         const map = new Map<number, PredictBet>();
         toFetch.forEach((m, i) => { if (bets[i]) map.set(m.market_id, bets[i]); });
         setPastBets(map);
-        const claimed = toFetch.filter((_, i) => {
+        // When both sides are 0 the user claimed their winnings; move them to the
+        // claimed list (so the badge shows) but keep them in predict_ids so the
+        // market row stays visible.
+        const zeroed = toFetch.filter((_, i) => {
           const b = bets[i];
           return b && BigInt(b.survive) === 0n && BigInt(b.die) === 0n;
         }).map((m) => m.market_id);
-        if (claimed.length) {
-          const pruned = storedIds.filter((id) => !claimed.includes(id));
-          localStorage.setItem("totem_predict_ids", JSON.stringify(pruned));
+        if (zeroed.length) {
+          const alreadyClaimed: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
+          const next = [...new Set([...alreadyClaimed, ...zeroed])];
+          localStorage.setItem("totem_predict_claimed", JSON.stringify(next));
         }
       } else {
+        setRecentMarkets([...(recent ?? []), ...backfill]);
         setMyBet(null);
         setPastBets(new Map());
       }
@@ -521,6 +529,11 @@ export function useGame(): Game {
     setPredictBusy(true);
     try {
       await near.call("claim_prediction", { market_id: marketId });
+      const alreadyClaimed: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
+      if (!alreadyClaimed.includes(marketId)) {
+        alreadyClaimed.push(marketId);
+        localStorage.setItem("totem_predict_claimed", JSON.stringify(alreadyClaimed));
+      }
       pushLive("blessing", "🔮 prediction winnings claimed!");
     } finally {
       setPredictBusy(false);

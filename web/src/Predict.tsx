@@ -66,6 +66,9 @@ function MarketRow({
   const myS = myBet ? toTokens(myBet.survive) : 0;
   const myD = myBet ? toTokens(myBet.die) : 0;
 
+  const claimedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_claimed") ?? "[]");
+  const alreadyClaimed = claimedIds.includes(m.market_id);
+
   const wonSurvive = m.resolved && m.outcome === true && myS > 0;
   const wonDie = m.resolved && m.outcome === false && myD > 0;
   const hasWinning = wonSurvive || wonDie;
@@ -111,6 +114,9 @@ function MarketRow({
         <button className="press-btn pm-claim-btn" onClick={onClaim} disabled={busy}>
           🏆 Claim{estimated ? ` ~${fmt(estimated)} $TOTEM` : " winnings"}
         </button>
+      )}
+      {alreadyClaimed && (
+        <div className="pm-claimed-tag">✅ winnings claimed</div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { fmt, fmtTime, TotemView, DAY_MS, GameEvent, roman } from "./engine";
+import { fmt, fmtTime, TotemView, DAY_MS, GameEvent, roman, playerTitle } from "./engine";
 import { useGame } from "./game";
 import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
@@ -16,6 +16,7 @@ import { HatchVote, TribePanel } from "./Tribe";
 import { HistoryPanel } from "./History";
 import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
+import { OfferingsPanel } from "./Offerings";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
 import { CollectionPanel } from "./Collection";
@@ -63,6 +64,7 @@ export default function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   // opened from a Telegram "Place a bet" link (?predict=1)
   const [predictOpen, setPredictOpen] = useState(() => new URLSearchParams(location.search).has("predict"));
+  const [offeringsOpen, setOfferingsOpen] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -436,6 +438,11 @@ export default function App() {
               <>
                 <div className="acct" title={game.accountId}>
                   <span className="acct-id">{game.isGuest ? shortGuest(game.accountId) : game.accountId}</span>
+                  {(() => {
+                    const myEntry = game.leaderboard.find((r) => r.who === game.accountId);
+                    const { emoji, label } = playerTitle(myEntry?.points ?? 0);
+                    return <span className="acct-title" title={label}>{emoji} {label}</span>;
+                  })()}
                   <button className="link-btn" onClick={() => game.disconnect()}>sign out</button>
                 </div>
                 <div className="acct-bal">
@@ -497,6 +504,9 @@ export default function App() {
         {/* ── Core gameplay ── */}
         {game.mode === "live" && (
           <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
+        )}
+        {game.mode === "live" && (
+          <button className={`icon-btn ${offeringsOpen ? "on" : ""}`} onClick={() => setOfferingsOpen((o) => !o)} title="Tribal offerings: burn $TOTEM for island rituals">🔥</button>
         )}
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
         {/* ── Community ── */}
@@ -620,6 +630,30 @@ export default function App() {
       )}
       {predictOpen && game.mode === "live" && (
         <PredictPanel game={game} onClose={() => setPredictOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
+      )}
+      {offeringsOpen && game.mode === "live" && (
+        <OfferingsPanel
+          game={game}
+          onClose={() => setOfferingsOpen(false)}
+          toast={(m, k) => pushToast(m, k ?? "info")}
+          onEffect={(amount) => {
+            // 3D visual: rain bamboo for small offerings, burst text for big ones
+            const pos = world.panda.pos.clone().setY(2);
+            if (amount >= 1000) {
+              for (let i = 0; i < 6; i++) addBurst("smoke", pos.clone().add(new THREE.Vector3((Math.random()-0.5)*8, Math.random()*3, (Math.random()-0.5)*8)));
+              addBurst("text", pos.setY(3.5), "👻 ANCESTORS!", "#c69cff");
+            } else if (amount >= 500) {
+              addBurst("spark", pos.clone().setY(4));
+              addBurst("text", pos.setY(3.5), "🌙 OFFERING!", "#9db8ff");
+            } else if (amount >= 200) {
+              for (let i = 0; i < 4; i++) addBurst("spark", pos.clone().add(new THREE.Vector3((Math.random()-0.5)*5, Math.random()*2, (Math.random()-0.5)*5)));
+              addBurst("text", pos.setY(3.5), "⚔️ WAR CRY!", "#ff6a3d");
+            } else {
+              for (let i = 0; i < 5; i++) dropFood((Math.random()-0.5)*10, (Math.random()-0.5)*10, "bamboo", 0.7);
+              addBurst("text", pos.setY(3.5), "🎋 BAMBOO RAIN!", "#5bd87a");
+            }
+          }}
+        />
       )}
       {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
       {denOpen && game.mode === "live" && (

@@ -6,7 +6,7 @@ import { Proposal, Tribe } from "./chain/dao";
 import { DAO_ID, EXPLORER, toTokens } from "./chain/config";
 import { shortGuest } from "./chain/guest";
 import { rescueUrl } from "./Sos";
-import { fmt } from "./engine";
+import { fmt, playerTitle } from "./engine";
 import type { HistoryEvent } from "./History";
 
 const nice = (a: string) => shortGuest(a.length > 30 && /^[0-9a-f]{40,}|^0x/.test(a) ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
@@ -279,14 +279,17 @@ export function TribePanel({
               <span className="lb-hint">Every point is a token fed — traceable on-chain</span>
             </div>
             {lb.length === 0 && <div className="tribe-empty">Loading feed history…</div>}
-            {lb.slice(0, 15).map((row, i) => (
+            {lb.slice(0, 15).map((row, i) => {
+              const { emoji, label } = playerTitle(row.fed);
+              return (
               <div key={row.account} className="lb-row">
                 <span className="lb-rank">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</span>
                 <span className="lb-acct">{shortGuest(row.account.length > 28 ? `${row.account.slice(0, 10)}…${row.account.slice(-6)}` : row.account)}</span>
+                <span className="lb-title" title={label}>{emoji}</span>
                 <span className="lb-fed">{fmt(row.fed)} $TOTEM</span>
                 {row.rescues > 0 && <span className="lb-rescue" title="rescue feeds">🦸 ×{row.rescues}</span>}
               </div>
-            ))}
+            );})}
             {lb.length > 15 && <div className="tribe-empty">+{lb.length - 15} more feeders this life</div>}
           </div>
         )}

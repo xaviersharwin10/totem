@@ -94,21 +94,6 @@ const BITE_INTERVAL_MS = 90_000; // the testnet clock: a bite every 90 s (contra
 const BITE_BURN = 0.15;
 const POKE_TIP = 0.01;
 
-export const TITLES = [
-  { min: 0,     emoji: "🌱", label: "Seedling" },
-  { min: 100,   emoji: "🐾", label: "Wanderer" },
-  { min: 500,   emoji: "🎋", label: "Bamboo Tender" },
-  { min: 2000,  emoji: "🔥", label: "Fire Keeper" },
-  { min: 5000,  emoji: "🌙", label: "Moon Watcher" },
-  { min: 10000, emoji: "🐼", label: "Panda Elder" },
-] as const;
-
-export function playerTitle(points: number): { emoji: string; label: string } {
-  let t: { emoji: string; label: string } = TITLES[0];
-  for (const tier of TITLES) if (points >= tier.min) t = tier;
-  return t;
-}
-
 export function roman(n: number): string {
   const t: [number, string][] = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
   let s = "";

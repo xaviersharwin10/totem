@@ -85,14 +85,15 @@ button { font-family: inherit; }
 .stat-sub { font-size: 10px; font-weight: 700; color: var(--ink-soft); margin-top: 1px; white-space: nowrap; }
 
 /* ---------- right rail: menu actions ---------- */
-.rail { position: absolute; right: 16px; top: 350px; bottom: 24px; display: flex; flex-direction: column;
-  justify-content: flex-end; gap: 9px; z-index: 5; overflow-y: auto; scrollbar-width: none; }
+.rail { position: absolute; right: 16px; top: 252px; bottom: 24px; display: flex; flex-direction: column;
+  align-items: flex-end; justify-content: flex-end; gap: 9px; z-index: 5; overflow-y: auto; scrollbar-width: none; }
 .rail::-webkit-scrollbar { display: none; }
 .icon-row { display: flex; gap: 8px; }
 .icon-btn {
   width: 42px; height: 42px; border-radius: 14px; border: 1.5px solid var(--glass-line); cursor: pointer;
   background: var(--glass); backdrop-filter: blur(10px); font-size: 18px; box-shadow: var(--shadow);
   transition: transform 0.12s ease, background 0.12s ease;
+  flex: 0 0 auto;
 }
 .icon-btn:hover { transform: translateY(-2px); }
 .icon-btn:active { transform: scale(0.92); }
@@ -851,25 +852,31 @@ button { font-family: inherit; }
   .sheet-bg { padding: 8px; }
 }
 
-/* ---------- Path titles ---------- */
-.acct { flex-wrap: wrap; gap: 4px; }
-.acct-title { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: rgba(255,255,255,0.5); border-radius: 999px; padding: 2px 8px; }
-.lb-title { font-size: 15px; }
+/* ---------- Rail overflow (⋯ more) ---------- */
+.rail-more { display: grid; grid-template-columns: repeat(2, 42px); gap: 9px; flex: 0 0 auto; justify-items: end; animation: railPop 0.16s ease; }
+.rail-toggle.on { background: #ffe9a8; }
+@keyframes railPop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ---------- Tribal Offerings panel ---------- */
-.offerings-sheet { position: relative; width: min(420px, 92vw); max-height: 90vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.offerings-head { display: flex; align-items: center; justify-content: space-between; }
-.offerings-desc { margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
-.ritual-list { display: flex; flex-direction: column; gap: 12px; }
-.ritual-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-.ritual-top { display: flex; align-items: center; gap: 12px; }
-.ritual-emoji { font-size: 28px; flex-shrink: 0; }
-.ritual-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.ritual-name { font-family: var(--round); font-weight: 700; font-size: 16px; }
-.ritual-tagline { font-size: 12px; color: var(--ink-soft); }
-.ritual-cost { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.ritual-burn { font-size: 11px; color: var(--ember); font-weight: 700; }
-.ritual-total { font-size: 13px; font-weight: 700; }
-.ritual-effect { font-size: 12px; color: var(--ink-soft); border-left: 3px solid; padding-left: 8px; }
-.ritual-btn { width: 100%; font-weight: 700; color: #fff; border: none; }
-.ritual-btn:disabled { opacity: 0.5; background: #999 !important; }
+/* ---------- Onboarding quest card ---------- */
+.quest-card {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  width: min(380px, 60vw); padding: 14px 16px 12px; z-index: 6;
+  display: flex; flex-direction: column; gap: 7px; animation: float 3s infinite;
+}
+.quest-head { display: flex; align-items: center; justify-content: space-between; }
+.quest-kicker { font-size: 11.5px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: var(--ink-soft); }
+.quest-x { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--ink-soft); padding: 2px 4px; line-height: 1; }
+.quest-x:hover { color: var(--ink); }
+.quest-title { font-family: var(--round); font-weight: 700; font-size: 17px; }
+.quest-body { font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+.quest-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.quest-dots { display: flex; gap: 6px; }
+.quest-dots span { width: 8px; height: 8px; border-radius: 999px; background: rgba(43,34,48,0.18); transition: background 0.2s, transform 0.2s; }
+.quest-dots span.on { background: var(--gold); transform: scale(1.25); }
+.quest-dots span.done { background: var(--green); }
+.quest-cta { height: 38px; padding: 0 16px; font-size: 14px; white-space: nowrap; }
+@media (max-width: 760px) {
+  .quest-card { width: min(92vw, 340px); top: 10px; padding: 11px 13px 10px; }
+  .quest-title { font-size: 15px; }
+  .quest-body { font-size: 12px; }
+}

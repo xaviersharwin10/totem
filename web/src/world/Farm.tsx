@@ -1381,11 +1381,15 @@ export function SkyAndLight({ dayFrac, mood }: { dayFrac: number; mood: Mood }) 
 
     const day = new THREE.Color("#a8dcff");
     const dusk = new THREE.Color("#ffb38a");
+    const twilight = new THREE.Color("#4a3d6b");
     const night = new THREE.Color("#1d2550");
     const sky = new THREE.Color();
     if (elev > 0.25) sky.copy(day);
     else if (elev > -0.15) sky.lerpColors(dusk, day, (elev + 0.15) / 0.4);
-    else sky.lerpColors(night, dusk, Math.max(0, (elev + 0.6) / 0.45));
+    // route the low-sun transition through a violet twilight so dusk/dawn
+    // reads as a clean gradient instead of a muddy blue↔orange blend
+    else if (elev > -0.4) sky.lerpColors(twilight, dusk, (elev + 0.4) / 0.25);
+    else sky.lerpColors(night, twilight, Math.max(0, (elev + 0.75) / 0.35));
     if (mood === "rampage") sky.lerp(new THREE.Color("#ff5a4a"), 0.45);
     if (mood === "dead") sky.lerp(new THREE.Color("#6f7385"), 0.6);
     const bg = state.scene.background as THREE.Color;

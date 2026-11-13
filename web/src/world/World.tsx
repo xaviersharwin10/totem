@@ -50,7 +50,7 @@ export function World(p: WorldProps) {
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [0, 7.2, 13], fov: 42 }}
+      camera={{ position: [8.2, 4.5, 22.5], fov: 42 }}
       gl={{ antialias: true, preserveDrawingBuffer: true }} // lets the SOS card snapshot the farm
       onCreated={({ scene }) => {
         scene.background = new THREE.Color("#a8dcff");
@@ -85,6 +85,9 @@ export function World(p: WorldProps) {
 }
 
 const PLAY_TARGET = new THREE.Vector3(0, 1, 0);
+// smootherstep: zero velocity AND zero acceleration at both ends, so the
+// cinematic eases off the moon and settles into play with no kick or freeze.
+const smoother = (x: number) => { const q = Math.min(1, Math.max(0, x)); return q * q * q * (q * (q * 6 - 15) + 10); };
 
 function CameraRig({ follow }: { follow: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
@@ -92,7 +95,6 @@ function CameraRig({ follow }: { follow: boolean }) {
   const tmp = useRef(new THREE.Vector3());
   const introStart = useRef<number | null>(null);
   const INTRO = 6.2; // seconds of cinematic reveal on load
-  const HOLD = 1.6; // of which the first are spent on the moon
   const LOOK = 5; // seconds the camera spends on the moon after the moon chip is tapped
   const look = useRef<{ start: number; from: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   useFrame((state, dt) => {
@@ -104,8 +106,9 @@ function CameraRig({ follow }: { follow: boolean }) {
     const t = state.clock.elapsedTime - introStart.current;
     if (t < INTRO) {
       c.enabled = false;
-      const k = Math.max(0, (t - HOLD) / (INTRO - HOLD));
-      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOut
+      // one continuous smootherstep across the whole reveal: lingers on the
+      // moon at the start, glides down, and settles into play — no dead hold.
+      const e = smoother(t / INTRO);
       const az = (1 - e) * 0.35;
       const R = 24 - (24 - 13) * e;
       const h = 4.5 + (7.2 - 4.5) * e;

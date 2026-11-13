@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { fmt, fmtTime, TotemView, DAY_MS, GameEvent, roman, playerTitle } from "./engine";
+import { fmt, fmtTime, TotemView, DAY_MS, GameEvent, roman } from "./engine";
 import { useGame } from "./game";
 import { World } from "./world/World";
 import { PandaLook } from "./world/Panda";
@@ -16,13 +16,13 @@ import { HatchVote, TribePanel } from "./Tribe";
 import { HistoryPanel } from "./History";
 import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
-import { OfferingsPanel } from "./Offerings";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
 import { CollectionPanel } from "./Collection";
 import { AlertsPanel } from "./Alerts";
 import { MainnetPopup } from "./Mainnet";
 import { Tour, tourSeen } from "./Tour";
+import { QuestCard, QUEST_STEPS } from "./Quest";
 import { moonEmoji as moonIcon, moonLit, moonPhaseName, moonWaxing, nextFullMoon } from "./moon";
 
 // Per-generation look (mirrors the contract's cosmetic `palette` trait).
@@ -64,7 +64,7 @@ export default function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   // opened from a Telegram "Place a bet" link (?predict=1)
   const [predictOpen, setPredictOpen] = useState(() => new URLSearchParams(location.search).has("predict"));
-  const [offeringsOpen, setOfferingsOpen] = useState(false);
+  const [railMore, setRailMore] = useState(false);
   const [tribeOpen, setTribeOpen] = useState(() => new URLSearchParams(location.search).has("tribe"));
   // opened from an SOS link (?rescue=1)
   const [rescueOpen, setRescueOpen] = useState(() => new URLSearchParams(location.search).has("rescue"));
@@ -88,7 +88,22 @@ export default function App() {
   const [guestKey, setGuestKey] = useState<null | "backup" | "restore">(null);
   // generation whose death card the player hid (it shrinks to a pill; a new death shows it again)
   const [deathHidden, setDeathHidden] = useState<number | null>(null);
-  const [hint, setHint] = useState(true);
+  // onboarding quest: one guided step at a time, derived from the flags below
+  const questStart = (() => { try { return Number(localStorage.getItem("totem-quest-step") ?? "0"); } catch { return 0; } })();
+  const [qPetted, setQPetted] = useState(() => questStart >= 1);
+  const [qFedCount, setQFedCount] = useState(() => (questStart >= 3 ? 2 : questStart >= 2 ? 1 : 0));
+  const [qRescued, setQRescued] = useState(() => questStart >= 4);
+  const [qTribeSeen, setQTribeSeen] = useState(() => questStart >= 5);
+  const [questDone, setQuestDone] = useState(() => { try { return !!localStorage.getItem("totem-quest-done"); } catch { return false; } });
+  // contiguous: only reveal the next step once the current one is truly done.
+  // feeding implies you've met the panda, so it never leaves you stuck on step 1.
+  const qMet = qPetted || qFedCount >= 1;
+  let questStep = 0;
+  if (qMet) { questStep = 1;
+    if (qFedCount >= 1) { questStep = 2;
+      if (qFedCount >= 2) { questStep = 3;
+        if (qRescued) { questStep = 4;
+          if (qTribeSeen) questStep = 5; } } } }
   // the opening camera fly-in runs for ~5.4s; hold back pop-ups until it settles
   const [introDone, setIntroDone] = useState(false);
   useEffect(() => {
@@ -105,6 +120,28 @@ export default function App() {
     setTourOpen(false);
     setTourDone(true);
   };
+  // persist quest progress; celebrate + retire the card when all steps are done
+  useEffect(() => {
+    try {
+      localStorage.setItem("totem-quest-step", String(questStep));
+      if (questStep >= QUEST_STEPS.length) localStorage.setItem("totem-quest-done", "1");
+    } catch { /* no storage */ }
+    if (questStep >= QUEST_STEPS.length && !questDone) {
+      pushToast("🎉 You've learned the ropes — welcome to the tribe!", "level_up");
+      const t = setTimeout(() => setQuestDone(true), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [questStep]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dismissQuest = () => {
+    setQuestDone(true);
+    try { localStorage.setItem("totem-quest-done", "1"); } catch { /* no storage */ }
+  };
+  const questCta = () => {
+    if (questStep >= 1 && questStep <= 3) setTool("bamboo");
+    else if (questStep === 4) setTribeOpen(true);
+  };
+  // opening the Tribe panel completes the final quest step
+  useEffect(() => { if (tribeOpen) setQTribeSeen(true); }, [tribeOpen]);
   const [hurt, setHurt] = useState(0);
   const [combo, setCombo] = useState(0);
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -158,6 +195,7 @@ export default function App() {
     const fresh = game.events.filter((e) => e.id > lastEventId.current).reverse();
     if (!fresh.length) return;
     lastEventId.current = Math.max(...fresh.map((e) => e.id));
+    if (fresh.some((e) => e.kind === "rampage_end")) setQRescued(true);
     fresh
       .filter((e) => e.kind !== "feed")
       .forEach((e) => pushToast(e.text, e.kind));
@@ -234,6 +272,8 @@ export default function App() {
       }
       chat.fed();
       setCombo((c) => c + 1);
+      setQFedCount((c) => c + 1);
+      if (r.rescue) setQRescued(true);
       clearTimeout(comboTimer.current);
       comboTimer.current = setTimeout(() => setCombo(0), 1800);
     } catch (e) {
@@ -251,7 +291,6 @@ export default function App() {
   };
 
   const onGround = (p: THREE.Vector3) => {
-    setHint(false);
     if (tool === "bamboo") feedAt(p.x, p.z);
     else if (tool === "ball") {
       throwBall(p.x, p.z);
@@ -350,7 +389,7 @@ export default function App() {
           follow={follow}
           onGround={onGround}
           onPet={() => {
-            setHint(false);
+            setQPetted(true);
             sfx.feed(2);
             chat.hello();
           }}
@@ -438,11 +477,6 @@ export default function App() {
               <>
                 <div className="acct" title={game.accountId}>
                   <span className="acct-id">{game.isGuest ? shortGuest(game.accountId) : game.accountId}</span>
-                  {(() => {
-                    const myEntry = game.leaderboard.find((r) => r.who === game.accountId);
-                    const { emoji, label } = playerTitle(myEntry?.points ?? 0);
-                    return <span className="acct-title" title={label}>{emoji} {label}</span>;
-                  })()}
                   <button className="link-btn" onClick={() => game.disconnect()}>sign out</button>
                 </div>
                 <div className="acct-bal">
@@ -501,37 +535,37 @@ export default function App() {
 
       {/* ---------- right rail: menu actions ---------- */}
       <nav className="rail">
-        {/* ── Core gameplay ── */}
+        {/* overflow: expands upward above the core icons */}
+        {railMore && (
+          <div className="rail-more">
+            {game.mode === "live" && (
+              <button className={`icon-btn ${nftsOpen ? "on" : ""}`} onClick={() => { setNftsOpen((o) => !o); setRailMore(false); }} title="NFTs: the living Totem and your badges">🏅</button>
+            )}
+            {game.mode === "live" && (
+              <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => { setDenOpen((o) => !o); setRailMore(false); }} title="The Den: for badge holders only">🗝</button>
+            )}
+            {game.mode === "live" && (
+              <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => { setAlertsOpen((o) => !o); setRailMore(false); }} title="Get BaoBao's alerts on Telegram">🔔</button>
+            )}
+            {game.mode === "live" && (
+              <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => { setHistGen((h) => (h === null ? 0 : null)); setRailMore(false); }} title="On-chain history: every mint, burn, bite and life">🧾</button>
+            )}
+            <button className="icon-btn" onClick={() => { setSosOpen(true); setRailMore(false); }} title="Share / call for help">📣</button>
+            <button className="icon-btn" onClick={() => { setDrawer((d) => !d); setRailMore(false); }} title="Activity log: recent feeds, bites and rescues">📜</button>
+            <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => { setTourOpen(true); setRailMore(false); }} title="How to play">❔</button>
+            <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => { setFollow((f) => !f); setRailMore(false); }} title="Follow the panda (F)">🎥</button>
+            <button className="icon-btn" onClick={() => { toggleMute(); setRailMore(false); }} title={muted ? "Sound off: tap for birdsong and sounds" : "Sound on: tap to mute"}>{muted ? "🔇" : "🔊"}</button>
+          </div>
+        )}
+        {/* core: always visible (live-gated ones hide in practice) */}
         {game.mode === "live" && (
           <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>
         )}
-        {game.mode === "live" && (
-          <button className={`icon-btn ${offeringsOpen ? "on" : ""}`} onClick={() => setOfferingsOpen((o) => !o)} title="Tribal offerings: burn $TOTEM for island rituals">🔥</button>
-        )}
         <button className={`icon-btn ${chatOpen ? "on" : ""}`} onClick={() => setChatOpen((o) => !o)} title="Talk to the Totem (T)">💬</button>
-        {/* ── Community ── */}
         {game.mode === "live" && (
           <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
         )}
-        {game.mode === "live" && (
-          <button className={`icon-btn ${nftsOpen ? "on" : ""}`} onClick={() => setNftsOpen((o) => !o)} title="NFTs: the living Totem and your badges">🏅</button>
-        )}
-        {game.mode === "live" && (
-          <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
-        )}
-        {game.mode === "live" && (
-          <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => setAlertsOpen((o) => !o)} title="Get BaoBao's alerts on Telegram">🔔</button>
-        )}
-        <button className="icon-btn" onClick={() => setSosOpen(true)} title="Share / call for help">📣</button>
-        {/* ── Info ── */}
-        {game.mode === "live" && (
-          <button className={`icon-btn ${histGen !== null ? "on" : ""}`} onClick={() => setHistGen((h) => (h === null ? 0 : null))} title="On-chain history: every mint, burn, bite and life">🧾</button>
-        )}
-        <button className="icon-btn" onClick={() => setDrawer((d) => !d)} title="Tribe">📜</button>
-        {/* ── Utility ── */}
-        <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => setTourOpen(true)} title="How to play">❔</button>
-        <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => setFollow((f) => !f)} title="Follow the panda (F)">🎥</button>
-        <button className="icon-btn" onClick={toggleMute} title={muted ? "Sound off: tap for birdsong and sounds" : "Sound on: tap to mute"}>{muted ? "🔇" : "🔊"}</button>
+        <button className={`icon-btn rail-toggle ${railMore ? "on" : ""}`} onClick={() => setRailMore((o) => !o)} title={railMore ? "Fewer" : "More"} aria-label="More menu">⋯</button>
       </nav>
 
       {/* ---------- hunger ---------- */}
@@ -604,10 +638,8 @@ export default function App() {
         ))}
       </div>
 
-      {introDone && hint && !tourOpen && view.alive && (
-        <div className="hint glass">
-          <b>Say hi to {view.name.split(" ")[0]}!</b> Tap it to pet · pick 🎋 and tap the grass to feed · ⚽ to play · shake the trees · drag to look around
-        </div>
+      {introDone && !tourOpen && !questDone && !rampage && (
+        <QuestCard step={questStep} onCta={questCta} onDismiss={dismissQuest} />
       )}
 
       {tribeOpen && game.mode === "live" && (
@@ -630,30 +662,6 @@ export default function App() {
       )}
       {predictOpen && game.mode === "live" && (
         <PredictPanel game={game} onClose={() => setPredictOpen(false)} toast={(m, k) => pushToast(m, k ?? "info")} />
-      )}
-      {offeringsOpen && game.mode === "live" && (
-        <OfferingsPanel
-          game={game}
-          onClose={() => setOfferingsOpen(false)}
-          toast={(m, k) => pushToast(m, k ?? "info")}
-          onEffect={(amount) => {
-            // 3D visual: rain bamboo for small offerings, burst text for big ones
-            const pos = world.panda.pos.clone().setY(2);
-            if (amount >= 1000) {
-              for (let i = 0; i < 6; i++) addBurst("smoke", pos.clone().add(new THREE.Vector3((Math.random()-0.5)*8, Math.random()*3, (Math.random()-0.5)*8)));
-              addBurst("text", pos.setY(3.5), "👻 ANCESTORS!", "#c69cff");
-            } else if (amount >= 500) {
-              addBurst("spark", pos.clone().setY(4));
-              addBurst("text", pos.setY(3.5), "🌙 OFFERING!", "#9db8ff");
-            } else if (amount >= 200) {
-              for (let i = 0; i < 4; i++) addBurst("spark", pos.clone().add(new THREE.Vector3((Math.random()-0.5)*5, Math.random()*2, (Math.random()-0.5)*5)));
-              addBurst("text", pos.setY(3.5), "⚔️ WAR CRY!", "#ff6a3d");
-            } else {
-              for (let i = 0; i < 5; i++) dropFood((Math.random()-0.5)*10, (Math.random()-0.5)*10, "bamboo", 0.7);
-              addBurst("text", pos.setY(3.5), "🎋 BAMBOO RAIN!", "#5bd87a");
-            }
-          }}
-        />
       )}
       {histGen !== null && game.mode === "live" && <HistoryPanel focusGeneration={histGen || null} onClose={() => setHistGen(null)} />}
       {denOpen && game.mode === "live" && (
@@ -680,7 +688,6 @@ export default function App() {
           onPlay={() => {
             closeTour();
             if (view.alive) setTool("bamboo");
-            setHint(true);
           }}
         />
       )}

@@ -196,7 +196,7 @@ export function useGame(): Game {
           if (t.level < p.level && t.alive) pushLive("level_down", `💔 BITE! ${t.lineage_name} dropped to Level ${t.level}`);
           if (t.mood === "rampage" && p.mood !== "rampage") pushLive("rampage_start", `🔥 RAMPAGE: ${t.lineage_name} is starving`);
           if (p.mood === "rampage" && t.mood !== "rampage" && t.alive) pushLive("rampage_end", `🦸 Someone rescued ${t.lineage_name}!`);
-          if (p.alive && !t.alive) pushLive("death", `💀 ${t.lineage_name} starved at Level 0. A gravestone NFT joins the lineage.`);
+          if (p.alive && !t.alive) { pushLive("death", `💀 ${t.lineage_name} starved at Level 0. A gravestone NFT joins the lineage.`); refreshPredict(); }
         }
       }
       prevLive.current = t;
@@ -439,7 +439,9 @@ export function useGame(): Game {
   const liveMarket: PredictMarket | null = (() => {
     const t = live?.t;
     const real = activeMarket && !activeMarket.resolved && t && activeMarket.gen === t.generation ? activeMarket : null;
-    if (real || !t || !t.alive || t.mood !== "rampage") return real ?? activeMarket;
+    // Totem dead: never show an unresolved market — it was resolved on death; wait for the poll to confirm
+    if (t && !t.alive) return activeMarket?.resolved ? activeMarket : null;
+    if (real || !t || t.mood !== "rampage") return real ?? activeMarket;
     return { market_id: -1, gen: t.generation, opened_at: "0", total_survive: "0", total_die: "0", resolved: false, outcome: null };
   })();
   // check the market as soon as a Rampage starts, not on the next 5 s tick

@@ -448,14 +448,14 @@ export default function App() {
               </>
             ) : (
               <>
+                <button className="press-btn wallet-btn primary" onClick={() => game.connect().catch(() => undefined)}>
+                  🔗 Connect NEAR wallet
+                </button>
                 {game.freePlay && (
                   <button className="press-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
-                    ⚡ Play free, no wallet
+                    ⚡ No wallet? Play free as a guest
                   </button>
                 )}
-                <button className={`press-btn wallet-btn ${game.freePlay ? "secondary" : ""}`} onClick={() => game.connect().catch(() => undefined)}>
-                  {game.freePlay ? "or connect a NEAR wallet" : "Connect wallet"}
-                </button>
                 {game.freePlay && (
                   <button className="restore-btn" onClick={() => setGuestKey("restore")}>🔑 Have a guest code? Restore your account</button>
                 )}

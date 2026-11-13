@@ -45,9 +45,8 @@ export function Tour({ name, alive, onClose, onPlay }: { name: string; alive: bo
             it dies.
           </p>
           <p>
-            Keeping it alive is free, and <b>you don't need a wallet</b>: tap <b>⚡ Play free, no wallet</b> (top right) for a guest
-            account, take free test $TOTEM from the 🚰 faucet, then pick 🎋 and tap the grass to feed it. Have a NEAR wallet? Connect it
-            instead.
+            <b>🔗 Connect your NEAR wallet</b> (top right), take free test $TOTEM from the 🚰 faucet, then pick 🎋 and tap the grass to
+            feed it. No wallet yet? Tap <b>⚡ Play free as a guest</b> and you can still play.
           </p>
         </>
       ),

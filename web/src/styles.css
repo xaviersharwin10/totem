@@ -324,10 +324,10 @@ button { font-family: inherit; }
   background: rgba(255,93,108,0.12); color: #c8283a; box-shadow: inset 0 0 0 1.5px rgba(255,93,108,0.4); }
 .sos-btn.hot { background: #ff4d5e; color: #fff; box-shadow: 0 3px 0 #b8222f; animation: sosPulse 1.2s ease-in-out infinite; }
 @keyframes sosPulse { 50% { transform: scale(1.03); } }
-.guest-btn { width: 100%; font-size: 15px; padding: 12px 14px; background: linear-gradient(180deg, #ffd54a, #ffb300) !important; color: #3a2400 !important; box-shadow: 0 6px 0 #c07b00, 0 10px 18px rgba(255,179,0,0.4) !important; animation: guestGlow 2.4s ease-in-out infinite; }
-.guest-btn:active { box-shadow: 0 1px 0 #c07b00 !important; }
-@keyframes guestGlow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
-.wallet-btn.secondary { height: auto; margin-top: 10px; width: 100%; font-size: 12.5px; padding: 8px 12px; background: rgba(255,255,255,0.85) !important; color: var(--ink) !important; box-shadow: 0 3px 0 rgba(0,0,0,0.12) !important; }
+.wallet-btn.primary { height: auto; width: 100%; font-size: 15.5px; padding: 12px 14px; animation: walletGlow 2.4s ease-in-out infinite; }
+@keyframes walletGlow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
+.guest-btn { height: auto; margin-top: 10px; width: 100%; font-size: 13.5px; padding: 9px 12px; background: linear-gradient(180deg, #ffe27a, #ffc93c) !important; color: #3a2400 !important; box-shadow: 0 4px 0 #c99000 !important; transform: none; }
+.guest-btn:active { box-shadow: 0 1px 0 #c99000 !important; }
 .restore-btn { display: block; width: 100%; margin-top: 8px; padding: 7px 10px; border: 1.5px dashed rgba(107,95,112,0.55); border-radius: 12px; background: rgba(255,255,255,0.55); color: var(--ink); font-weight: 800; font-size: 12px; cursor: pointer; }
 .restore-btn:hover { background: rgba(255,255,255,0.85); }
 .guest-note { font-size: 11px; font-weight: 800; color: #3f9d5a; }

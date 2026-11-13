@@ -62,6 +62,7 @@ The judges' [track prompts](https://github.com/nearai/near-hackathon-prompt-exam
 | A gated page only current holders can open | **🗝 The Den**: badge NFT holders only, enforced by the server (a signed proof of ownership, NEP-413 or MetaMask's personal_sign, + on-chain holdings on every request) | App → 🗝; `npx tsx web/server/den.e2e.mts` (9 checks) |
 | A history view per NFT | 🧾 → Lives: each life's stats, top feeders, NFT id and events; tap a gravestone | App → tap a gravestone |
 | NFTs as credentials / memberships | Soulbound Hero, Founder, Moonlit, Welcome Back and Caretaker badges; they are the Den's keys and count toward Keeper eligibility | `badges_are_soulbound_nfts` |
+| Dynamic NFTs, art on chain | Every token's `media` is an SVG the contract draws in its own views: the living Totem's picture follows its mood, level, belly, Reserve and the real moon; gravestones and each badge have their own art. `nft_token`, `nft_tokens` and `nft_tokens_for_owner` all return the live Totem, so wallets see it change | `every_nft_has_onchain_art_and_lists_show_the_live_totem`; App → 🏅 |
 
 **Social Money** ([12-social](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md))
 

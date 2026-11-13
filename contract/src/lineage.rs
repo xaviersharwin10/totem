@@ -10,7 +10,7 @@ use near_sdk::{env, near, AccountId};
 
 /// Cosmetic traits, rendered by the web app.
 #[near(serializers = [borsh, json])]
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Traits {
     pub palette: u8,
     pub pattern: u8,

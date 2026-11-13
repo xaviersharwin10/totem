@@ -20,6 +20,7 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::FungibleToken;
 use near_contract_standards::non_fungible_token::NonFungibleToken;
 
+mod art;
 mod config;
 mod events;
 mod game;

@@ -18,6 +18,7 @@ import { BellyLine, StakeSheet, useBelly } from "./Stake";
 import { PredictPanel } from "./Predict";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
+import { CollectionPanel } from "./Collection";
 import { AlertsPanel } from "./Alerts";
 import { MainnetPopup } from "./Mainnet";
 import { Tour, tourSeen } from "./Tour";
@@ -58,6 +59,7 @@ export default function App() {
   const [histGen, setHistGen] = useState<number | null>(null);
   const [stakeOpen, setStakeOpen] = useState(false);
   const [denOpen, setDenOpen] = useState(false);
+  const [nftsOpen, setNftsOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   // opened from a Telegram "Place a bet" link (?predict=1)
   const [predictOpen, setPredictOpen] = useState(() => new URLSearchParams(location.search).has("predict"));
@@ -502,6 +504,9 @@ export default function App() {
           <button className={`icon-btn ${tribeOpen ? "on" : ""}`} onClick={() => setTribeOpen((o) => !o)} title="The tribe: votes and Keepers">🏛</button>
         )}
         {game.mode === "live" && (
+          <button className={`icon-btn ${nftsOpen ? "on" : ""}`} onClick={() => setNftsOpen((o) => !o)} title="NFTs: the living Totem and your badges">🏅</button>
+        )}
+        {game.mode === "live" && (
           <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => setDenOpen((o) => !o)} title="The Den: for badge holders only">🗝</button>
         )}
         {game.mode === "live" && (
@@ -622,6 +627,14 @@ export default function App() {
           onClose={() => setDenOpen(false)}
           onConnect={() => game.connect().catch(() => undefined)}
           onGuest={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}
+        />
+      )}
+      {nftsOpen && game.mode === "live" && (
+        <CollectionPanel
+          accountId={game.accountId}
+          isGuest={game.isGuest}
+          onClose={() => setNftsOpen(false)}
+          onConnect={() => game.connect().catch(() => undefined)}
         />
       )}
       <MainnetPopup ready={!loading && game.mode === "live" && tourDone && !tourOpen} />

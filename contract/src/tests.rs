@@ -583,6 +583,7 @@ fn released_stake_from_a_dead_generation_is_paid_out_on_restake() {
 
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
 use near_contract_standards::non_fungible_token::enumeration::NonFungibleTokenEnumeration;
+use near_contract_standards::non_fungible_token::metadata::NonFungibleTokenMetadataProvider;
 
 fn token_ids_of(c: &Contract, who: &AccountId) -> Vec<String> {
     c.nft_tokens_for_owner(who.clone(), None, Some(50))
@@ -674,6 +675,47 @@ fn badges_are_soulbound_nfts() {
         c.nft_transfer(accounts(3), badge.clone(), None, None)
     }));
     assert!(r.is_err(), "transferring a badge panics");
+}
+
+fn media_svg(t: &near_contract_standards::non_fungible_token::Token) -> String {
+    let m = t.metadata.as_ref().unwrap().media.clone().expect("every NFT has media");
+    let b = m.strip_prefix("data:image/svg+xml;base64,").expect("an SVG data URI");
+    // decode (std only) to check it is a real SVG
+    let mut out = Vec::new();
+    let val = |c: u8| match c { b'A'..=b'Z' => c - b'A', b'a'..=b'z' => c - b'a' + 26, b'0'..=b'9' => c - b'0' + 52, b'+' => 62, _ => 63 } as u32;
+    for ch in b.as_bytes().chunks(4) {
+        let n = ch.iter().enumerate().fold(0u32, |n, (i, &c)| if c == b'=' { n } else { n | val(c) << (18 - 6 * i) });
+        let k = ch.iter().filter(|&&c| c != b'=').count();
+        for i in 0..k - 1 { out.push((n >> (16 - 8 * i)) as u8); }
+    }
+    String::from_utf8(out).unwrap()
+}
+
+#[test]
+fn every_nft_has_onchain_art_and_lists_show_the_live_totem() {
+    let (mut c, genesis, dao) = setup();
+    keep_happy(&mut c, &genesis, DAY / 4, 2 * DAY);
+    set_ctx(&genesis, 2 * DAY);
+    c.claim_badge();
+    // the living Totem: art in every view, and the wallet listing is live too
+    let listed = c.nft_tokens_for_owner(dao.clone(), None, Some(10));
+    let x: near_sdk::serde_json::Value =
+        near_sdk::serde_json::from_str(listed[0].metadata.as_ref().unwrap().extra.as_ref().unwrap()).unwrap();
+    assert_eq!(x["level"], 2, "nft_tokens_for_owner returns live metadata");
+    let all = c.nft_tokens(None, Some(10));
+    assert_eq!(all.iter().find(|t| t.token_id == "totem-1").unwrap().metadata, listed[0].metadata, "nft_tokens is live too");
+    let svg = media_svg(&listed[0]);
+    assert!(svg.starts_with("<svg") && svg.contains("BaoBao I") && svg.contains("Level 2"));
+    // a badge has its own medal
+    let badge = c.nft_tokens_for_owner(genesis.clone(), None, Some(10)).into_iter().find(|t| t.token_id.starts_with("badge-")).unwrap();
+    assert!(media_svg(&badge).contains("CARETAKER"));
+    // the collection has an icon
+    assert!(c.nft_metadata().icon.unwrap().starts_with("data:image/svg+xml;base64,"));
+    // a gravestone shows R.I.P.
+    set_ctx(&genesis, 30 * DAY);
+    c.poke();
+    assert!(!c.alive);
+    assert!(media_svg(&c.nft_token("totem-1".into()).unwrap()).contains("R.I.P."));
 }
 
 #[test]

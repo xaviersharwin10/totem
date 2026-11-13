@@ -108,6 +108,68 @@ impl Contract {
         self.nft_mint_internal(token_id, who, meta);
     }
 
+    /// What every NFT view returns for a token: the living Totem's live
+    /// metadata (a dynamic NFT; or its gravestone if it starved and the death
+    /// is not settled yet), and for every token an on-chain SVG as `media`.
+    /// Views only: nothing is written, so wallets always see the current art.
+    pub(crate) fn decorate(&self, mut t: Token) -> Token {
+        if t.token_id == self.totem_id && self.alive {
+            let rec = self.projected_life_record(env::block_timestamp());
+            t.metadata = Some(if rec.alive {
+                self.live_totem_metadata()
+            } else {
+                gravestone_metadata(&rec)
+            });
+        }
+        let id = t.token_id.clone();
+        if let Some(m) = t.metadata.as_mut() {
+            if m.media.is_none() {
+                m.media = Some(self.media_for(&id, m));
+            }
+        }
+        t
+    }
+
+    fn media_for(&self, token_id: &str, m: &TokenMetadata) -> String {
+        let extra: near_sdk::serde_json::Value = m
+            .extra
+            .as_deref()
+            .and_then(|e| near_sdk::serde_json::from_str(e).ok())
+            .unwrap_or_default();
+        let title = m.title.clone().unwrap_or_default();
+        let svg = match extra["kind"].as_str() {
+            Some("totem") => {
+                let v = self.get_totem();
+                let now = env::block_timestamp();
+                crate::art::totem_svg(&crate::art::LiveTotem {
+                    name: &v.lineage_name,
+                    traits: &v.traits,
+                    level: v.level,
+                    max_level: v.max_level,
+                    mood: &v.mood,
+                    form: &v.form,
+                    fullness_bp: v.fullness_bp,
+                    reserve_whole: v.reserve.0 / crate::config::ONE_TOKEN,
+                    moon_bp: crate::moon::moon_bp(now),
+                    waxing: crate::moon::age_ns(now) < crate::moon::SYNODIC_NS / 2,
+                })
+            }
+            Some("gravestone") => {
+                let life = &extra["life"];
+                let traits: crate::lineage::Traits =
+                    near_sdk::serde_json::from_value(life["traits"].clone()).unwrap_or_default();
+                crate::art::gravestone_svg(
+                    life["lineage_name"].as_str().unwrap_or(""),
+                    life["generation"].as_u64().unwrap_or(0) as u32,
+                    life["max_level"].as_u64().unwrap_or(0) as u32,
+                    &traits,
+                )
+            }
+            _ => crate::art::badge_svg(token_id, &title),
+        };
+        crate::art::data_uri(&svg)
+    }
+
     /// Live metadata for the living Totem: a dynamic NFT.
     fn live_totem_metadata(&self) -> TokenMetadata {
         let v = self.get_totem();
@@ -187,18 +249,7 @@ impl NonFungibleTokenCore for Contract {
     }
 
     fn nft_token(&self, token_id: TokenId) -> Option<Token> {
-        let mut t = self.nft.nft_token(token_id.clone())?;
-        if token_id == self.totem_id && self.alive {
-            // Dynamic NFT: live state, or the gravestone if it starved but the
-            // death has not been settled by a transaction yet.
-            let rec = self.projected_life_record(env::block_timestamp());
-            t.metadata = Some(if rec.alive {
-                self.live_totem_metadata()
-            } else {
-                gravestone_metadata(&rec)
-            });
-        }
-        Some(t)
+        Some(self.decorate(self.nft.nft_token(token_id)?))
     }
 }
 
@@ -228,7 +279,11 @@ impl NonFungibleTokenEnumeration for Contract {
     }
 
     fn nft_tokens(&self, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token> {
-        self.nft.nft_tokens(from_index, limit)
+        self.nft
+            .nft_tokens(from_index, limit)
+            .into_iter()
+            .map(|t| self.decorate(t))
+            .collect()
     }
 
     fn nft_supply_for_owner(&self, account_id: AccountId) -> U128 {
@@ -241,7 +296,11 @@ impl NonFungibleTokenEnumeration for Contract {
         from_index: Option<U128>,
         limit: Option<u64>,
     ) -> Vec<Token> {
-        self.nft.nft_tokens_for_owner(account_id, from_index, limit)
+        self.nft
+            .nft_tokens_for_owner(account_id, from_index, limit)
+            .into_iter()
+            .map(|t| self.decorate(t))
+            .collect()
     }
 }
 
@@ -252,7 +311,7 @@ impl NonFungibleTokenMetadataProvider for Contract {
             spec: NFT_METADATA_SPEC.to_string(),
             name: "TOTEM creatures and badges".to_string(),
             symbol: "TOTEMNFT".to_string(),
-            icon: None,
+            icon: Some(crate::art::data_uri(&crate::art::icon_svg())),
             base_uri: None,
             reference: None,
             reference_hash: None,

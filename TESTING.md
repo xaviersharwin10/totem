@@ -211,7 +211,9 @@ near contract call-function as-read-only $C nft_token json-args '{"token_id":"to
 - [ ] **Living Totem NFT** `totem-<gen>`: owned by the tribe. Its metadata changes as it lives (level, form, mood, traits, treasury). Read it, feed, read it again.
 - [ ] **Gravestones:** earlier `totem-<n>` tokens say "gravestone" and keep their life story.
 - [ ] **Soulbound:** `hero-…`, `badge-…` and `founder-…` tokens. Trying to transfer one fails (see [scenario 16](#16-things-that-must-fail-security)).
-- [ ] A NEAR wallet's NFT tab shows the badges you own.
+- [ ] **Art on chain:** every token's `metadata.media` is a `data:image/svg+xml;base64,…` drawn by the contract. Read `nft_token` for the living Totem twice, a feed apart: the picture changes (belly bar, mood colour, hearts).
+- [ ] In the app, tap **🏅**: the living Totem NFT with its live picture, then **Yours**: every NFT your account owns, with its art. Tap one for its description, token id and explorer link.
+- [ ] A NEAR wallet's NFT tab shows the badges you own, with their art. (NearBlocks lists them too, but shows no image: its indexer stores the metadata from mint time.)
 
 ### 12. BaoBao's AI voice
 

@@ -22,7 +22,7 @@ import {
   TotemPole,
   Trees,
 } from "./Farm";
-import { world } from "./store";
+import { MOON_POS, world } from "./store";
 
 export interface WorldProps {
   mood: Mood;
@@ -84,31 +84,64 @@ export function World(p: WorldProps) {
   );
 }
 
+const PLAY_TARGET = new THREE.Vector3(0, 1, 0);
+
 function CameraRig({ follow }: { follow: boolean }) {
   const controls = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const tmp = useRef(new THREE.Vector3());
   const introStart = useRef<number | null>(null);
-  const INTRO = 5.4; // seconds of cinematic reveal on load
+  const INTRO = 6.2; // seconds of cinematic reveal on load
+  const HOLD = 1.6; // of which the first are spent on the moon
+  const LOOK = 5; // seconds the camera spends on the moon after the moon chip is tapped
+  const look = useRef<{ start: number; from: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   useFrame((state, dt) => {
     const c = controls.current;
     if (!c) return;
 
-    // ---- cinematic intro: a descending orbit that settles into the play view ----
+    // ---- cinematic intro: open on tonight's moon, then tilt and glide down into the play view ----
     if (introStart.current === null) introStart.current = state.clock.elapsedTime;
     const t = state.clock.elapsedTime - introStart.current;
     if (t < INTRO) {
       c.enabled = false;
-      const k = t / INTRO;
+      const k = Math.max(0, (t - HOLD) / (INTRO - HOLD));
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOut
-      const az = (1 - e) * 2.4; // sweep ~140° -> 0
-      const R = 27 - (27 - 13) * e; // dolly in
-      const h = 16 - (16 - 7.2) * e; // descend
+      const az = (1 - e) * 0.35;
+      const R = 24 - (24 - 13) * e;
+      const h = 4.5 + (7.2 - 4.5) * e;
       camera.position.set(Math.sin(az) * R, h, Math.cos(az) * R);
-      camera.lookAt(0, 1, 0);
-      c.target.set(0, 1, 0);
+      camera.lookAt(tmp.current.copy(MOON_POS).lerp(PLAY_TARGET, e));
+      c.target.copy(PLAY_TARGET);
       return;
     }
+
+    // ---- tapping the moon chip: look up at the moon for a few seconds, then back ----
+    if (world.moonLook && (!look.current || look.current.start !== world.moonLook)) {
+      const prev = look.current;
+      look.current = { start: world.moonLook, from: prev?.from ?? camera.position.clone(), target: prev?.target ?? c.target.clone() };
+    }
+    if (look.current) {
+      const L = look.current;
+      const s = (performance.now() - L.start) / 1000;
+      if (s < LOOK) {
+        c.enabled = false;
+        const ease = (x: number) => { const q = Math.min(1, Math.max(0, x)); return q * q * (3 - 2 * q); };
+        const b = s < 1.2 ? ease(s / 1.2) : s > LOOK - 1.2 ? ease((LOOK - s) / 1.2) : 1;
+        // step back a little so the moon and the farm share the frame
+        camera.position.copy(L.from).add(tmp.current.set(0, -1.5 * b, 4 * b));
+        // wide screens: aim under the moon so it sits in the upper third, above the cards
+        const aim = tmp.current.copy(MOON_POS).setY(MOON_POS.y - (state.size.width > state.size.height ? 5 : 1));
+        camera.lookAt(aim.lerp(L.target, 1 - b));
+        return;
+      }
+      camera.position.copy(L.from);
+      c.target.copy(L.target);
+      look.current = null;
+      world.moonLook = 0;
+      c.enabled = true;
+      c.update();
+    }
+
     if (!c.enabled) {
       c.enabled = true;
       c.target.set(0, 1, 0);

@@ -54,6 +54,9 @@ export const OBSTACLES: [number, number, number][] = [
 export const ROAM_RADIUS = 8.6;
 export const ISLAND_RADIUS = 11;
 
+/** Where the moon hangs in the sky (it bobs a little around this). */
+export const MOON_POS = new THREE.Vector3(3.5, 8.5, -32);
+
 export const world = {
   foods: [] as Food[],
   bursts: [] as Burst[],
@@ -72,6 +75,8 @@ export const world = {
   },
   /** Last time each tree was shaken, by tree index. */
   treeShake: new Map<number, number>(),
+  /** performance.now() when the camera was asked to look up at the moon (0 = never). */
+  moonLook: 0,
   /** Called by the panda when it finishes a food item. */
   onAte: null as null | ((f: Food) => void),
   nextId: 1,

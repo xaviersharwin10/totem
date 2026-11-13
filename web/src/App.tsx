@@ -88,7 +88,7 @@ export default function App() {
   // the opening camera fly-in runs for ~5.4s; hold back pop-ups until it settles
   const [introDone, setIntroDone] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setIntroDone(true), 5600);
+    const t = setTimeout(() => setIntroDone(true), 6400);
     return () => clearTimeout(t);
   }, []);
   // "How to play": opens by itself on a first visit, once the fly-in settles; ❔ reopens it
@@ -375,7 +375,7 @@ export default function App() {
           <span className="chip">gen {view.generation}</span>
           <span className="chip">{view.form}</span>
           <span className="chip lvl">Level {view.level}</span>
-          <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => setInfo("moon")} title="BaoBao follows the real moon">
+          <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => { setInfo("moon"); world.moonLook = performance.now(); }} title="BaoBao follows the real moon: tap to look at it">
             {moonIcon(moon.lit, moon.waxing)} {Math.round(moon.lit * 100)}%
             {moon.hunger !== undefined && moon.hunger > 1.005 && <> · hunger ×{moon.hunger.toFixed(2)}</>}
             {!moon.moonlitNow && moon.phase !== "preview" && (() => {

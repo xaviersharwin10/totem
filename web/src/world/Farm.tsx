@@ -5,7 +5,7 @@ import { useFrame, ThreeEvent } from "@react-three/fiber";
 import { Html, Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 import { Mood } from "../engine";
-import { addBurst, bump, dropFood, ISLAND_RADIUS, OBSTACLES, useWorld, world, Food } from "./store";
+import { addBurst, bump, dropFood, ISLAND_RADIUS, MOON_POS, OBSTACLES, useWorld, world, Food } from "./store";
 
 const s3 = (x: number, y: number, z: number) => [x, y, z] as [number, number, number];
 
@@ -1427,19 +1427,20 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
   const cy = S / 2;
   // glow, brighter the fuller it is
   const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, S / 2);
-  glow.addColorStop(0, `rgba(255,248,214,${0.15 + 0.45 * lit})`);
-  glow.addColorStop(1, "rgba(255,248,214,0)");
+  glow.addColorStop(0, `rgba(255,236,150,${0.55 + 0.4 * lit})`);
+  glow.addColorStop(1, "rgba(255,236,150,0)");
   g.fillStyle = glow;
   g.fillRect(0, 0, S, S);
   // the unlit part: faint earthshine, like the real moon in a day sky
-  const DARK = "rgba(214,222,242,0.38)";
+  // dark enough to read as a moon (not a cloud) against the day sky
+  const DARK = "rgba(62,74,120,0.6)";
   g.fillStyle = DARK;
   g.beginPath();
   g.arc(cx, cy, r, 0, Math.PI * 2);
   g.fill();
   // the lit part: a half disc on the lit side, then the terminator ellipse
   const right = waxing; // northern-hemisphere view: waxing is lit on the right
-  g.fillStyle = "#fff6d6";
+  g.fillStyle = "#ffdf5e";
   g.beginPath();
   g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !right);
   g.fill();
@@ -1453,7 +1454,7 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
     g.fill();
     g.restore();
   }
-  g.fillStyle = lit > 0.5 ? "#fff6d6" : DARK;
+  g.fillStyle = lit > 0.5 ? "#ffdf5e" : DARK;
   g.beginPath();
   g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
   g.fill();
@@ -1472,21 +1473,24 @@ export function Moon({ lit, waxing, onInfo }: { lit: number; waxing: boolean; on
     return t;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  const ref = useRef<THREE.Sprite>(null!);
+  const ref = useRef<THREE.Group>(null!);
   useFrame((state) => {
-    ref.current.position.y = 8.5 + Math.sin(state.clock.elapsedTime * 0.2) * 0.25;
+    ref.current.position.y = MOON_POS.y + Math.sin(state.clock.elapsedTime * 0.2) * 0.25;
   });
   return (
-    <sprite
-      ref={ref}
-      position={[3.5, 8.5, -32]}
-      scale={[4.6, 4.6, 1]}
-      onClick={(e) => {
-        e.stopPropagation();
-        onInfo();
-      }}
-    >
-      <spriteMaterial map={tex} transparent depthWrite={false} fog={false} />
-    </sprite>
+    <group ref={ref} position={MOON_POS.toArray()}>
+      <sprite
+        scale={[6.5, 6.5, 1]}
+        onClick={(e) => {
+          e.stopPropagation();
+          onInfo();
+        }}
+      >
+        <spriteMaterial map={tex} transparent depthWrite={false} fog={false} />
+      </sprite>
+      <Html position={[0, -3.1, 0]} center zIndexRange={[3, 0]} style={{ pointerEvents: "none" }}>
+        <div className="moon-tag">tonight's real moon · {Math.round(lit * 100)}%</div>
+      </Html>
+    </group>
   );
 }

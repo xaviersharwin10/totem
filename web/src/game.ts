@@ -413,17 +413,37 @@ export function useGame(): Game {
       setActiveMarket(mkt);
       setRecentMarkets(recent ?? []);
       if (near.accountId) {
-        const resolved = (recent ?? []).filter((m) => m.resolved);
+        // also fetch any markets the user has bet on from localStorage (survives gen changes)
+        const storedIds: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
+        const allMarkets = [...(recent ?? [])];
+        if (mkt) allMarkets.unshift(mkt);
+        // fetch stored markets not already in the list
+        const missingIds = storedIds.filter((id) => !allMarkets.find((m) => m.market_id === id));
+        const extra = await Promise.all(
+          missingIds.map((id) => near.view<PredictMarket | null>("get_predict_market", { market_id: id }))
+        );
+        extra.forEach((m) => { if (m) allMarkets.push(m); });
+
+        const resolved = allMarkets.filter((m) => m.resolved);
         const toFetch = mkt ? [mkt, ...resolved] : resolved;
         const bets = await Promise.all(
           toFetch.map((m) =>
             near.view<PredictBet>("get_predict_bet", { market_id: m.market_id, account_id: near.accountId })
           )
         );
-        if (mkt) setMyBet(bets[0]);
+        if (mkt) setMyBet(bets[0] ?? null);
         const map = new Map<number, PredictBet>();
         toFetch.forEach((m, i) => { if (bets[i]) map.set(m.market_id, bets[i]); });
         setPastBets(map);
+        // prune claimed markets (both bet sides are 0)
+        const claimed = toFetch.filter((_, i) => {
+          const b = bets[i];
+          return b && BigInt(b.survive) === 0n && BigInt(b.die) === 0n;
+        }).map((m) => m.market_id);
+        if (claimed.length) {
+          const pruned = storedIds.filter((id) => !claimed.includes(id));
+          localStorage.setItem("totem_predict_ids", JSON.stringify(pruned));
+        }
       } else {
         setMyBet(null);
         setPastBets(new Map());
@@ -465,6 +485,14 @@ export function useGame(): Game {
     try {
       await near.call("predict", { side, amount: toYocto(amount) });
       pushLive("feed", `🔮 you bet ${fmt(amount)} $TOTEM on "${side}"`);
+      // persist market id so claim survives gen changes
+      if (activeMarket && activeMarket.market_id > 0) {
+        const stored: number[] = JSON.parse(localStorage.getItem("totem_predict_ids") ?? "[]");
+        if (!stored.includes(activeMarket.market_id)) {
+          stored.push(activeMarket.market_id);
+          localStorage.setItem("totem_predict_ids", JSON.stringify(stored));
+        }
+      }
     } finally {
       setPredictBusy(false);
       refreshPredict();

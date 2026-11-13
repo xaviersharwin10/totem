@@ -448,14 +448,16 @@ export default function App() {
               </>
             ) : (
               <>
-                <button className="press-btn wallet-btn" onClick={() => game.connect().catch(() => undefined)}>Connect wallet</button>
                 {game.freePlay && (
-                  <>
-                    <button className="ghost-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
-                      ⚡ Play free, no wallet
-                    </button>
-                    <button className="link-btn restore-link" onClick={() => setGuestKey("restore")}>have a guest backup code?</button>
-                  </>
+                  <button className="press-btn guest-btn" onClick={() => game.playAsGuest().catch((e) => pushToast(friendly(e), "info"))}>
+                    ⚡ Play free, no wallet
+                  </button>
+                )}
+                <button className={`press-btn wallet-btn ${game.freePlay ? "secondary" : ""}`} onClick={() => game.connect().catch(() => undefined)}>
+                  {game.freePlay ? "or connect a NEAR wallet" : "Connect wallet"}
+                </button>
+                {game.freePlay && (
+                  <button className="restore-btn" onClick={() => setGuestKey("restore")}>🔑 Have a guest code? Restore your account</button>
                 )}
               </>
             ))}
@@ -645,8 +647,8 @@ export default function App() {
 
       {/* ---------- death ---------- */}
       {introDone && !view.alive && deathHidden === view.generation && (
-        <button className="death-pill glass" onClick={() => setDeathHidden(null)}>
-          🪦 {graves[graves.length - 1]?.name ?? view.name} · tap for details
+        <button className="death-pill" onClick={() => setDeathHidden(null)}>
+          🪦 {graves[graves.length - 1]?.name ?? view.name} died · <b>🥚 see the next egg ›</b>
         </button>
       )}
       {introDone && !view.alive && deathHidden !== view.generation && (
@@ -659,9 +661,11 @@ export default function App() {
               🛠 Dev auto-hatch:{" "}
               {autoHatch.busy
                 ? "the Keepers are voting…"
-                : autoHatch.hatchAt
-                  ? `the Keepers vote a new egg in ${fmtTime(Math.max(0, (autoHatch.hatchAt - now) / 1000))}`
-                  : "the Keepers will vote a new egg soon"}
+                : autoHatch.hatchAt && autoHatch.hatchAt > now
+                  ? `the Keepers vote a new egg in ${fmtTime((autoHatch.hatchAt - now) / 1000)}`
+                  : autoHatch.last?.startsWith("failed")
+                    ? "the last vote didn't go through, the Keepers retry every minute…"
+                    : "the Keepers will vote a new egg soon"}
             </div>
           )}
           {game.hatch ? (
@@ -866,6 +870,7 @@ interface AutoHatch {
   enabled: boolean;
   hatchAt: number | null;
   busy: boolean;
+  last?: string;
 }
 
 /** While the team builds, the server re-hatches a dead Totem by DAO vote (server/autohatch.ts). */

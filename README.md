@@ -61,6 +61,7 @@ The creature is named **BaoBao** (chosen by DAO vote). Every generation inherits
 | Open **🏛 Tribe** | Open DAO proposals with live tallies, Keeper standings and your own path (*Nominate me* when you qualify). |
 | Open **🧾 History** | Live supply ledger: 1,000,000,000 minted − burned forever = `ft_total_supply`. Every feed, burn, bite and badge with **tx ↗** explorer links. |
 | Tap a **gravestone** in the graveyard | That generation's full life record: duration, level peak, top feeders, their NFT id, every event. |
+| Open **⋯ → 🏆 Badge Leaderboard** | Wallets ranked by soulbound badge count, queried live from chain. Your row is highlighted purple. |
 | Tap the panda or press **💬** | BaoBao answers in character with real chain data — who feeds it most, who its ancestors were, how full it is right now. |
 | Tap **🔑 Back up** in the wallet panel | A code to restore your guest account in any browser. |
 
@@ -219,11 +220,13 @@ Bot: [@Babao_panda_bot](https://t.me/Babao_panda_bot)
 │  └── Guest key manager — NEP-366 DelegateAction signer                  │
 │                                                                         │
 │  Server (Node / Express — same Render instance)                         │
-│  ├── /rpc         — NEAR RPC proxy (rate-limit shield)                  │
-│  ├── /api/voice   — NEAR AI Cloud: reads chain, answers in character    │
-│  ├── /api/guest   — creates zero-balance sub-accounts (NEP-448)         │
-│  ├── /api/relay   — NEP-366 relayer, pays gas for guest actions         │
-│  └── /api/den     — NEP-413 / MetaMask sig verify; badge-gated content  │
+│  ├── /rpc              — NEAR RPC proxy (rate-limit shield)             │
+│  ├── /api/voice        — NEAR AI Cloud: reads chain, answers in character│
+│  ├── /api/guest        — creates zero-balance sub-accounts (NEP-448)   │
+│  ├── /api/relay        — NEP-366 relayer, pays gas for guest actions    │
+│  ├── /api/den          — NEP-413 / MetaMask sig verify; badge-gated    │
+│  ├── /api/history      — on-chain event log (NearBlocks + RPC, cached) │
+│  └── /api/leaderboard  — wallets ranked by badge NFT count             │
 │                                                                         │
 │  NEAR Testnet                                                           │
 │  ├── totem-panda.testnet       — Rust contract (token + game + NFTs)    │
@@ -360,7 +363,7 @@ Test: `selling_the_totem_mid_payout_moves_no_money_to_the_seller`
 │   │   ├── game.ts       chain state → React hooks
 │   │   ├── engine.ts     practice mode (full rule mirror, client-side)
 │   │   └── Predict.tsx   prediction market panel
-│   └── server/           Express: /rpc, /api/voice, /api/guest, /api/relay, /api/den
+│   └── server/           Express: /rpc, /api/voice, /api/guest, /api/relay, /api/den, /api/history, /api/leaderboard
 ├── bot/              Telegram alerts (wip)
 ├── scripts/          deploy / DAO governance / demo (wip)
 ├── docs/             architecture.png
@@ -485,6 +488,7 @@ All 14 checks pass. Two parameters were tuned from this model (Blessing period 7
 | BaoBao AI voice (NEAR AI Cloud) | ✅ done |
 | Gasless guest accounts + NEP-366 relayer | ✅ done |
 | 🗝 The Den (badge-gated, NEP-413 + MetaMask sig) | ✅ done |
+| 🏆 Badge leaderboard (wallets ranked by NFT count via `nft_supply_for_owner`) | ✅ done |
 | Telegram bot: tribe alarms, watches, `/ask` | ✅ done |
 | 60-day simulation + committed charts | ✅ done |
 | Demo script (`scripts/demo.ts`) | ⏳ pending |

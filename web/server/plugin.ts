@@ -6,6 +6,7 @@
 //   /api/propose  open a hatch vote / Keeper nomination for players without NEAR
 //   /api/history  the contract's event log (every feed, burn, bite, life), from chain
 //   /api/den    the badge holders' Den · /api/link  the Telegram alerts button
+//   /api/leaderboard  wallets ranked by badge count
 import type { Plugin } from "vite";
 import { rpcHandler } from "./rpc";
 import { voiceHandler } from "./voice";
@@ -15,6 +16,7 @@ import { autoHatchHandler } from "./autohatch";
 import { denHandler } from "./den";
 import { linkHandler } from "./link";
 import { waitlistHandler } from "./waitlist";
+import { leaderboardHandler } from "./leaderboard";
 
 export function totemServer(): Plugin {
   return {
@@ -30,6 +32,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/den", denHandler);
       s.middlewares.use("/api/link", linkHandler);
       s.middlewares.use("/api/waitlist", waitlistHandler);
+      s.middlewares.use("/api/leaderboard", leaderboardHandler);
     },
     configurePreviewServer(s) {
       s.middlewares.use("/api/guest", guestHandler);
@@ -42,6 +45,7 @@ export function totemServer(): Plugin {
       s.middlewares.use("/api/den", denHandler);
       s.middlewares.use("/api/link", linkHandler);
       s.middlewares.use("/api/waitlist", waitlistHandler);
+      s.middlewares.use("/api/leaderboard", leaderboardHandler);
     },
   };
 }

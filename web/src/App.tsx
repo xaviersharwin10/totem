@@ -19,6 +19,7 @@ import { PredictPanel } from "./Predict";
 import { friendly } from "./errors";
 import { DenPanel } from "./Den";
 import { CollectionPanel } from "./Collection";
+import { LeaderboardPanel } from "./Leaderboard";
 import { AlertsPanel } from "./Alerts";
 import { MainnetPopup } from "./Mainnet";
 import { Tour, tourSeen } from "./Tour";
@@ -62,6 +63,7 @@ export default function App() {
   const [denOpen, setDenOpen] = useState(false);
   const [nftsOpen, setNftsOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [lbOpen, setLbOpen] = useState(false);
   // opened from a Telegram "Place a bet" link (?predict=1)
   const [predictOpen, setPredictOpen] = useState(() => new URLSearchParams(location.search).has("predict"));
   const [railMore, setRailMore] = useState(false);
@@ -544,6 +546,9 @@ export default function App() {
           {game.mode === "live" && (
             <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => { setAlertsOpen((o) => !o); setRailMore(false); }} title="Get BaoBao's alerts on Telegram">🔔</button>
           )}
+          {game.mode === "live" && (
+            <button className={`icon-btn ${lbOpen ? "on" : ""}`} onClick={() => { setLbOpen((o) => !o); setRailMore(false); }} title="Badge leaderboard: who holds the most NFTs">🏆</button>
+          )}
           <button className="icon-btn" onClick={() => { setSosOpen(true); setRailMore(false); }} title="Share / call for help">📣</button>
           <button className="icon-btn" onClick={() => { setDrawer((d) => !d); setRailMore(false); }} title="Activity log: recent feeds, bites and rescues">📜</button>
           <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => { setTourOpen(true); setRailMore(false); }} title="How to play">❔</button>
@@ -677,6 +682,9 @@ export default function App() {
           onClose={() => setNftsOpen(false)}
           onConnect={() => game.connect().catch(() => undefined)}
         />
+      )}
+      {lbOpen && game.mode === "live" && (
+        <LeaderboardPanel accountId={game.accountId} onClose={() => setLbOpen(false)} />
       )}
       <MainnetPopup ready={!loading && game.mode === "live" && tourDone && !tourOpen} />
       {tourOpen && !loading && (

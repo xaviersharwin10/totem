@@ -127,7 +127,9 @@ export function BellyLine({ b, onOpen }: { b: Belly; onOpen: () => void }) {
       ) : (
         <span className="warn">⚠️ {fmt(toTokens(s.staked))} staked · unshielded</span>
       )}
-      {b.rewardsWaiting > 0 && <span className="reward-dot">🎁 {b.rewardsWaiting}</span>}
+      {b.rewardsWaiting > 0 && (
+        <span className="reward-gift">🎁<span className="reward-dot">{b.rewardsWaiting}</span></span>
+      )}
     </button>
   );
 }

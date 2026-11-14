@@ -448,7 +448,8 @@ button { font-family: inherit; }
 .belly-line:hover { background: rgba(43,34,48,0.1); }
 .belly-line .ok { color: #3f9d5a; }
 .belly-line .warn { color: #c2343f; }
-.reward-dot { background: var(--gold, #e0a420); color: #fff; border-radius: 999px; padding: 1px 7px; font-size: 11px; animation: sosPulse 1.6s ease-in-out infinite; }
+.reward-gift { position: relative; display: inline-block; line-height: 1; animation: sosPulse 1.6s ease-in-out infinite; }
+.reward-dot { position: absolute; top: -4px; right: -6px; background: #e05; color: #fff; border-radius: 999px; min-width: 14px; height: 14px; padding: 0 3px; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; line-height: 1; }
 .tribe.stake { max-width: 520px; }
 .stake-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
 .stake-grid > div { background: rgba(255,255,255,0.75); border-radius: 12px; padding: 8px 6px; text-align: center; }

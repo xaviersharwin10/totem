@@ -46,14 +46,33 @@ const ago = (t: number) => {
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
 };
 
-function groupKeys(keys: Key[]): { id: string; title: string; count: number }[] {
-  const map = new Map<string, { id: string; count: number }>();
+const TYPE_MAP: [string, string, string][] = [
+  ["hero-",         "🦸", "Hero of the Rampage"],
+  ["founder-",      "🏛", "Founder"],
+  ["moonlit-",      "🌕", "Moonlit"],
+  ["returned-",     "🤗", "Welcome Back"],
+  ["badge-gold-",   "🥇", "Gold Caretaker"],
+  ["badge-silver-", "🥈", "Silver Caretaker"],
+  ["badge-bronze-", "🥉", "Bronze Caretaker"],
+];
+
+function groupKeys(keys: Key[]): { id: string; icon: string; label: string; count: number; sub: string }[] {
+  const map = new Map<string, { id: string; icon: string; label: string; count: number; titles: string[] }>();
   for (const k of keys) {
-    const e = map.get(k.title);
-    if (e) e.count++;
-    else map.set(k.title, { id: k.id, count: 1 });
+    const entry = TYPE_MAP.find(([p]) => k.id.startsWith(p));
+    const groupKey = entry?.[0] ?? k.title;
+    const grpIcon = entry?.[1] ?? icon(k.id);
+    const grpLabel = entry?.[2] ?? k.title;
+    const e = map.get(groupKey);
+    if (e) { e.count++; e.titles.push(k.title); }
+    else map.set(groupKey, { id: k.id, icon: grpIcon, label: grpLabel, count: 1, titles: [k.title] });
   }
-  return Array.from(map.entries()).map(([title, { id, count }]) => ({ id, title, count }));
+  return Array.from(map.values()).map(({ titles, ...rest }) => ({
+    ...rest,
+    sub: titles.length > 1
+      ? titles.map((t) => t.replace(/^.*BaoBao\s+/, "")).join(", ")
+      : "",
+  }));
 }
 
 /** Badge NFTs this account holds (public chain data), for the door. */
@@ -179,7 +198,10 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
               <>
                 <div className="den-keys">
                   {groupKeys(keys).map((k) => (
-                    <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}{k.count > 1 ? ` ×${k.count}` : ""}</span>
+                    <span key={k.id} className="den-key" title={k.sub || k.label}>
+                      {k.icon} {k.label}{k.count > 1 ? ` ×${k.count}` : ""}
+                      {k.sub && <small className="den-key-sub">{k.sub}</small>}
+                    </span>
                   ))}
                 </div>
                 <p>
@@ -205,7 +227,10 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
           <>
             <div className="den-keys">
               {groupKeys(data.keys).map((k) => (
-                <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}{k.count > 1 ? ` ×${k.count}` : ""}</span>
+                <span key={k.id} className="den-key" title={k.sub || k.label}>
+                  {k.icon} {k.label}{k.count > 1 ? ` ×${k.count}` : ""}
+                  {k.sub && <small className="den-key-sub">{k.sub}</small>}
+                </span>
               ))}
             </div>
             <div className="tribe-title small">📓 BaoBao's secret diary</div>

@@ -681,7 +681,8 @@ button { font-family: inherit; }
 .den-door p { font-size: 13.5px; font-weight: 600; line-height: 1.5; margin: 6px 0 12px; }
 .den-earn { margin: 0 0 6px; padding-left: 18px; font-size: 13px; font-weight: 600; line-height: 1.7; }
 .den-keys { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
-.den-key { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: #262a44; color: #fff6d6; }
+.den-key { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 999px; background: #262a44; color: #fff6d6; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.den-key-sub { font-size: 10px; font-weight: 600; opacity: 0.65; line-height: 1.2; }
 .den-diary { background: #fffaf0; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600; line-height: 1.5; font-style: italic; box-shadow: inset 0 0 0 1.5px #f1e3c4; margin-bottom: 12px; }
 .den-post { display: flex; gap: 6px; margin-bottom: 8px; }
 .den-post input { flex: 1; min-width: 0; border: 0; border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 14px; font-weight: 600; background: #fff; box-shadow: inset 0 0 0 2px rgba(155,122,216,0.25); outline: none; }

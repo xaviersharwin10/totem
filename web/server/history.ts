@@ -51,10 +51,15 @@ let refreshing: Promise<void> | null = null;
 let generationNow = 0;
 let pages = 0; // how many NearBlocks pages we have walked back
 let faucetAmount = "";
+let lastRefreshError = "";
+
+const NB_KEY = process.env.NEARBLOCKS_API_KEY ?? "";
 
 async function nb(path: string): Promise<{ data: NbReceipt[]; meta?: { next_page?: string } }> {
-  const r = await fetch(`${NEARBLOCKS}${path}`, { headers: { accept: "application/json" } });
-  if (!r.ok) throw new Error(`NearBlocks ${r.status}`);
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (NB_KEY) headers["Authorization"] = `Bearer ${NB_KEY}`;
+  const r = await fetch(`${NEARBLOCKS}${path}`, { headers });
+  if (!r.ok) throw new Error(`NearBlocks ${r.status}: ${await r.text().catch(() => "")}`);
   return (await r.json()) as { data: NbReceipt[]; meta?: { next_page?: string } };
 }
 
@@ -174,7 +179,9 @@ function ensureFresh(): Promise<void> {
   if (refreshing) return refreshing;
   if (Date.now() - lastRefresh < REFRESH_MS) return Promise.resolve();
   refreshing = refresh()
-    .catch(() => undefined)
+    .catch((e) => {
+      lastRefreshError = e instanceof Error ? e.message : String(e);
+    })
     .finally(() => {
       lastRefresh = Date.now();
       refreshing = null;
@@ -200,7 +207,7 @@ export async function history(): Promise<{ events: HistoryEvent[]; generation: n
       events.push({ ...e, generation: e.kind === "death" ? Number(e.data.generation ?? gen) : gen });
     }
   }
-  return { events, generation: generationNow, complete: sorted.every((r) => r.events !== null) };
+  return { events, generation: generationNow, complete: sorted.every((r) => r.events !== null), error: lastRefreshError || undefined };
 }
 
 export async function historyHandler(_req: IncomingMessage, res: ServerResponse) {

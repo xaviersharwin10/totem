@@ -55,12 +55,15 @@ function groupByType(nfts: Nft[]): BadgeGroup[] {
 
 const tokenUrl = (id: string) => `${EXPLORER}/nft-token/${CONTRACT_ID}/${id}`;
 
-// Shorten a token's display title: strip the type prefix to show just the gen/variant
+// Shorten a token's display label for the zoom link list
 const shortTitle = (n: Nft) => {
-  const t = n.metadata?.title ?? n.token_id;
-  // "Founder of BaoBao XIX" → "XIX", "Hero of the Rampage" → skip (all same)
-  const m = t.match(/\b([IVXLCDM]{2,})\s*$/);
-  return m ? m[1] : t;
+  // hero-293-raksha0.testnet → "Gen 293"
+  const genNum = n.token_id.match(/^(?:hero|returned|moonlit)-(\d+)-/);
+  if (genNum) return `Gen ${genNum[1]}`;
+  // "Founder of BaoBao XIX" → "XIX"
+  const rom = (n.metadata?.title ?? "").match(/\b([IVXLCDM]{2,})\s*$/);
+  if (rom) return rom[1];
+  return n.metadata?.title ?? n.token_id;
 };
 
 export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { accountId: string | null; isGuest: boolean; onClose: () => void; onConnect: () => void }) {

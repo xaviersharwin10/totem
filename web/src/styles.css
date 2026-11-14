@@ -736,7 +736,7 @@ button { font-family: inherit; }
 .nft-zoom-link:hover { background: #7b5ab8; }
 .nft-gens { display: flex; flex-wrap: wrap; gap: 3px; padding: 0 2px 2px; }
 .nft-gens span { font-size: 9.5px; font-weight: 700; background: rgba(43,34,48,0.12); color: var(--ink-soft); padding: 1px 5px; border-radius: 8px; }
-.nft-zoom-card a { font-size: 13px; font-weight: 800; color: #9b7ad8; }
+.nft-zoom-card a:not(.nft-zoom-link) { font-size: 13px; font-weight: 800; color: #9b7ad8; }
 @media (max-width: 480px) { .nft-live img { width: 84px; height: 84px; } }
 
 /* ---------- phone layouts (last, so they win over the base rules above) ---------- */

@@ -102,7 +102,7 @@ async function hatchNow(generation: number) {
     if (cur.votes[k.accountId]) continue;
     await k.signAndSendTransaction({
       receiverId: DAO_ID,
-      actions: [actions.functionCall("act_proposal", { id: p.id, action: "VoteApprove", proposal: cur.kind }, 300_000_000_000_000n, 0n)],
+      actions: [actions.functionCall("act_proposal", { id: p.id, action: "VoteApprove" }, 300_000_000_000_000n, 0n)],
     });
     console.log(`auto-hatch: ${k.accountId} voted yes on #${p.id}`);
   }
@@ -216,6 +216,7 @@ export function autoHatchHandler(_req: IncomingMessage, res: ServerResponse) {
       enabled: running,
       delayS: DELAY_MS / 1000,
       hatchAt: running && state.deadSince !== null ? state.deadSince + DELAY_MS : null,
+      retryAt: state.retryAt > Date.now() ? state.retryAt : null,
       busy: state.busy,
       last: state.last,
     })

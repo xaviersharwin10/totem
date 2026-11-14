@@ -735,8 +735,8 @@ export default function App() {
                 ? "the Keepers are voting…"
                 : autoHatch.hatchAt && autoHatch.hatchAt > now
                   ? `the Keepers vote a new egg in ${fmtTime((autoHatch.hatchAt - now) / 1000)}`
-                  : autoHatch.last?.startsWith("failed")
-                    ? "the last vote didn't go through, the Keepers retry every minute…"
+                  : autoHatch.retryAt && autoHatch.retryAt > now
+                    ? `last vote hit a snag — retrying in ${fmtTime((autoHatch.retryAt - now) / 1000)}`
                     : "the Keepers will vote a new egg soon"}
             </div>
           )}
@@ -941,6 +941,7 @@ function DockItem({
 interface AutoHatch {
   enabled: boolean;
   hatchAt: number | null;
+  retryAt: number | null;
   busy: boolean;
   last?: string;
 }

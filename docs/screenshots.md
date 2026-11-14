@@ -4,6 +4,7 @@
 
 ## 🐼 Meet BaoBao
 ![BaoBao](baobao-animated.svg)
+
 *This is BaoBao. A community panda living on NEAR — not owned by anyone, kept alive by everyone. One creature, one tribe, one chain.*
 
 ---

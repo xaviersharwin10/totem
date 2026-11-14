@@ -26,6 +26,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPairString, PublicKey, SCHEMA, actions, getTransactionLastResult } from "near-api-js";
 import { deserialize } from "borsh";
+import { recordTx } from "./txcache";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 const RELAYER_ID = process.env.RELAYER_ACCOUNT_ID ?? "totem-grumbo-relay.testnet";
@@ -223,6 +224,8 @@ export async function relayHandler(req: IncomingMessage, res: ServerResponse) {
       throwOnFailure: false,
     });
     const hash = (outcome as { transaction: { hash: string } }).transaction.hash;
+    const methodLabel = da.actions.map((a) => a.functionCall?.methodName).filter(Boolean).join("+") || "relay";
+    recordTx(hash, r.accountId, methodLabel);
     const fail = failureOf(outcome);
     if (fail) return send(res, 200, { hash, error: fail });
     send(res, 200, { hash });
@@ -290,6 +293,7 @@ export async function proposeHandler(req: IncomingMessage, res: ServerResponse) 
       actions: [actions.functionCall("add_proposal", { proposal }, 50_000_000_000_000n, BigInt(policy.proposal_bond))],
     });
     const id = Number(getTransactionLastResult(outcome as Parameters<typeof getTransactionLastResult>[0]));
+    recordTx((outcome as { transaction: { hash: string } }).transaction.hash, r.accountId, "add_proposal");
     send(res, 200, { id });
   } catch (e) {
     send(res, 400, { error: e instanceof Error ? e.message : String(e) });

@@ -14,6 +14,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Account, KeyPairString, actions } from "near-api-js";
 import { getRelayer, relayerConfigured, rpcProvider } from "./relay";
+import { recordTx } from "./txcache";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
 const DAO_ID = process.env.VITE_DAO_ID ?? "totem-tribe.sputnik-v2.testnet";
@@ -88,10 +89,11 @@ async function hatchNow(generation: number) {
         },
       },
     };
-    await r.signAndSendTransaction({
+    const propResult = await r.signAndSendTransaction({
       receiverId: DAO_ID,
       actions: [actions.functionCall("add_proposal", { proposal }, 50_000_000_000_000n, BigInt(proposal_bond))],
     });
+    recordTx((propResult as { transaction: { hash: string } }).transaction.hash, r.accountId, "add_proposal");
     p = await openHatchVote();
     if (!p) throw new Error("opened a hatch vote but can't find it");
     console.log(`auto-hatch: opened vote #${p.id}`);
@@ -100,11 +102,13 @@ async function hatchNow(generation: number) {
     const cur = await view<Proposal>(DAO_ID, "get_proposal", { id: p.id });
     if (cur.status !== "InProgress") break;
     if (cur.votes[k.accountId]) continue;
-    await k.signAndSendTransaction({
+    const voteResult = await k.signAndSendTransaction({
       receiverId: DAO_ID,
       actions: [actions.functionCall("act_proposal", { id: p.id, action: "VoteApprove" }, 300_000_000_000_000n, 0n)],
     });
+    recordTx((voteResult as { transaction: { hash: string } }).transaction.hash, k.accountId, "act_proposal");
     console.log(`auto-hatch: ${k.accountId} voted yes on #${p.id}`);
+  }
   }
   const done = await view<Proposal>(DAO_ID, "get_proposal", { id: p.id });
   const t = await view<{ alive: boolean; generation: number; lineage_name: string }>(CONTRACT_ID, "get_totem");
@@ -209,7 +213,8 @@ async function openMarketIfNeeded(): Promise<number> {
   const m = await view<Market | null>(CONTRACT_ID, "get_active_predict_market").catch(() => null);
   if (m && !m.resolved && m.gen === t.generation) return next; // already open
   lastPoke = Date.now();
-  await getRelayer().signAndSendTransaction({ receiverId: CONTRACT_ID, actions: [actions.functionCall("poke", {}, 100_000_000_000_000n, 0n)] });
+  const pokeResult = await getRelayer().signAndSendTransaction({ receiverId: CONTRACT_ID, actions: [actions.functionCall("poke", {}, 100_000_000_000_000n, 0n)] });
+  recordTx((pokeResult as { transaction: { hash: string } }).transaction.hash, getRelayer().accountId, "poke");
   const after = await view<Market | null>(CONTRACT_ID, "get_active_predict_market").catch(() => null);
   console.log(`market opener: poked; market ${after && !after.resolved ? `#${(after as Market & { market_id: number }).market_id} open` : "still closed"}`);
   return next;

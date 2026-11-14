@@ -794,7 +794,11 @@ button { font-family: inherit; }
   .chat { right: 8px; left: 8px; bottom: 8px; width: auto; max-height: 70vh; z-index: 13; }
   .death-card { top: 55%; transform: translate(-50%, -50%); padding: 14px 16px; max-height: 48vh; overflow-y: auto; }
   .dc-title { font-size: 21px; }
-  .rail-more { position: fixed; bottom: calc(130px + env(safe-area-inset-bottom)); right: 8px; transform-origin: bottom right; }
+  /* on mobile, overflow icons are always inline in the scroll row — no popup needed */
+  .rail-more, .rail-more.open { display: flex; flex-direction: row; gap: 6px;
+    position: static; background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; animation: none; }
+  .rail-toggle { display: none; }
 }
 @media (max-width: 380px) and (min-height: 521px) {
   .dock-item { width: 38px; height: 38px; }
@@ -852,13 +856,19 @@ button { font-family: inherit; }
   .death-pill { top: 56px; font-size: 12.5px; padding: 7px 12px; }
   .tour-body { min-height: 0; }
   .sheet-bg { padding: 8px; }
+  /* landscape: same as portrait — overflow icons inline in scroll row */
+  .rail-more, .rail-more.open { display: flex; flex-direction: row; gap: 5px;
+    position: static; background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; animation: none; }
+  .rail-toggle { display: none; }
 }
 
 /* ---------- Rail overflow (⋯ more) ---------- */
-.rail-more { position: absolute; right: 51px; bottom: 0; display: grid; grid-template-columns: repeat(3, 42px); gap: 9px;
+.rail-more { display: none; position: absolute; right: 51px; bottom: 0; grid-template-columns: repeat(3, 42px); gap: 9px;
   padding: 10px; background: var(--glass); border: 1.5px solid var(--glass-line);
   backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
   box-shadow: var(--shadow); border-radius: 18px; transform-origin: bottom right; animation: railPop 0.14s ease; }
+.rail-more.open { display: grid; }
 .rail-toggle.on { background: #ffe9a8; }
 @keyframes railPop { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
 

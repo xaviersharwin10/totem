@@ -535,22 +535,20 @@ export default function App() {
 
       {/* ---------- right rail: menu actions ---------- */}
       <nav className="rail">
-        {/* overflow: expands upward above the core icons */}
-        {railMore && (
-          <div className="rail-more">
-            {game.mode === "live" && (
-              <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => { setDenOpen((o) => !o); setRailMore(false); }} title="The Den: for badge holders only">🗝</button>
-            )}
-            {game.mode === "live" && (
-              <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => { setAlertsOpen((o) => !o); setRailMore(false); }} title="Get BaoBao's alerts on Telegram">🔔</button>
-            )}
-            <button className="icon-btn" onClick={() => { setSosOpen(true); setRailMore(false); }} title="Share / call for help">📣</button>
-            <button className="icon-btn" onClick={() => { setDrawer((d) => !d); setRailMore(false); }} title="Activity log: recent feeds, bites and rescues">📜</button>
-            <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => { setTourOpen(true); setRailMore(false); }} title="How to play">❔</button>
-            <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => { setFollow((f) => !f); setRailMore(false); }} title="Follow the panda (F)">🎥</button>
-            <button className="icon-btn" onClick={() => { toggleMute(); setRailMore(false); }} title={muted ? "Sound off: tap for birdsong and sounds" : "Sound on: tap to mute"}>{muted ? "🔇" : "🔊"}</button>
-          </div>
-        )}
+        {/* overflow: popup on desktop, inline on mobile */}
+        <div className={`rail-more${railMore ? " open" : ""}`}>
+          {game.mode === "live" && (
+            <button className={`icon-btn ${denOpen ? "on" : ""}`} onClick={() => { setDenOpen((o) => !o); setRailMore(false); }} title="The Den: for badge holders only">🗝</button>
+          )}
+          {game.mode === "live" && (
+            <button className={`icon-btn ${alertsOpen ? "on" : ""}`} onClick={() => { setAlertsOpen((o) => !o); setRailMore(false); }} title="Get BaoBao's alerts on Telegram">🔔</button>
+          )}
+          <button className="icon-btn" onClick={() => { setSosOpen(true); setRailMore(false); }} title="Share / call for help">📣</button>
+          <button className="icon-btn" onClick={() => { setDrawer((d) => !d); setRailMore(false); }} title="Activity log: recent feeds, bites and rescues">📜</button>
+          <button className={`icon-btn ${tourOpen ? "on" : ""}`} onClick={() => { setTourOpen(true); setRailMore(false); }} title="How to play">❔</button>
+          <button className={`icon-btn ${follow ? "on" : ""}`} onClick={() => { setFollow((f) => !f); setRailMore(false); }} title="Follow the panda (F)">🎥</button>
+          <button className="icon-btn" onClick={() => { toggleMute(); setRailMore(false); }} title={muted ? "Sound off: tap for birdsong and sounds" : "Sound on: tap to mute"}>{muted ? "🔇" : "🔊"}</button>
+        </div>
         {/* core: always visible (live-gated ones hide in practice) */}
         {game.mode === "live" && (
           <button className={`icon-btn ${predictOpen ? "on" : ""} ${game.activeMarket && !game.activeMarket.resolved ? "pulse" : ""}`} onClick={() => setPredictOpen((o) => !o)} title="Prediction market: bet on survival">🔮</button>

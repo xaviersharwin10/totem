@@ -109,7 +109,6 @@ async function hatchNow(generation: number) {
     recordTx((voteResult as { transaction: { hash: string } }).transaction.hash, k.accountId, "act_proposal");
     console.log(`auto-hatch: ${k.accountId} voted yes on #${p.id}`);
   }
-  }
   const done = await view<Proposal>(DAO_ID, "get_proposal", { id: p.id });
   const t = await view<{ alive: boolean; generation: number; lineage_name: string }>(CONTRACT_ID, "get_totem");
   state.last = `vote #${p.id} ${done.status}; ${t.alive ? `${t.lineage_name} hatched` : "still dead"}`;
@@ -184,7 +183,9 @@ async function tick() {
     state.last = `failed: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200);
     console.error("auto-hatch:", state.last);
     state.retryAt = Date.now() + 60_000;
-    if (/lacks balance .* for state/.test(state.last)) await topUpDao();
+    // only when the DAO itself is the account short of storage: a contract
+    // error used to top up the DAO every 10 min (it piled up ~36 NEAR it didn't need)
+    if (new RegExp(`Account ${DAO_ID.replace(/\./g, "\\.")} lacks balance`).test(state.last)) await topUpDao();
     await topUpContract(); // proactive: the hatch failure may be contract storage; LackBalanceForState surfaces in the receipt, not in state.last
   } finally {
     state.busy = false;

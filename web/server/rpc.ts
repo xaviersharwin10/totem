@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 // Several providers, used round-robin: one server IP calling one provider gets
 // rate-limited quickly (every browser, the bot and the auto-hatcher go through here).
-const UPSTREAMS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"];
+const UPSTREAMS = ["https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", "https://testnet-rpc.intea.rs", "https://near-testnet.drpc.org"];
 const CACHE_MS = 2500; // the app polls every 3 s: open tabs share one upstream call
 const cache = new Map<string, { at: number; p: Promise<{ status: number; body: string }> }>();
 let next = 0;

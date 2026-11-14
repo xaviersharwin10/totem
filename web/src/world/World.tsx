@@ -58,7 +58,7 @@ export function World(p: WorldProps) {
       }}
     >
       <SkyAndLight dayFrac={p.dayFrac} mood={p.mood} />
-      <Moon lit={p.moonLit} waxing={p.moonWaxing} onInfo={() => p.onInfo("moon")} />
+      <Moon lit={p.moonLit} waxing={p.moonWaxing} dayFrac={p.dayFrac} onInfo={() => p.onInfo("moon")} />
       <Island onGround={p.onGround} rampage={p.mood === "rampage"} />
       <ContactShadows position={[0, 0.02, 0]} opacity={0.25} scale={24} blur={2.4} far={4} />
       <Trees onShake={p.onShakeTree} />

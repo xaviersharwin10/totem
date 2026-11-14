@@ -1421,7 +1421,7 @@ export function SkyAndLight({ dayFrac, mood }: { dayFrac: number; mood: Mood }) 
 // the real moon: tonight's phase, drawn on a camera-facing disc
 // --------------------------------------------------------------------------- //
 
-function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
+function drawMoon(lit: number, waxing: boolean, dayFrac: number): HTMLCanvasElement {
   const S = 512;
   const c = document.createElement("canvas");
   c.width = c.height = S;
@@ -1429,26 +1429,39 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
   const r = S * 0.35;
   const cx = S / 2, cy = S / 2;
 
-  // halo glow — behind everything, scales with fullness
-  const halo = g.createRadialGradient(cx, cy, r * 0.6, cx, cy, S * 0.5);
-  halo.addColorStop(0,   `rgba(255,248,180,${0.5 + 0.45 * lit})`);
-  halo.addColorStop(0.4, `rgba(255,228,110,${0.2 * lit})`);
+  // dayness: 0 = night, 1 = noon — mirrors SkyAndLight's elev formula
+  const elev = Math.sin(dayFrac * Math.PI * 2);
+  const dayness = Math.min(1, Math.max(0, elev * 1.6 + 0.35));
+
+  // halo glow — scales with lit; dimmed at daytime (daytime moon has a subtler glow)
+  const haloA = (lit * lit * 0.8 + lit * 0.15) * (1 - dayness * 0.5);
+  const halo = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, S * 0.5);
+  halo.addColorStop(0,   `rgba(255,248,180,${haloA})`);
+  halo.addColorStop(0.4, `rgba(255,228,110,${0.18 * lit * (1 - dayness * 0.6)})`);
   halo.addColorStop(1,   "rgba(255,200,80,0)");
   g.fillStyle = halo;
   g.fillRect(0, 0, S, S);
 
-  // warm lit-surface gradient, highlight offset toward lit limb
+  // lit surface gradient: warm gold at night → pale cream/silver at day
+  const lc = (nr: number, ng: number, nb: number, dr: number, dg: number, db: number) =>
+    `rgb(${Math.round(nr + (dr - nr) * dayness)},${Math.round(ng + (dg - ng) * dayness)},${Math.round(nb + (db - nb) * dayness)})`;
   const hx = cx + (waxing ? 0.14 : -0.14) * r;
   const hy = cy - 0.10 * r;
   const litG = g.createRadialGradient(hx, hy, 0, cx, cy, r);
-  litG.addColorStop(0,    "#fffffc");
-  litG.addColorStop(0.28, "#fff8cc");
-  litG.addColorStop(0.72, "#f2da60");
-  litG.addColorStop(1,    "#c8a030");
+  litG.addColorStop(0,    lc(255, 255, 252,  255, 255, 255));
+  litG.addColorStop(0.28, lc(255, 248, 204,  245, 243, 234));
+  litG.addColorStop(0.72, lc(242, 218,  96,  236, 230, 204));
+  litG.addColorStop(1,    lc(200, 160,  48,  208, 200, 168));
 
-  const w = r * Math.abs(1 - 2 * lit);
+  const w = Math.max(0.01, r * Math.abs(1 - 2 * lit));
 
-  // trace the phase boundary: litOnRight=true → waxing shape, false → waning shape
+  // limb darkening gradient (applied clipped to lit area only)
+  const limb = g.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+  limb.addColorStop(0,    "rgba(0,0,0,0)");
+  limb.addColorStop(0.65, "rgba(0,0,0,0)");
+  limb.addColorStop(1,    "rgba(0,0,0,0.22)");
+
+  // trace the phase boundary: litOnRight=true → waxing, false → waning
   const phasePath = (litOnRight: boolean) => {
     if (litOnRight) {
       g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, false);
@@ -1459,54 +1472,64 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
     }
   };
 
+  const craters = () => {
+    for (const [x, y, rr] of [
+      [-0.26, -0.20, 0.13], [ 0.20,  0.27, 0.10],
+      [ 0.31, -0.09, 0.07], [-0.07,  0.17, 0.06],
+      [ 0.06, -0.33, 0.05], [-0.13,  0.06, 0.04],
+      [ 0.11,  0.04, 0.04],
+    ]) {
+      g.fillStyle = "rgba(95,84,52,0.22)";
+      g.beginPath(); g.arc(cx + x * r, cy + y * r, rr * r, 0, Math.PI * 2); g.fill();
+    }
+  };
+
+  // sky-wash overlay: during daytime the lit surface picks up the sky colour
+  const skyWash = () => {
+    if (dayness < 0.05) return;
+    g.fillStyle = `rgba(168,220,255,${dayness * 0.28})`;
+    g.fillRect(0, 0, S, S);
+  };
+
   g.save();
   g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
 
-  // clear the disc — dark side becomes fully transparent; sky shows through with zero blending
+  // clear disc → dark side is a clean transparent hole; sky colour shows through perfectly
   g.globalCompositeOperation = "destination-out";
   g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
   g.globalCompositeOperation = "source-over";
 
   if (lit < 0.5) {
-    // CRESCENT: draw only the lit sliver
-    g.beginPath(); phasePath(waxing); g.closePath();
-    g.fillStyle = litG; g.fill();
-  } else {
-    // GIBBOUS / FULL: fill whole disc, then cut the dark crescent back out
+    // CRESCENT: clip everything to the lit sliver — no pixels outside it
+    g.save();
+    g.beginPath(); phasePath(waxing); g.closePath(); g.clip();
     g.fillStyle = litG; g.fillRect(0, 0, S, S);
+    g.fillStyle = limb;  g.fillRect(0, 0, S, S);
+    skyWash();
+    craters();
+    g.restore();
+  } else {
+    // GIBBOUS / FULL: fill disc, add details, then cut dark crescent
+    g.fillStyle = litG; g.fillRect(0, 0, S, S);
+    g.fillStyle = limb;  g.fillRect(0, 0, S, S);
+    skyWash();
+    craters();
     if (lit < 0.99) {
+      // cut dark crescent — removes fill, limb, sky wash, and craters from that area
       g.globalCompositeOperation = "destination-out";
       g.beginPath(); phasePath(!waxing); g.closePath(); g.fill();
       g.globalCompositeOperation = "source-over";
     }
   }
 
-  // limb darkening — dims the disc edge so it reads as a sphere
-  const limb = g.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
-  limb.addColorStop(0,    "rgba(0,0,0,0)");
-  limb.addColorStop(0.65, "rgba(0,0,0,0)");
-  limb.addColorStop(1,    "rgba(0,0,0,0.38)");
-  g.fillStyle = limb; g.fillRect(0, 0, S, S);
-
-  // craters
-  for (const [x, y, rr] of [
-    [-0.26, -0.20, 0.13], [ 0.20,  0.27, 0.10],
-    [ 0.31, -0.09, 0.07], [-0.07,  0.17, 0.06],
-    [ 0.06, -0.33, 0.05], [-0.13,  0.06, 0.04],
-    [ 0.11,  0.04, 0.04],
-  ]) {
-    g.fillStyle = "rgba(95,84,52,0.22)";
-    g.beginPath(); g.arc(cx + x * r, cy + y * r, rr * r, 0, Math.PI * 2); g.fill();
-  }
-
   g.restore();
   return c;
 }
 
-export function Moon({ lit, waxing, onInfo }: { lit: number; waxing: boolean; onInfo: () => void }) {
-  const key = Math.round(lit * 100) + (waxing ? "w" : "n");
+export function Moon({ lit, waxing, dayFrac, onInfo }: { lit: number; waxing: boolean; dayFrac: number; onInfo: () => void }) {
+  const key = Math.round(lit * 100) + (waxing ? "w" : "n") + Math.round(dayFrac * 48);
   const tex = useMemo(() => {
-    const t = new THREE.CanvasTexture(drawMoon(lit, waxing));
+    const t = new THREE.CanvasTexture(drawMoon(lit, waxing, dayFrac));
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
     // eslint-disable-next-line react-hooks/exhaustive-deps

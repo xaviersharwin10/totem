@@ -16,7 +16,7 @@ readable on-chain via `get_config()`. There is no admin key and no owner overrid
 
 | Parameter | Value |
 |---|---|
-| Totem-day | 86,400 s in production, **120 s in demo mode** |
+| Totem-day | 86,400 s in production, **360 s in demo mode** (on `totem-panda.testnet`) |
 | Fullness | 0–10,000 basis points (10,000 = 100%) |
 | Drain | 100% → 0% over exactly one Totem-day, at every level |
 
@@ -125,4 +125,4 @@ The Totem NFT owner (the DAO) chooses within 1 Totem-day of reaching L4; otherwi
 
 | Parameter | Value |
 |---|---|
-| Faucet | 1,000 $TOTEM per account per Totem-day |
+| Faucet | 1,000 $TOTEM per account per Totem-day (≈ every 6 minutes on testnet) |

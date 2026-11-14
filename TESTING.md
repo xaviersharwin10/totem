@@ -19,7 +19,7 @@ Most of it runs against the **hosted app**, so no setup is needed. For what is d
 
 ### The clock is fast
 
-The contract runs in demo mode: **1 Totem-day = 120 seconds**. Left alone, a Totem goes like this:
+The contract runs in demo mode on `totem-panda.testnet`. Left alone, a Totem goes like this:
 
 | Time after its last meal | What happens |
 |---|---|
@@ -29,7 +29,7 @@ The contract runs in demo mode: **1 Totem-day = 120 seconds**. Left alone, a Tot
 | every 90 s after that | A **bite**: burns 15% of the Treasury, slashes unshielded stakes by 15%, and costs one level |
 | when the level reaches 0 | **Death**: the rest of the Treasury burns and the Totem NFT becomes a gravestone |
 
-A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching.
+A newborn is Level 1, so an unfed egg dies about **2.5 minutes** after hatching. The 90 s bite interval is long enough to open the app, place a Prediction Market bet, and watch the Rampage resolve.
 
 ### Auto-hatch (while we build)
 
@@ -441,6 +441,7 @@ Holders of a Hero, Founder, Moonlit, Welcome Back or Caretaker badge NFT can ope
 | Symptom | Cause | Fix |
 |---|---|---|
 | The app opens on a dead Totem | The demo clock killed it while nobody was feeding | Wait: auto-hatch brings a new egg within 90 s. If it doesn't, check `/api/autohatch` (`last` says why) |
+| History (🧾) is empty after a cold start | The tx-cache fills from live transactions; nothing is stored on disk | Wait 30–60 s and refresh; every relay and autohatch tx adds entries automatically |
 | The page takes ~30 s to load the first time | The free host was asleep (rare; it pings itself) | Wait once; later loads are fast |
 | "Play free, no wallet" is missing | The server has no relayer key | Check `RELAYER_PRIVATE_KEY` on Render; `GET /api/guest` should say `{"available":true}` |
 | "Too many … from here" | Free-play limits per IP (5 guests, 40 actions per hour) | Wait, or use a wallet |

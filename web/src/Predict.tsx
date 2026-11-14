@@ -116,7 +116,7 @@ function MarketRow({
           🏆 Claim{estimated ? ` ~${fmt(estimated)} $TOTEM` : " winnings"}
         </button>
       )}
-      {alreadyClaimed && (
+      {alreadyClaimed && (myS > 0 || myD > 0) && (
         <div className="pm-claimed-tag">✅ winnings claimed</div>
       )}
     </div>
@@ -352,13 +352,6 @@ export function PredictPanel({ game, onClose, toast }: Props) {
           <details className="pm-past">
             <summary>
               <span className="pm-section-title">Recent outcomes</span>
-              <span className="pm-past-chips">
-                {folded.slice(0, 8).map((mk) => (
-                  <span key={mk.market_id} className={`pm-past-chip ${mk.outcome ? "s" : "d"}`} title={`Market #${mk.market_id}: ${mk.outcome ? "survived" : "died"}`}>
-                    {mk.outcome ? "🛡" : "💀"}
-                  </span>
-                ))}
-              </span>
               <span className="pm-past-more">{folded.length} ▾</span>
             </summary>
             <div className="pm-list">

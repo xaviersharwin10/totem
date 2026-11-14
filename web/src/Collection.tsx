@@ -22,6 +22,17 @@ const HOW: [string, string, string][] = [
 
 const tokenUrl = (id: string) => `${EXPLORER}/nft-token/${CONTRACT_ID}/${encodeURIComponent(id)}`;
 
+function groupNfts(nfts: Nft[]): (Nft & { count: number })[] {
+  const map = new Map<string, Nft & { count: number }>();
+  for (const n of nfts) {
+    const key = n.metadata?.title ?? n.token_id;
+    const e = map.get(key);
+    if (e) e.count++;
+    else map.set(key, { ...n, count: 1 });
+  }
+  return Array.from(map.values());
+}
+
 export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { accountId: string | null; isGuest: boolean; onClose: () => void; onConnect: () => void }) {
   const near = useNear();
   const [totem, setTotem] = useState<Nft | null>(null);
@@ -82,10 +93,11 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
           <p className="tribe-empty">No NFTs yet. Here's how to earn your first:</p>
         ) : (
           <div className="nft-grid">
-            {mine.map((n) => (
+            {groupNfts(mine).map((n) => (
               <button key={n.token_id} className="nft-card" onClick={() => setOpen(n)} title={n.metadata?.title ?? n.token_id}>
                 {n.metadata?.media ? <img src={n.metadata.media} alt="" /> : <div className="nft-blank">🏅</div>}
                 <span>{n.metadata?.title ?? n.token_id}</span>
+                {n.count > 1 && <span className="nft-count">×{n.count}</span>}
               </button>
             ))}
           </div>

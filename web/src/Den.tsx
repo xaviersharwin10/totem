@@ -46,6 +46,16 @@ const ago = (t: number) => {
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;
 };
 
+function groupKeys(keys: Key[]): { id: string; title: string; count: number }[] {
+  const map = new Map<string, { id: string; count: number }>();
+  for (const k of keys) {
+    const e = map.get(k.title);
+    if (e) e.count++;
+    else map.set(k.title, { id: k.id, count: 1 });
+  }
+  return Array.from(map.entries()).map(([title, { id, count }]) => ({ id, title, count }));
+}
+
 /** Badge NFTs this account holds (public chain data), for the door. */
 function useKeys(accountId: string) {
   const near = useNear();
@@ -168,8 +178,8 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
             ) : keys.length ? (
               <>
                 <div className="den-keys">
-                  {keys.slice(0, 8).map((k) => (
-                    <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}</span>
+                  {groupKeys(keys).map((k) => (
+                    <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}{k.count > 1 ? ` ×${k.count}` : ""}</span>
                   ))}
                 </div>
                 <p>
@@ -194,8 +204,8 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
         ) : (
           <>
             <div className="den-keys">
-              {data.keys.map((k) => (
-                <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}</span>
+              {groupKeys(data.keys).map((k) => (
+                <span key={k.id} className="den-key" title={k.id}>{icon(k.id)} {k.title}{k.count > 1 ? ` ×${k.count}` : ""}</span>
               ))}
             </div>
             <div className="tribe-title small">📓 BaoBao's secret diary</div>

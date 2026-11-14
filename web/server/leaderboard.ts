@@ -1,14 +1,16 @@
-// /api/leaderboard: ranks wallets by badge count.
-// Uses nft_supply_for_owner (no SVG generation, just a count) for each unique
-// account seen in history. Caretaker tier breakdown comes from badge_minted
-// events in history. Refreshes every 30 s; concurrent requests share one build.
+// /api/leaderboard: ranks wallets by soulbound badge count.
+// Paginates nft_tokens directly — no external indexer, no API key needed.
+// Soulbound token prefixes: badge- hero- founder- moonlit- returned-
+// Caretaker tiers come from badge-{tier}-{account} token IDs.
+// Refreshes every 60 s; concurrent requests share one build.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { history } from "./history";
 import { rpcForward } from "./rpc";
 
 const CONTRACT_ID = process.env.VITE_CONTRACT_ID ?? "totem-panda.testnet";
-const REFRESH_MS = 30_000;
+const REFRESH_MS = 60_000;
 const SKIP_SUFFIX = ["sputnik-v2.testnet", CONTRACT_ID];
+const SOULBOUND = ["badge-", "hero-", "founder-", "moonlit-", "returned-"];
+const PAGE = 100;
 
 export interface LeaderEntry {
   rank: number;
@@ -22,70 +24,59 @@ export interface LeaderEntry {
 let cache: { at: number; data: LeaderEntry[] } | null = null;
 let building: Promise<LeaderEntry[]> | null = null;
 
-async function viewSupply(account: string): Promise<number> {
-  const args = Buffer.from(JSON.stringify({ account_id: account })).toString("base64");
+async function callView<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
+  const args_base64 = Buffer.from(JSON.stringify(args)).toString("base64");
   const body = JSON.stringify({
     jsonrpc: "2.0", id: "lb",
     method: "query",
-    params: { request_type: "call_function", finality: "optimistic", account_id: CONTRACT_ID, method_name: "nft_supply_for_owner", args_base64: args },
+    params: { request_type: "call_function", finality: "optimistic", account_id: CONTRACT_ID, method_name: method, args_base64 },
   });
   const out = await rpcForward(body);
   const j = JSON.parse(out.body);
-  if (j.error || !j.result?.result) return 0;
-  const s = Buffer.from(j.result.result).toString();
-  return parseInt(JSON.parse(s), 10) || 0;
+  if (j.error || !j.result?.result) throw new Error(j.error?.message ?? "rpc error");
+  return JSON.parse(Buffer.from(j.result.result).toString()) as T;
 }
 
+interface NftToken { token_id: string; owner_id: string }
+
 async function build(): Promise<LeaderEntry[]> {
-  const { events } = await history();
+  const totalStr = await callView<string>("nft_total_supply");
+  const total = parseInt(totalStr, 10) || 0;
 
-  // Collect unique player accounts
-  const accounts = new Set<string>();
-  for (const e of events) {
-    for (const field of ["account", "owner_id", "by", "poker"]) {
-      const v = String(e.data[field] ?? "");
-      if (!v) continue;
-      if (SKIP_SUFFIX.some((s) => v.endsWith(s))) continue;
-      if (v.length < 5) continue;
-      accounts.add(v);
-    }
-  }
-
-  // Collect Caretaker badge tiers from badge_minted events
+  // Paginate all tokens and collect soulbound ones
+  const totals = new Map<string, number>();
   const gold = new Map<string, number>();
   const silver = new Map<string, number>();
   const bronze = new Map<string, number>();
-  for (const e of events) {
-    if (e.kind !== "badge_minted") continue;
-    const acc = String(e.data.account ?? "");
-    const tier = String(e.data.tier ?? "").toLowerCase();
-    if (tier === "gold") gold.set(acc, (gold.get(acc) ?? 0) + 1);
-    else if (tier === "silver") silver.set(acc, (silver.get(acc) ?? 0) + 1);
-    else if (tier === "bronze") bronze.set(acc, (bronze.get(acc) ?? 0) + 1);
+
+  for (let from = 0; from < total; from += PAGE) {
+    const tokens = await callView<NftToken[]>("nft_tokens", { from_index: String(from), limit: PAGE });
+    for (const t of tokens) {
+      if (!SOULBOUND.some((p) => t.token_id.startsWith(p))) continue;
+      if (SKIP_SUFFIX.some((s) => t.owner_id.endsWith(s))) continue;
+
+      totals.set(t.owner_id, (totals.get(t.owner_id) ?? 0) + 1);
+
+      // badge-{tier}-{account} → extract tier
+      if (t.token_id.startsWith("badge-")) {
+        const tier = t.token_id.split("-")[1]?.toLowerCase();
+        if (tier === "gold") gold.set(t.owner_id, (gold.get(t.owner_id) ?? 0) + 1);
+        else if (tier === "silver") silver.set(t.owner_id, (silver.get(t.owner_id) ?? 0) + 1);
+        else if (tier === "bronze") bronze.set(t.owner_id, (bronze.get(t.owner_id) ?? 0) + 1);
+      }
+    }
   }
 
-  // Query nft_supply_for_owner for each in parallel (batched, 8 at a time)
-  const accs = [...accounts];
-  const totals = new Map<string, number>();
-  const BATCH = 8;
-  for (let i = 0; i < accs.length; i += BATCH) {
-    const chunk = accs.slice(i, i + BATCH);
-    const results = await Promise.all(chunk.map((a) => viewSupply(a).catch(() => 0)));
-    chunk.forEach((a, idx) => { if (results[idx] > 0) totals.set(a, results[idx]); });
-  }
-
-  const entries: LeaderEntry[] = [...totals.entries()]
+  return [...totals.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([account, total], i) => ({
+    .map(([account, tot], i) => ({
       rank: i + 1,
       account,
-      total,
+      total: tot,
       gold: gold.get(account) ?? 0,
       silver: silver.get(account) ?? 0,
       bronze: bronze.get(account) ?? 0,
     }));
-
-  return entries;
 }
 
 async function getLeaderboard(): Promise<LeaderEntry[]> {

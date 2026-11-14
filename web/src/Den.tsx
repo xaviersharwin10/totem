@@ -200,8 +200,10 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
                   {groupKeys(keys).map((k) => (
                     <span key={k.id} className="den-key" title={k.sub || k.label}>
                       {k.icon} {k.label}{k.count > 1 ? ` ×${k.count}` : ""}
-                      {k.sub && <small className="den-key-sub">{k.sub}</small>}
                     </span>
+                  ))}
+                  {groupKeys(keys).filter(k => k.sub && k.id.startsWith("founder-")).map(k => (
+                    <div key={`sub-${k.id}`} className="den-founder-gens">{k.sub}</div>
                   ))}
                 </div>
                 <p>
@@ -229,8 +231,10 @@ export function DenPanel({ onClose, onConnect, onGuest }: { onClose: () => void;
               {groupKeys(data.keys).map((k) => (
                 <span key={k.id} className="den-key" title={k.sub || k.label}>
                   {k.icon} {k.label}{k.count > 1 ? ` ×${k.count}` : ""}
-                  {k.sub && <small className="den-key-sub">{k.sub}</small>}
                 </span>
+              ))}
+              {groupKeys(data.keys).filter(k => k.sub && k.id.startsWith("founder-")).map(k => (
+                <div key={`sub-${k.id}`} className="den-founder-gens">{k.sub}</div>
               ))}
             </div>
             <div className="tribe-title small">📓 BaoBao's secret diary</div>

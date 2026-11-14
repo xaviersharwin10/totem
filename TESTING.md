@@ -385,8 +385,8 @@ Markets open automatically when a Rampage starts and resolve when the Totem is r
 ```bash
 cd contract
 cargo near build non-reproducible-wasm
-cargo test                    # expect: 40 unit tests + 2 sandbox — all pass
-# The 6 new tests:
+cargo test                    # expect: 53 unit tests + 2 sandbox — all pass
+# The 6 prediction market tests:
 # predict_market_opens_on_rampage
 # predict_survive_wins_when_rescued
 # predict_die_wins_on_death

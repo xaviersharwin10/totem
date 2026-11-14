@@ -69,3 +69,15 @@
 ## 🤖 AI Chat — Talk to BaoBao
 ![AI chat panel](ai-chat.png)
 *BaoBao reads its own live chain state — belly level, treasury, moon phase, top feeders — and answers in character via NEAR AI Cloud. Ask "Who feeds you the most?" and it tells you the top feeder's wallet and exact amount. Ask "How are you feeling?" and it reports its real belly percentage. The personality shifts every generation based on who fed the previous life most.*
+
+---
+
+## 🔴 Rampage
+![Rampage](rampage.png)
+*Neglect BaoBao and it enters Rampage — the island turns pink, BaoBao rages. Every bite burns 15% of the Treasury and knocks a block off the totem pole. The tribe has one choice: RESCUE or let it die. Poke for a tip — trigger the next bite early and earn a cut of the Treasury burn. One bite from death.*
+
+---
+
+## 🏛️ The Tribe — Sputnik DAO
+![The Tribe DAO panel](tribe-dao.png)
+*The Totem belongs to the tribe's DAO. Keepers (1,000 $TOTEM staked or a Silver badge) decide by majority: hatching, naming, evolution, who joins them. No council, no admin, no founder veto. Changing the rules takes two thirds of the Keepers. You qualify as a Keeper — nominate yourself on-chain.*

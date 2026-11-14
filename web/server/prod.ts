@@ -16,6 +16,7 @@ import { autoHatchHandler, startAutoHatch } from "./autohatch";
 import { denHandler } from "./den";
 import { linkHandler } from "./link";
 import { waitlistHandler } from "./waitlist";
+import { leaderboardHandler } from "./leaderboard";
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => unknown;
 const routes: [string, Handler][] = [
@@ -28,6 +29,7 @@ const routes: [string, Handler][] = [
   ["/api/den", denHandler],
   ["/api/link", linkHandler],
   ["/api/waitlist", waitlistHandler],
+  ["/api/leaderboard", leaderboardHandler],
   ["/rpc", rpcHandler],
 ];
 

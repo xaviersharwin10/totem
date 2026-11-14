@@ -25,6 +25,8 @@
 
 ![TOTEM architecture: players use the web app, which talks to one TOTEM contract on NEAR holding the $TOTEM coin, the BaoBao NFT and badge NFTs; the tribe's DAO votes, and BaoBao's keyless treasury account holds its coins](docs/architecture.png)
 
+📸 **[View all screenshots →](docs/screenshots.md)**
+
 ## 🌟 Overview
 
 TOTEM is a community creature — a single living NFT on NEAR that the whole tribe keeps alive by feeding it **$TOTEM**, a NEP-141 memecoin. Every meal burns half the tokens (deflating supply) and puts the rest into a treasury **the creature itself owns** through a keyless NEAR sub-account no one can sign for.

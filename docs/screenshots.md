@@ -81,3 +81,21 @@
 ## 🏛️ The Tribe — Sputnik DAO
 ![The Tribe DAO panel](tribe-dao.png)
 *The Totem belongs to the tribe's DAO. Keepers (1,000 $TOTEM staked or a Silver badge) decide by majority: hatching, naming, evolution, who joins them. No council, no admin, no founder veto. Changing the rules takes two thirds of the Keepers. You qualify as a Keeper — nominate yourself on-chain.*
+
+---
+
+## ⚰️ Death — Gravestone NFT
+![BaoBao dead, gravestone](death-gravestone.png)
+*BaoBao CCCLXV starved at Level 0. A gravestone NFT joins the lineage — permanent, on-chain, drawn by the contract itself. The island is empty. Only the tribe can bring it back. Anyone can propose. 4 Keepers decide.*
+
+---
+
+## 🗳️ Propose the Hatch
+![Tribe panel — propose hatch](tribe-propose-hatch.png)
+*The Totem is dead. The tribe opens The Tribe panel and proposes hatching BaoBao CCCLXVI. Its traits will come from the last life's top 3 feeders. Any Sputnik DAO client shows the same proposals — votes are fully on-chain.*
+
+---
+
+## ✅ DAO Vote — Hatch in Progress
+![Tribe vote on hatch](tribe-vote-hatch.png)
+*Proposal #777: Hatch BaoBao CCCLXVI. 0 of 3 Keeper votes cast. The relayer proposed it, the Keepers vote, the DAO executes hatch() on the contract. No admin shortcut — the same governance path every time.*

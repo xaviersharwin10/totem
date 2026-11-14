@@ -27,14 +27,14 @@
 
 <table>
 <tr>
-<td><a href="docs/screenshots.md"><img src="docs/baobao-animated.svg" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/feeding-treasury.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/rampage.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/tribe-dao.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/nft-badges.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/ledger-history.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/prediction-market.png" width="180"/></a></td>
-<td><a href="docs/screenshots.md"><img src="docs/ai-chat.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/baobao-animated.svg" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/feeding-treasury.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/rampage.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/tribe-dao.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/nft-badges.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/ledger-history.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/prediction-market.png" width="180"/></a></td>
+<td><a href="docs/story.md"><img src="docs/ai-chat.png" width="180"/></a></td>
 </tr>
 </table>
 

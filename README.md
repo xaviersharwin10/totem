@@ -27,7 +27,7 @@
 
 <table>
 <tr>
-<td><a href="docs/screenshots.md"><img src="docs/baobao-portrait.png" width="180"/></a></td>
+<td><a href="docs/screenshots.md"><img src="docs/baobao-animated.svg" width="180"/></a></td>
 <td><a href="docs/screenshots.md"><img src="docs/feeding-treasury.png" width="180"/></a></td>
 <td><a href="docs/screenshots.md"><img src="docs/rampage.png" width="180"/></a></td>
 <td><a href="docs/screenshots.md"><img src="docs/tribe-dao.png" width="180"/></a></td>

@@ -11,6 +11,12 @@ interface Nft {
   owner_id: string;
   metadata?: { title?: string | null; description?: string | null; media?: string | null };
 }
+interface BadgeGroup {
+  prefix: string;
+  icon: string;
+  label: string;
+  nfts: Nft[];
+}
 
 const HOW: [string, string, string][] = [
   ["🦸", "Hero", "Feed BaoBao while it's on a Rampage and end it."],
@@ -20,24 +26,48 @@ const HOW: [string, string, string][] = [
   ["🥉", "Caretaker", "Earn 100 / 1,000 / 10,000 points, then claim Bronze / Silver / Gold in 🎋 the stake panel."],
 ];
 
-const tokenUrl = (id: string) => `${EXPLORER}/nft-token/${CONTRACT_ID}/${encodeURIComponent(id)}`;
+const PREFIX_INFO: [string, string, string][] = [
+  ["hero-",         "🦸", "Hero of the Rampage"],
+  ["founder-",      "🏛", "Founder"],
+  ["moonlit-",      "🌕", "Moonlit"],
+  ["returned-",     "🤗", "Welcome Back"],
+  ["badge-gold-",   "🥇", "Gold Caretaker"],
+  ["badge-silver-", "🥈", "Silver Caretaker"],
+  ["badge-bronze-", "🥉", "Bronze Caretaker"],
+];
 
-function groupNfts(nfts: Nft[]): (Nft & { count: number })[] {
-  const map = new Map<string, Nft & { count: number }>();
+const badgeInfo = (id: string) =>
+  PREFIX_INFO.find(([p]) => id.startsWith(p))?.slice(1) as [string, string] | undefined
+    ?? ["🏅", id];
+
+function groupByType(nfts: Nft[]): BadgeGroup[] {
+  const map = new Map<string, BadgeGroup>();
   for (const n of nfts) {
-    const key = n.metadata?.title ?? n.token_id;
-    const e = map.get(key);
-    if (e) e.count++;
-    else map.set(key, { ...n, count: 1 });
+    const entry = PREFIX_INFO.find(([p]) => n.token_id.startsWith(p));
+    const prefix = entry?.[0] ?? "other-";
+    const [icon, label] = entry ? [entry[1], entry[2]] : badgeInfo(n.token_id);
+    const g = map.get(prefix);
+    if (g) g.nfts.push(n);
+    else map.set(prefix, { prefix, icon, label, nfts: [n] });
   }
   return Array.from(map.values());
 }
+
+const tokenUrl = (id: string) => `${EXPLORER}/nft-token/${CONTRACT_ID}/${id}`;
+
+// Shorten a token's display title: strip the type prefix to show just the gen/variant
+const shortTitle = (n: Nft) => {
+  const t = n.metadata?.title ?? n.token_id;
+  // "Founder of BaoBao XIX" → "XIX", "Hero of the Rampage" → skip (all same)
+  const m = t.match(/\b([IVXLCDM]{2,})\s*$/);
+  return m ? m[1] : t;
+};
 
 export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { accountId: string | null; isGuest: boolean; onClose: () => void; onConnect: () => void }) {
   const near = useNear();
   const [totem, setTotem] = useState<Nft | null>(null);
   const [mine, setMine] = useState<Nft[] | null>(null);
-  const [open, setOpen] = useState<Nft | null>(null);
+  const [open, setOpen] = useState<BadgeGroup | null>(null);
 
   useEffect(() => {
     let stop = false;
@@ -52,10 +82,10 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
         .then((ts) => !stop && setMine(ts))
         .catch(() => !stop && setMine([]));
     else setMine(null);
-    return () => {
-      stop = true;
-    };
+    return () => { stop = true; };
   }, [accountId, near]);
+
+  const groups = mine ? groupByType(mine) : [];
 
   return (
     <div className="sheet-bg" onClick={onClose}>
@@ -68,7 +98,7 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
         </div>
 
         {totem && (
-          <button className="nft-live" onClick={() => setOpen(totem)}>
+          <button className="nft-live" onClick={() => setOpen({ prefix: "totem-", icon: "🐼", label: totem.metadata?.title ?? "Totem", nfts: [totem] })}>
             {totem.metadata?.media && <img src={totem.metadata.media} alt={totem.metadata?.title ?? ""} />}
             <div>
               <b>{totem.metadata?.title}</b>
@@ -93,11 +123,21 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
           <p className="tribe-empty">No NFTs yet. Here's how to earn your first:</p>
         ) : (
           <div className="nft-grid">
-            {groupNfts(mine).map((n) => (
-              <button key={n.token_id} className="nft-card" onClick={() => setOpen(n)} title={n.metadata?.title ?? n.token_id}>
-                {n.metadata?.media ? <img src={n.metadata.media} alt="" /> : <div className="nft-blank">🏅</div>}
-                <span>{n.metadata?.title ?? n.token_id}</span>
-                {n.count > 1 && <span className="nft-count">×{n.count}</span>}
+            {groups.map((g) => (
+              <button key={g.prefix} className="nft-card" onClick={() => setOpen(g)}>
+                {g.nfts[0].metadata?.media
+                  ? <img src={g.nfts[0].metadata.media} alt="" />
+                  : <div className="nft-blank">{g.icon}</div>}
+                <span>{g.icon} {g.label}</span>
+                {g.nfts.length > 1 && <span className="nft-count">×{g.nfts.length}</span>}
+                {g.prefix === "founder-" && g.nfts.length > 1 && (
+                  <div className="nft-gens">
+                    {g.nfts.slice(0, 5).map((n) => (
+                      <span key={n.token_id}>{shortTitle(n)}</span>
+                    ))}
+                    {g.nfts.length > 5 && <span>+{g.nfts.length - 5}</span>}
+                  </div>
+                )}
               </button>
             ))}
           </div>
@@ -108,9 +148,7 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
 
         <ul className="nft-how">
           {HOW.map(([i, name, how]) => (
-            <li key={name}>
-              <b>{i} {name}</b> {how}
-            </li>
+            <li key={name}><b>{i} {name}</b> {how}</li>
           ))}
         </ul>
         <div className="tribe-foot">Badges are soulbound: they can't be sold or moved, they are your reputation, and they open 🗝 the Den.</div>
@@ -119,11 +157,16 @@ export function CollectionPanel({ accountId, isGuest, onClose, onConnect }: { ac
           <div className="nft-zoom" onClick={() => setOpen(null)}>
             <div className="nft-zoom-card" onClick={(e) => e.stopPropagation()}>
               <button className="dc-close" aria-label="Close" onClick={() => setOpen(null)}>✕</button>
-              {open.metadata?.media && <img src={open.metadata.media} alt="" />}
-              <b>{open.metadata?.title}</b>
-              <p>{open.metadata?.description}</p>
-              <code>{open.token_id}</code>
-              <a href={tokenUrl(open.token_id)} target="_blank" rel="noreferrer">See it on the explorer ↗</a>
+              {open.nfts[0].metadata?.media && <img src={open.nfts[0].metadata.media} alt="" />}
+              <b>{open.icon} {open.label}{open.nfts.length > 1 ? ` ×${open.nfts.length}` : ""}</b>
+              <p>{open.nfts[0].metadata?.description}</p>
+              <div className="nft-zoom-links">
+                {open.nfts.map((n) => (
+                  <a key={n.token_id} href={tokenUrl(n.token_id)} target="_blank" rel="noreferrer" className="nft-zoom-link">
+                    {shortTitle(n)} ↗
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}

@@ -728,6 +728,11 @@ button { font-family: inherit; }
 .nft-zoom-card b { font-family: var(--round); font-size: 18px; }
 .nft-zoom-card p { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.45; color: var(--ink-soft); }
 .nft-zoom-card code { font-size: 11px; word-break: break-all; color: var(--ink-soft); }
+.nft-zoom-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.nft-zoom-link { font-size: 12px; font-weight: 800; color: #fff; background: #9b7ad8; padding: 4px 10px; border-radius: 20px; text-decoration: none; }
+.nft-zoom-link:hover { background: #7b5ab8; }
+.nft-gens { display: flex; flex-wrap: wrap; gap: 3px; padding: 0 2px 2px; }
+.nft-gens span { font-size: 9.5px; font-weight: 700; background: rgba(43,34,48,0.12); color: var(--ink-soft); padding: 1px 5px; border-radius: 8px; }
 .nft-zoom-card a { font-size: 13px; font-weight: 800; color: #9b7ad8; }
 @media (max-width: 480px) { .nft-live img { width: 84px; height: 84px; } }
 

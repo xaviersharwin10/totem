@@ -116,8 +116,16 @@ async function hatchNow(generation: number) {
 // Sputnik keeps every proposal forever, so each hatch vote locks ~0.02 NEAR of
 // the DAO's storage. When it runs dry the next vote can't be stored and the
 // Totem stays dead: a Keeper tops the DAO up (testnet NEAR), at most every 10 min.
+//
+// Each hatch also mints an NFT and registers a treasury account, growing the
+// contract's own storage. CONTRACT_MIN_NEAR is the floor: when the contract dips
+// below it a Keeper sends CONTRACT_TOP_UP_NEAR. Default floor 20 NEAR; top-up 20 NEAR.
 const TOP_UP = BigInt(process.env.DAO_TOP_UP_NEAR ?? 2) * 10n ** 24n;
+const CONTRACT_TOP_UP = BigInt(process.env.CONTRACT_TOP_UP_NEAR ?? 20) * 10n ** 24n;
+const CONTRACT_MIN = BigInt(process.env.CONTRACT_MIN_NEAR ?? 20) * 10n ** 24n;
 let lastTopUp = 0;
+let lastContractTopUp = 0;
+
 async function topUpDao() {
   if (Date.now() - lastTopUp < 600_000) return;
   lastTopUp = Date.now();
@@ -129,10 +137,29 @@ async function topUpDao() {
       console.log(`auto-hatch: ${k.accountId} topped up the DAO's storage with ${TOP_UP / 10n ** 24n} NEAR`);
       return;
     } catch (e) {
-      console.error("auto-hatch: top-up:", e instanceof Error ? e.message : e);
+      console.error("auto-hatch: top-up dao:", e instanceof Error ? e.message : e);
     }
   }
   console.error("auto-hatch: no Keeper can top up the DAO; send it testnet NEAR");
+}
+
+async function topUpContract() {
+  if (Date.now() - lastContractTopUp < 600_000) return;
+  lastContractTopUp = Date.now();
+  const { amount: contractBal } = await provider.viewAccount({ accountId: CONTRACT_ID });
+  if (BigInt(contractBal) >= CONTRACT_MIN) return;
+  for (const k of KEEPERS) {
+    try {
+      const { amount } = await provider.viewAccount({ accountId: k.accountId });
+      if (BigInt(amount) < CONTRACT_TOP_UP + 10n ** 24n) continue; // keep 1 NEAR for its own votes
+      await k.signAndSendTransaction({ receiverId: CONTRACT_ID, actions: [actions.transfer(CONTRACT_TOP_UP)] });
+      console.log(`auto-hatch: ${k.accountId} topped up the contract with ${CONTRACT_TOP_UP / 10n ** 24n} NEAR (was ${(Number(contractBal) / 1e24).toFixed(1)} NEAR)`);
+      return;
+    } catch (e) {
+      console.error("auto-hatch: top-up contract:", e instanceof Error ? e.message : e);
+    }
+  }
+  console.error("auto-hatch: no Keeper can top up the contract; send testnet NEAR to", CONTRACT_ID);
 }
 
 async function tick() {
@@ -154,6 +181,7 @@ async function tick() {
     console.error("auto-hatch:", state.last);
     state.retryAt = Date.now() + 60_000;
     if (/lacks balance .* for state/.test(state.last)) await topUpDao();
+    await topUpContract(); // proactive: the hatch failure may be contract storage; LackBalanceForState surfaces in the receipt, not in state.last
   } finally {
     state.busy = false;
   }

@@ -99,3 +99,9 @@
 ## ✅ DAO Vote — Hatch in Progress
 ![Tribe vote on hatch](tribe-vote-hatch.png)
 *Proposal #777: Hatch BaoBao CCCLXVI. 0 of 3 Keeper votes cast. The relayer proposed it, the Keepers vote, the DAO executes hatch() on the contract. No admin shortcut — the same governance path every time.*
+
+---
+
+## 🗳️ Live DAO Votes — Two Proposals, Keepers Voting
+![Live DAO votes](tribe-votes-live.png)
+*Two hatch proposals open simultaneously — #777 (0 votes) and #778 proposed by raksha0.testnet with 2 of 3 Keeper votes already cast. Top left shows "BaoBao CCCLXVI hatched (DAO vote)" — the previous generation just came back. Real governance, real votes, all on-chain through Sputnik DAO.*

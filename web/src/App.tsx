@@ -418,7 +418,7 @@ export default function App() {
           <span className="chip">gen {view.generation}</span>
           <span className="chip">{view.form}</span>
           <span className="chip lvl">Level {view.level}</span>
-          <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => { setInfo("moon"); world.moonLook = performance.now(); }} title="BaoBao follows the real moon: tap to look at it">
+          <button className={`chip moon ${moon.moonlitNow ? "moonlit" : ""}`} onClick={() => { world.moonLook > 0 ? setInfo("moon") : (world.moonLook = performance.now()); }} title="BaoBao follows the real moon: tap to look at it; tap again for details">
             {moonIcon(moon.lit, moon.waxing)} {Math.round(moon.lit * 100)}%
             {moon.hunger !== undefined && moon.hunger > 1.005 && <> · hunger ×{moon.hunger.toFixed(2)}</>}
             {!moon.moonlitNow && moon.phase !== "preview" && (() => {

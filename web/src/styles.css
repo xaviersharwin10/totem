@@ -238,7 +238,7 @@ button { font-family: inherit; }
 @media (max-width: 480px) { .death-pill { font-size: 13px; padding: 10px 14px; white-space: normal; width: max-content; max-width: calc(100% - 32px); text-align: center; } }
 
 /* ---------- info ---------- */
-.info-pop { position: absolute; right: 70px; top: 220px; width: 300px; padding: 14px 16px; z-index: 8; cursor: pointer; animation: pop 0.25s ease; }
+.info-pop { position: absolute; left: 16px; top: 210px; width: 300px; padding: 14px 16px; z-index: 8; cursor: pointer; animation: pop 0.25s ease; }
 .info-pop p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
 .ip-title { font-family: var(--round); font-weight: 700; font-size: 18px; }
 .ip-close { margin-top: 8px; font-size: 11px; color: var(--ink-soft); font-weight: 700; }

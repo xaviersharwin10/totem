@@ -47,6 +47,7 @@ interface Row {
 
 const rows = new Map<string, Row>();
 let lastRefresh = 0;
+let nextRefreshDelay = REFRESH_MS; // backs off on 429
 let refreshing: Promise<void> | null = null;
 let generationNow = 0;
 let pages = 0; // how many NearBlocks pages we have walked back
@@ -177,10 +178,16 @@ async function refresh() {
 
 function ensureFresh(): Promise<void> {
   if (refreshing) return refreshing;
-  if (Date.now() - lastRefresh < REFRESH_MS) return Promise.resolve();
+  if (Date.now() - lastRefresh < nextRefreshDelay) return Promise.resolve();
   refreshing = refresh()
+    .then(() => { nextRefreshDelay = REFRESH_MS; lastRefreshError = ""; })
     .catch((e) => {
       lastRefreshError = e instanceof Error ? e.message : String(e);
+      // back off hard on rate-limit so we stop burning the shared IP quota
+      if (lastRefreshError.includes("429")) {
+        nextRefreshDelay = Math.min(nextRefreshDelay * 2, 10 * 60_000); // up to 10 min
+        console.warn("history: NearBlocks rate-limited; backing off to", nextRefreshDelay / 1000, "s");
+      }
     })
     .finally(() => {
       lastRefresh = Date.now();
@@ -207,7 +214,7 @@ export async function history(): Promise<{ events: HistoryEvent[]; generation: n
       events.push({ ...e, generation: e.kind === "death" ? Number(e.data.generation ?? gen) : gen });
     }
   }
-  return { events, generation: generationNow, complete: sorted.every((r) => r.events !== null), error: lastRefreshError || undefined };
+  return { events, generation: generationNow, complete: sorted.every((r) => r.events !== null) };
 }
 
 export async function historyHandler(_req: IncomingMessage, res: ServerResponse) {

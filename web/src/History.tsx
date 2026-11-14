@@ -330,7 +330,10 @@ function LifeNft({ l }: { l: Life }) {
       <div>
         NFT <code>{l.totem_id}</code>: {l.alive ? "the living Totem, owned by the DAO. Its picture changes as it lives." : "now a gravestone NFT; its metadata is this frozen record."}
         {l.founders.length > 0 && <> Founders: {l.founders.map(who).join(", ")}.</>}{" "}
-        <a href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${l.totem_id}`} target="_blank" rel="noreferrer">explorer ↗</a>
+        {l.alive
+          ? <a href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${l.totem_id}`} target="_blank" rel="noreferrer">explorer ↗</a>
+          : <><a href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${l.totem_id}`} target="_blank" rel="noreferrer">explorer ↗</a> <small style={{opacity:0.6}}>(art cached — live SVG shown above)</small></>
+        }
       </div>
     </div>
   );

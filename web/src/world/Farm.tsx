@@ -1429,42 +1429,30 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
   const r = S * 0.35;
   const cx = S / 2, cy = S / 2;
 
-  // soft halo behind the disc — brighter when fuller
-  const halo = g.createRadialGradient(cx, cy, r * 0.6, cx, cy, S * 0.52);
-  halo.addColorStop(0,   `rgba(255,245,180,${0.5 + 0.45 * lit})`);
-  halo.addColorStop(0.35,`rgba(255,228,110,${0.28 * lit})`);
-  halo.addColorStop(1,   "rgba(255,200,80,0)");
+  // soft halo — scales with fullness
+  const halo = g.createRadialGradient(cx, cy, r * 0.55, cx, cy, S * 0.52);
+  halo.addColorStop(0,    `rgba(255,245,175,${0.55 + 0.4 * lit})`);
+  halo.addColorStop(0.38, `rgba(255,228,110,${0.25 * lit})`);
+  halo.addColorStop(1,    "rgba(255,200,80,0)");
   g.fillStyle = halo;
   g.fillRect(0, 0, S, S);
 
-  // clip all disc drawing
   g.save();
   g.beginPath();
   g.arc(cx, cy, r, 0, Math.PI * 2);
   g.clip();
 
-  // shadow side: near-black so it reads as dark sky, not a navy ball
-  g.fillStyle = "#09102c";
+  // shadow/dark side: ghost-translucent so the sky bleeds through — no "ball"
+  g.fillStyle = "rgba(10,18,55,0.18)";
   g.fillRect(0, 0, S, S);
 
-  // faint earthshine toward the dark limb
-  const eg = g.createLinearGradient(
-    waxing ? cx + r : cx - r, cy,
-    waxing ? cx - r : cx + r, cy
-  );
-  eg.addColorStop(0,   "rgba(45,65,155,0)");
-  eg.addColorStop(0.55,"rgba(45,65,155,0)");
-  eg.addColorStop(1,   "rgba(45,65,155,0.22)");
-  g.fillStyle = eg;
-  g.fillRect(0, 0, S, S);
-
-  // lit face: warm radial gradient with highlight offset for a sphere feel
-  const hx = cx + (waxing ? 0.12 : -0.12) * r;
-  const hy = cy - 0.08 * r;
+  // lit face: warm sphere gradient
+  const hx = cx + (waxing ? 0.13 : -0.13) * r;
+  const hy = cy - 0.09 * r;
   const litG = g.createRadialGradient(hx, hy, 0, cx, cy, r * 1.05);
-  litG.addColorStop(0,    "#fffef8");
-  litG.addColorStop(0.28, "#fff8cc");
-  litG.addColorStop(0.72, "#f0d660");
+  litG.addColorStop(0,    "#fffffa");
+  litG.addColorStop(0.25, "#fff9d0");
+  litG.addColorStop(0.70, "#f2da62");
   litG.addColorStop(1,    "#c8a030");
 
   g.fillStyle = litG;
@@ -1472,51 +1460,58 @@ function drawMoon(lit: number, waxing: boolean): HTMLCanvasElement {
   g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing);
   g.fill();
 
-  // terminator ellipse
+  // terminator
   const w = r * Math.abs(1 - 2 * lit);
   if (lit < 0.5) {
-    // crescent: punch out the ellipse then refill with shadow
+    // crescent: punch out ellipse then refill with the same ghost shadow
     g.globalCompositeOperation = "destination-out";
     g.beginPath();
     g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
     g.fill();
     g.globalCompositeOperation = "source-over";
-    g.fillStyle = "#09102c";
-    g.beginPath();
-    g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = "rgba(45,65,155,0.18)";
+    g.fillStyle = "rgba(10,18,55,0.18)";
     g.beginPath();
     g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
     g.fill();
   } else {
-    // gibbous: extend lit area
     g.fillStyle = litG;
     g.beginPath();
     g.ellipse(cx, cy, w, r, 0, 0, Math.PI * 2);
     g.fill();
   }
 
-  // limb darkening — edge dims toward the boundary, making it look spherical
-  const limb = g.createRadialGradient(cx, cy, r * 0.52, cx, cy, r);
-  limb.addColorStop(0,   "rgba(0,0,0,0)");
-  limb.addColorStop(0.68,"rgba(0,0,0,0)");
-  limb.addColorStop(1,   "rgba(0,0,0,0.42)");
+  // limb darkening — dims the very edge so it reads as a sphere, not a disc
+  const limb = g.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+  limb.addColorStop(0,    "rgba(0,0,0,0)");
+  limb.addColorStop(0.65, "rgba(0,0,0,0)");
+  limb.addColorStop(1,    "rgba(0,0,0,0.38)");
   g.fillStyle = limb;
   g.fillRect(0, 0, S, S);
 
-  // maria / craters
+  // craters — clip to lit half so they don't clutter the dark side
+  g.save();
+  g.beginPath();
+  g.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing);
+  g.lineTo(cx, cy);
+  g.closePath();
+  if (lit >= 0.5) {
+    // for gibbous also show craters in the ellipse zone
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+  }
+  g.clip();
   for (const [x, y, rr] of [
-    [-0.28, -0.22, 0.13], [ 0.22,  0.28, 0.10],
-    [ 0.33, -0.10, 0.07], [-0.08,  0.18, 0.06],
-    [ 0.05, -0.34, 0.05], [-0.14,  0.07, 0.04],
-    [ 0.12,  0.05, 0.04],
+    [-0.26, -0.20, 0.13], [ 0.20,  0.27, 0.10],
+    [ 0.31, -0.09, 0.07], [-0.07,  0.17, 0.06],
+    [ 0.06, -0.33, 0.05], [-0.13,  0.06, 0.04],
+    [ 0.11,  0.04, 0.04],
   ]) {
-    g.fillStyle = "rgba(100,88,58,0.2)";
+    g.fillStyle = "rgba(95,84,52,0.22)";
     g.beginPath();
     g.arc(cx + x * r, cy + y * r, rr * r, 0, Math.PI * 2);
     g.fill();
   }
+  g.restore();
 
   g.restore();
   return c;

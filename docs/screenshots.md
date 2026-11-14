@@ -1,107 +1,103 @@
-# TOTEM — Screenshots
+# TOTEM — BaoBao's Story
 
-## 🐼 BaoBao
+---
+
+## 🐼 Meet BaoBao
 ![BaoBao](baobao-portrait.png)
-*BaoBao — the community panda spirit living on NEAR. One creature, one tribe, one chain.*
+*This is BaoBao. A community panda living on NEAR — not owned by anyone, kept alive by everyone. One creature, one tribe, one chain.*
 
 ---
 
-## 🌙 Night Island — The Real Moon
+## 🌙 The World Runs on the Real Moon
 ![Night island with moon panel](island-night-moon.png)
-*BaoBao follows the real lunar cycle. Tonight: waxing crescent, 24% lit. The contract computes the moon phase from block timestamps — no oracle, no admin. The fuller the moon, the hungrier BaoBao gets and the more $TOTEM burns. Feed while 90%+ lit → earn the soulbound Moonlit badge.*
+*BaoBao's island follows the real lunar cycle — computed from block timestamps, no oracle, no admin. Tonight: waxing crescent, 24% lit. The fuller the moon, the hungrier BaoBao gets. Feed under a full moon and earn a soulbound Moonlit badge.*
 
 ---
 
-## 🎋 Feeding + Treasury
+## 🎋 You Feed It. It Burns Half Forever.
 ![Feeding BaoBao](feeding-treasury.png)
-*Every feed burns 50–70% of $TOTEM forever and sends the rest into BaoBao's own treasury — a keyless NEAR sub-account nobody can sign for. BaoBao says thank you.*
+*Every feed burns 50–70% of $TOTEM permanently and sends the rest into a keyless treasury sub-account — no one can sign for it, not even the founders. BaoBao owns its own money.*
 
 ---
 
-## 🖼️ NFT Badges
-![NFT badges panel](nft-badges.png)
-*Every picture is drawn by the contract itself, on-chain — no server, no IPFS. Soulbound badges earned through play: Hero (rescue BaoBao from Rampage), Founder (top 3 feeder of a life), Welcome Back (return after 3+ days), Moonlit (feed under a full moon), Caretaker Bronze / Silver / Gold. Badges can never be transferred — they are your reputation on NEAR forever.*
-
----
-
-## 🗝️ The Den
-![The Den](den-diary-wall.png)
-*Exclusive to badge holders. BaoBao writes a secret diary powered by NEAR AI Cloud, reading its own chain state — hunger, treasury, moon phase, top feeders. Badge holders post on the holders wall. Your badge is your key, checked on-chain every time.*
-
----
-
-## 📢 Share the Totem
-![Share the Totem](share-totem.png)
-*When BaoBao is close to death, anyone can share a rescue link — Post on X, send to Telegram, copy text. Whoever opens the link can rescue BaoBao in one tap, with no wallet and no gas. The game pays their gas.*
-
----
-
-## 🔮 Prediction Market
-![Prediction market](prediction-market.png)
-*During every Rampage an on-chain prediction market opens automatically. Bet $TOTEM on survive or die. Winners split 97% of the losing pool. 3% is burned. No house. No backend. Settled entirely on NEAR.*
-
----
-
-## 🏆 Badge Leaderboard
-![Badge Leaderboard](leaderboard.png)
-*Top feeders ranked by soulbound badges — earned, never bought. Pure chain state, no database. Updated live from the contract.*
-
----
-
-## 📜 On-Chain History
-![On-chain history ledger](ledger-history.png)
-*Every feed, burn, hatch, death, Rampage and prediction market bet is a real NEAR transaction. Full on-chain event history — every line links directly to the explorer. No backend storage.*
-
----
-
-## 📖 Lives Tab
-![Lives tab](lives-tab.png)
-*Every generation BaoBao ever lived is recorded on-chain. The living Totem NFT updates its art in real time — mood, level, belly, moon phase. Top feeders of each life seed the next egg's colour traits.*
-
----
-
-## 🔮 Prediction Market + Moon
-![Prediction market with moon panel](prediction-market-moon.png)
-*The prediction market runs alongside the moon panel. Bet $TOTEM on survive or die, claim winnings after the Rampage resolves.*
-
----
-
-## 🤖 AI Chat — Talk to BaoBao
+## 💬 Ask BaoBao Anything
 ![AI chat panel](ai-chat.png)
-*BaoBao reads its own live chain state — belly level, treasury, moon phase, top feeders — and answers in character via NEAR AI Cloud. Ask "Who feeds you the most?" and it tells you the top feeder's wallet and exact amount. Ask "How are you feeling?" and it reports its real belly percentage. The personality shifts every generation based on who fed the previous life most.*
+*BaoBao reads its own live chain state and answers in character via NEAR AI Cloud. Ask "Who feeds you the most?" — it names the wallet and the exact amount. Ask "How are you feeling?" — it tells you its real belly percentage. Its personality shifts every generation based on who fed the last life most.*
 
 ---
 
-## 🔴 Rampage
+## 🔴 Neglect It and It Rampages
 ![Rampage](rampage.png)
-*Neglect BaoBao and it enters Rampage — the island turns pink, BaoBao rages. Every bite burns 15% of the Treasury and knocks a block off the totem pole. The tribe has one choice: RESCUE or let it die. Poke for a tip — trigger the next bite early and earn a cut of the Treasury burn. One bite from death.*
+*Stop feeding and the island turns red. BaoBao rages — every bite burns 15% of the treasury and knocks a block off the totem pole. The tribe has one choice: rescue it or watch it die. Poke for a tip — trigger the next bite early and earn a cut of the burn.*
 
 ---
 
-## 🏛️ The Tribe — Sputnik DAO
-![The Tribe DAO panel](tribe-dao.png)
-*The Totem belongs to the tribe's DAO. Keepers (1,000 $TOTEM staked or a Silver badge) decide by majority: hatching, naming, evolution, who joins them. No council, no admin, no founder veto. Changing the rules takes two thirds of the Keepers. You qualify as a Keeper — nominate yourself on-chain.*
+## 🔮 The Tribe Bets on Life or Death
+![Prediction market](prediction-market.png)
+*The moment a Rampage starts, an on-chain prediction market opens. Bet $TOTEM on survive or die. Winners split 97% of the losing pool. 3% is burned. No house edge. No backend. Settled entirely by the contract.*
 
 ---
 
-## ⚰️ Death — Gravestone NFT
+## 📢 One Link Rescues BaoBao
+![Share the Totem](share-totem.png)
+*Anyone can share a rescue link to X or Telegram. Whoever opens it feeds BaoBao in one tap — no wallet, no gas, the game pays. The tribe mobilises. BaoBao survives.*
+
+---
+
+## ⚰️ But Sometimes It Dies
 ![BaoBao dead, gravestone](death-gravestone.png)
-*BaoBao CCCLXV starved at Level 0. A gravestone NFT joins the lineage — permanent, on-chain, drawn by the contract itself. The island is empty. Only the tribe can bring it back. Anyone can propose. 4 Keepers decide.*
+*BaoBao CCCLXV starved at Level 0. A gravestone NFT joins the lineage — permanent, on-chain, drawn by the contract itself. The island goes quiet. Only the tribe can bring it back.*
 
 ---
 
-## 🗳️ Propose the Hatch
+## 🏛️ The Tribe Votes to Hatch the Next Egg
+![The Tribe DAO panel](tribe-dao.png)
+*The Totem belongs to its DAO. Keepers — anyone with 1,000 $TOTEM staked or a Silver badge — vote by majority on everything: hatching, naming, evolution, who joins them. No founder veto. No admin shortcut.*
+
+---
+
+## 🗳️ A Proposal Goes On-Chain
 ![Tribe panel — propose hatch](tribe-propose-hatch.png)
-*The Totem is dead. The tribe opens The Tribe panel and proposes hatching BaoBao CCCLXVI. Its traits will come from the last life's top 3 feeders. Any Sputnik DAO client shows the same proposals — votes are fully on-chain.*
+*The tribe opens a hatch proposal for BaoBao CCCLXVI. Its traits will come from the last life's top 3 feeders. The proposal is a real Sputnik DAO transaction — visible in any DAO client.*
 
 ---
 
-## ✅ DAO Vote — Hatch in Progress
+## ✅ Keepers Cast Their Votes
 ![Tribe vote on hatch](tribe-vote-hatch.png)
-*Proposal #777: Hatch BaoBao CCCLXVI. 0 of 3 Keeper votes cast. The relayer proposed it, the Keepers vote, the DAO executes hatch() on the contract. No admin shortcut — the same governance path every time.*
+*Proposal #777: Hatch BaoBao CCCLXVI. 0 of 3 Keeper votes cast. The relayer proposed it. The Keepers vote. The deciding vote executes `hatch()` on the contract directly — the same path, every single time.*
 
 ---
 
-## 🗳️ Live DAO Votes — Two Proposals, Keepers Voting
+## 🐣 BaoBao Is Reborn
 ![Live DAO votes](tribe-votes-live.png)
-*Two hatch proposals open simultaneously — #777 (0 votes) and #778 proposed by raksha0.testnet with 2 of 3 Keeper votes already cast. Top left shows "BaoBao CCCLXVI hatched (DAO vote)" — the previous generation just came back. Real governance, real votes, all on-chain through Sputnik DAO.*
+*2 of 3 votes in. Top left: "BaoBao CCCLXVI hatched (DAO vote)." The previous generation just came back — new traits, new colour, same soul. The cycle begins again.*
+
+---
+
+## 🖼️ Every Reputation Lives On-Chain Forever
+![NFT badges panel](nft-badges.png)
+*Soulbound badges drawn entirely by the contract — no server, no IPFS. Hero, Founder, Moonlit, Welcome Back, Caretaker Bronze / Silver / Gold. Earned through play, impossible to transfer. Your history on NEAR, permanent.*
+
+---
+
+## 🗝️ Badge Holders Get the Den
+![The Den](den-diary-wall.png)
+*Exclusive to badge holders. BaoBao writes a secret diary — hunger, treasury balance, moon phase, who fed it most. Badge holders post on the wall. Your badge is the key, checked on-chain every visit.*
+
+---
+
+## 🏆 The Leaderboard Never Lies
+![Badge Leaderboard](leaderboard.png)
+*Top feeders ranked by soulbound badges — earned, never bought. Pure chain state, no database, no admin. Updated live from the contract.*
+
+---
+
+## 📜 Every Action Is a Real Transaction
+![On-chain history ledger](ledger-history.png)
+*Every feed, burn, hatch, death, bite and badge — a real NEAR transaction. Full event history, newest first, every line links to the explorer. No backend. No database. Just the chain.*
+
+---
+
+## 📖 Every Life Is Remembered
+![Lives tab](lives-tab.png)
+*Every generation BaoBao ever lived, recorded on-chain. The living Totem NFT updates its art in real time — mood, level, belly, moon phase. The top feeders of each life seed the next egg's colour traits.*

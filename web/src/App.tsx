@@ -525,11 +525,12 @@ export default function App() {
           </div>
           <div className="rc-row">
             <button className="press-btn danger-btn" onClick={() => { setAmount("fill"); feedNearPanda(); }}>🎋 RESCUE</button>
-            <button className="ghost-btn" onClick={doPoke}>⚡ poke for a tip</button>
+            <button className="ghost-btn" onClick={doPoke} title="Trigger the next bite now and earn a small $TOTEM tip from the burn">⚡ poke for a tip</button>
             {game.mode === "live" && (
-              <button className="ghost-btn" onClick={() => setPredictOpen(true)}>🔮 place a bet</button>
+              <button className="ghost-btn" onClick={() => setPredictOpen(true)} title="Bet on whether BaoBao survives this Rampage">🔮 place a bet</button>
             )}
           </div>
+          <div className="rc-hint">poke = trigger the next bite early · earn a tip from the Treasury burn</div>
         </div>
       )}
 
